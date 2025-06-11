@@ -1,6 +1,5 @@
 "use client"
 
-import ProtectedRoute from "@/components/protected-route"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,7 @@ import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <ProtectedRoute>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6">
         <header className="mb-6">
           <h1 className="text-2xl font-bold">Welcome to PayLive</h1>
@@ -116,6 +115,6 @@ export default function HomePage() {
           </Link>
         </div>
       </div>
-    </ProtectedRoute>
+    </div>
   )
 }

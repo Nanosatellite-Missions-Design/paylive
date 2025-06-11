@@ -12,8 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronLeft, Plus, Video, Calendar, Clock, Users, Play, Pause, Package } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LiveSalesManagementPage() {
   const [liveSales, setLiveSales] = useState([
@@ -65,11 +64,11 @@ export default function LiveSalesManagementPage() {
   ])
 
   const [isCreatingLiveSale, setIsCreatingLiveSale] = useState(false)
-  const [selectedLiveSale, setSelectedLiveSale] = useState(null)
+  const [selectedLiveSale, setSelectedLiveSale] = useState<any>(null)
   const [showProductsDialog, setShowProductsDialog] = useState(false)
   const { toast } = useToast()
 
-  const handleCreateLiveSale = (e) => {
+  const handleCreateLiveSale = (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
@@ -94,7 +93,7 @@ export default function LiveSalesManagementPage() {
     })
   }
 
-  const handleStartLiveSale = (id) => {
+  const handleStartLiveSale = (id: any) => {
     setLiveSales(
       liveSales.map((sale) => {
         if (sale.id === id) {
@@ -115,7 +114,7 @@ export default function LiveSalesManagementPage() {
     })
   }
 
-  const handleEndLiveSale = (id) => {
+  const handleEndLiveSale = (id: any) => {
     setLiveSales(
       liveSales.map((sale) => {
         if (sale.id === id) {
@@ -135,7 +134,7 @@ export default function LiveSalesManagementPage() {
     })
   }
 
-  const handleSetFeaturedProduct = (saleId, productId) => {
+  const handleSetFeaturedProduct = (saleId: any, productId: any) => {
     setLiveSales(
       liveSales.map((sale) => {
         if (sale.id === saleId) {
@@ -159,7 +158,7 @@ export default function LiveSalesManagementPage() {
     setShowProductsDialog(false)
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: any) => {
     switch (status) {
       case "active":
         return <Badge className="bg-red-500">Live Now</Badge>
@@ -173,7 +172,7 @@ export default function LiveSalesManagementPage() {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
@@ -549,6 +548,6 @@ export default function LiveSalesManagementPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

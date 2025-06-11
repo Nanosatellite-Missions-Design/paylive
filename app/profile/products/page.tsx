@@ -11,12 +11,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, Plus, Edit, Trash2, QrCode } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
+import { useToast } from "@/hooks/use-toast"
 import QRCodeGenerator from "@/components/qr-code-generator"
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState([
+  const [products, setProducts] = useState<any>([
     {
       id: 1,
       name: "Wireless Earbuds",
@@ -48,12 +47,12 @@ export default function ProductsPage() {
 
   const [isAddingProduct, setIsAddingProduct] = useState(false)
   const [showQRCode, setShowQRCode] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [editingProduct, setEditingProduct] = useState(null)
+  const [editingProduct, setEditingProduct] = useState<any>(null)
   const { toast } = useToast()
 
-  const handleAddProduct = (e) => {
+  const handleAddProduct = (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
@@ -76,16 +75,16 @@ export default function ProductsPage() {
     })
   }
 
-  const handleEditProduct = (product) => {
+  const handleEditProduct = (product: any) => {
     setEditingProduct(product)
     setIsEditing(true)
   }
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
-    setProducts(products.map((product) => (product.id === editingProduct.id ? editingProduct : product)))
+    setProducts(products.map((product: any) => (product.id === editingProduct.id ? editingProduct : product)))
 
     setIsEditing(false)
     setEditingProduct(null)
@@ -96,8 +95,8 @@ export default function ProductsPage() {
     })
   }
 
-  const handleDeleteProduct = (id) => {
-    setProducts(products.filter((product) => product.id !== id))
+  const handleDeleteProduct = (id: any) => {
+    setProducts(products.filter((product: any) => product.id !== id))
 
     toast({
       title: "Product deleted",
@@ -105,13 +104,13 @@ export default function ProductsPage() {
     })
   }
 
-  const handleShowQRCode = (product) => {
+  const handleShowQRCode = (product: any) => {
     setSelectedProduct(product)
     setShowQRCode(true)
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
@@ -126,7 +125,7 @@ export default function ProductsPage() {
         </header>
 
         <div className="space-y-4 mb-6">
-          {products.map((product) => (
+          {products.map((product: any) => (
             <Card key={product.id}>
               <CardContent className="p-4">
                 <div className="flex items-center">
@@ -336,6 +335,6 @@ export default function ProductsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

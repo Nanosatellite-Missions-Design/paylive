@@ -2,14 +2,23 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Edit, CreditCard, Package, Video, Gavel, ChevronRight, MapPin, Globe } from "lucide-react"
-import AuthLayout from "@/components/auth-layout"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import {
+  Settings,
+  CreditCard,
+  Gavel,
+  Video,
+  History,
+  ChevronRight,
+  DollarSign,
+  TrendingUp,
+  BarChart3,
+  Package,
+} from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function ProfilePage() {
-  // Mock user data
+
   const user = {
     name: "Jane Cooper",
     email: "jane@example.com",
@@ -22,249 +31,193 @@ export default function ProfilePage() {
     website: "https://janecooper.com",
   }
 
+  // Mock financial data
+  const financialStats = {
+    currentBalance: 1247.83,
+    monthlyEarnings: 892.5,
+    totalEarnings: 15420.75,
+    pendingPayouts: 156.2,
+    totalSales: 89,
+    totalPurchases: 23,
+  }
+
+  if (!user) return null
+
   return (
-    <AuthLayout>
-      <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold">My Profile</h1>
-        </header>
-
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <img
-                  src={user.avatar || "/placeholder.svg"}
-                  alt={user.name}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-primary"
-                />
-                {user.isCreator && <Badge className="absolute -bottom-1 -right-1 bg-secondary">Creator</Badge>}
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold">{user.name}</h2>
-                <p className="text-gray-500 text-sm">{user.email}</p>
-                <p className="text-gray-500 text-xs">Member since {user.joinedDate}</p>
-
-                {user.bio && <p className="text-sm mt-2 text-gray-600 line-clamp-2">{user.bio}</p>}
-
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-                  {user.location && (
-                    <div className="flex items-center text-xs text-gray-500">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {user.location}
-                    </div>
-                  )}
-
-                  {user.website && (
-                    <div className="flex items-center text-xs text-gray-500">
-                      <Globe className="h-3 w-3 mr-1" />
-                      <a href={user.website} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                        Website
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <Link href="/profile/edit">
-                <Button variant="outline" size="sm">
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Link href="/profile/payment-methods">
-            <Button variant="outline" className="w-full justify-between">
-              <div className="flex items-center">
-                <CreditCard className="h-5 w-5 mr-3 text-primary" />
-                Manage Payment Methods
-              </div>
-              <ChevronRight className="h-5 w-5" />
+    <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold mb-2">My Account</h1>
+        <div className="flex items-center">
+          <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
+            <img src={user.avatar || "/placeholder-user.jpg"} alt={user.name} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <h2 className="font-semibold">{user.name}</h2>
+            <p className="text-sm text-gray-500">{user.email}</p>
+          </div>
+          <Link href="/profile/edit" className="ml-auto">
+            <Button variant="outline" size="sm">
+              Edit Profile
             </Button>
           </Link>
+        </div>
+      </header>
+
+      {/* Financial Overview - Only for creators */}
+      {user.isCreator && (
+        <section className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Financial Overview</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-gray-500">Current Balance</h3>
+                  <DollarSign className="h-4 w-4 text-green-500" />
+                </div>
+                <p className="text-2xl font-bold text-green-600">XAF{financialStats.currentBalance.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-gray-500">This Month</h3>
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                </div>
+                <p className="text-2xl font-bold">XAF{financialStats.monthlyEarnings.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-2">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-gray-500">Total Earnings</h3>
+                  <BarChart3 className="h-4 w-4 text-purple-500" />
+                </div>
+                <p className="text-2xl font-bold">XAF{financialStats.totalEarnings.toFixed(2)}</p>
+                <div className="flex justify-between mt-2 text-sm">
+                  <span className="text-gray-500">Total Sales: {financialStats.totalSales}</span>
+                  <Link href="/profile/transactions" className="text-blue-600 flex items-center">
+                    Details <ChevronRight className="h-3 w-3 ml-1" />
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
+
+      {/* Activity Summary - For non-creators */}
+      {!user.isCreator && (
+        <section className="mb-6">
+          <h2 className="text-lg font-semibold mb-3">Activity Summary</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-sm text-gray-500 mb-1">Total Purchases</h3>
+                  <p className="text-xl font-bold">{financialStats.totalPurchases}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm text-gray-500 mb-1">Last Purchase</h3>
+                  <p className="text-xl font-bold">Apr 15, 2023</p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <Link href="/profile/transactions">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <History className="h-4 w-4 mr-2" />
+                    Transaction History
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {user.isCreator && (
+            <Link href="/profile/products">
+              <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
+                <Package className="h-6 w-6 mb-2" />
+                <span>My Products</span>
+              </Button>
+            </Link>
+          )}
 
           {user.isCreator && (
-            <>
-              <Link href="/profile/products">
-                <Button variant="outline" className="w-full justify-between">
-                  <div className="flex items-center">
-                    <Package className="h-5 w-5 mr-3 text-primary" />
-                    My Products
-                  </div>
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </Link>
-
-              <Link href="/profile/live-sales">
-                <Button variant="outline" className="w-full justify-between">
-                  <div className="flex items-center">
-                    <Video className="h-5 w-5 mr-3 text-primary" />
-                    My Live Sales
-                  </div>
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </Link>
-            </>
+            <Link href="/profile/live-sales">
+              <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
+                <Video className="h-6 w-6 mb-2" />
+                <span>Live Sales</span>
+              </Button>
+            </Link>
           )}
 
           <Link href="/profile/auctions">
-            <Button variant="outline" className="w-full justify-between">
-              <div className="flex items-center">
-                <Gavel className="h-5 w-5 mr-3 text-primary" />
-                {user.isCreator ? "My Auctions" : "Participated Auctions"}
-              </div>
-              <ChevronRight className="h-5 w-5" />
+            <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
+              <Gavel className="h-6 w-6 mb-2" />
+              <span>My Auctions</span>
+            </Button>
+          </Link>
+
+          <Link href="/profile/payment-methods">
+            <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
+              <CreditCard className="h-6 w-6 mb-2" />
+              <span>Payment Methods</span>
+            </Button>
+          </Link>
+
+          <Link href="/profile/transactions" className="col-span-2">
+            <Button variant="outline" className="w-full">
+              <History className="h-4 w-4 mr-2" />
+              Transaction History
             </Button>
           </Link>
         </div>
+      </section>
 
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Activity</h2>
-          <Tabs defaultValue="purchases">
-            <TabsList className="w-full">
-              <TabsTrigger value="purchases" className="flex-1">
-                Purchases
-              </TabsTrigger>
-              <TabsTrigger value="auctions" className="flex-1">
-                Auctions
-              </TabsTrigger>
-              {user.isCreator && (
-                <TabsTrigger value="sales" className="flex-1">
-                  Sales
-                </TabsTrigger>
-              )}
-            </TabsList>
-            <TabsContent value="purchases" className="mt-4">
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden">
-                        <img
-                          src="/placeholder.svg?height=50&width=50"
-                          alt="Product"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Wireless Earbuds</h3>
-                        <p className="text-sm text-gray-500">Purchased on Apr 15, 2023</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">$89.99</p>
-                        <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">
-                          Delivered
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden">
-                        <img
-                          src="/placeholder.svg?height=50&width=50"
-                          alt="Product"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Smart Watch</h3>
-                        <p className="text-sm text-gray-500">Purchased on Mar 22, 2023</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">$129.99</p>
-                        <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">
-                          Delivered
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            <TabsContent value="auctions" className="mt-4">
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden">
-                        <img
-                          src="/placeholder.svg?height=50&width=50"
-                          alt="Product"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Vintage Camera</h3>
-                        <p className="text-sm text-gray-500">Bid: $250.00</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge className="bg-green-500">Won</Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-md overflow-hidden">
-                        <img
-                          src="/placeholder.svg?height=50&width=50"
-                          alt="Product"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">Art Print</h3>
-                        <p className="text-sm text-gray-500">Bid: $75.00</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">
-                          Active
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            {user.isCreator && (
-              <TabsContent value="sales" className="mt-4">
-                <div className="space-y-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-md overflow-hidden">
-                          <img
-                            src="/placeholder.svg?height=50&width=50"
-                            alt="Product"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">Designer Handbag</h3>
-                          <p className="text-sm text-gray-500">Sold on Apr 18, 2023</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">$199.99</p>
-                          <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">
-                            Completed
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-            )}
-          </Tabs>
+      <section>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-semibold">Account Settings</h2>
         </div>
-      </div>
-    </AuthLayout>
+        <Card>
+          <CardContent className="p-0">
+            <Link href="/profile/edit" className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
+              <div className="flex items-center">
+                <Settings className="h-5 w-5 mr-3 text-gray-500" />
+                <span>Edit Profile</span>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </Link>
+            <Link
+              href="/profile/payment-methods"
+              className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
+            >
+              <div className="flex items-center">
+                <CreditCard className="h-5 w-5 mr-3 text-gray-500" />
+                <span>Payment Methods</span>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </Link>
+            <Link href="/settings" className="flex items-center justify-between p-4 hover:bg-gray-50">
+              <div className="flex items-center">
+                <Settings className="h-5 w-5 mr-3 text-gray-500" />
+                <span>App Settings</span>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400" />
+            </Link>
+          </CardContent>
+          <CardFooter className="p-4 pt-0">
+            <Button variant="outline" className="w-full text-red-500 hover:text-red-600 hover:bg-red-50">
+              Log Out
+            </Button>
+          </CardFooter>
+        </Card>
+      </section>
+    </div>
   )
 }

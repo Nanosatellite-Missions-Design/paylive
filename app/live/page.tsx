@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Users, Calendar, Clock } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
 
 export default function LiveSalesPage() {
   const [liveSales, setLiveSales] = useState([
@@ -48,7 +47,7 @@ export default function LiveSalesPage() {
   const [isCreatingLiveSale, setIsCreatingLiveSale] = useState(false)
   const { toast } = useToast()
 
-  const handleCreateLiveSale = (e) => {
+  const handleCreateLiveSale = (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
@@ -71,7 +70,7 @@ export default function LiveSalesPage() {
     })
   }
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status: any) => {
     switch (status) {
       case "active":
         return <Badge className="bg-red-500">Live Now</Badge>
@@ -85,7 +84,7 @@ export default function LiveSalesPage() {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -159,7 +158,8 @@ export default function LiveSalesPage() {
             </TabsTrigger>
             <TabsTrigger value="ended" className="flex-1">
               Ended
-            </TabsList>
+            </TabsTrigger>
+          </TabsList>
           <TabsContent value="all" className="space-y-4">
             {liveSales.map((sale) => (
               <Link key={sale.id} href={`/live/${sale.id}`}>
@@ -270,6 +270,6 @@ export default function LiveSalesPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AuthLayout>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
 import ClientLayout from "./client-layout"
 import "./globals.css"
+import ProtectedRoute from "@/components/protected-route"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light">
           <AuthProvider>
-            <ClientLayout>{children}</ClientLayout>
+            <ProtectedRoute>
+              <ClientLayout>{children}</ClientLayout>
+            </ProtectedRoute>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

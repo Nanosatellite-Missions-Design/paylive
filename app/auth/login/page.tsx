@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({ email: "", password: "" })
 
-  const { login, isLoading } = useAuth()
+  const { login, loading } = useAuth()
 
   const validateForm = (): boolean => {
     let valid = true
@@ -118,8 +118,8 @@ export default function LoginPage() {
             </Label>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Log in"}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Logging in..." : "Log in"}
           </Button>
 
           <div className="text-center text-sm">

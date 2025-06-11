@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChevronLeft, Clock } from "lucide-react"
-import AuthLayout from "@/components/auth-layout"
 
 export default function ParticipatedAuctionsPage() {
   // Mock auctions data
@@ -64,7 +63,7 @@ export default function ParticipatedAuctionsPage() {
     },
   ])
 
-  const getPositionBadge = (position) => {
+  const getPositionBadge = (position: any) => {
     switch (position) {
       case "winning":
         return <Badge className="bg-green-500">Winning</Badge>
@@ -80,7 +79,7 @@ export default function ParticipatedAuctionsPage() {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
@@ -271,6 +270,6 @@ export default function ParticipatedAuctionsPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

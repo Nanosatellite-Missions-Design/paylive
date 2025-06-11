@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Clock, Gavel } from "lucide-react"
-import AuthLayout from "@/components/auth-layout"
 
 export default function AuctionsPage() {
   // Mock auctions data
@@ -63,7 +62,7 @@ export default function AuctionsPage() {
   ]
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <h1 className="text-2xl font-bold">Auctions</h1>
@@ -186,6 +185,6 @@ export default function AuctionsPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

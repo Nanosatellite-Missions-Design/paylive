@@ -7,8 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bell, Globe, Moon, Sun, LogOut } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState({
@@ -22,7 +21,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState("light")
   const { toast } = useToast()
 
-  const handleNotificationChange = (key, checked) => {
+  const handleNotificationChange = (key: any, checked: any) => {
     setNotifications({
       ...notifications,
       [key]: checked,
@@ -34,7 +33,7 @@ export default function SettingsPage() {
     })
   }
 
-  const handleLanguageChange = (value) => {
+  const handleLanguageChange = (value: any) => {
     setLanguage(value)
 
     toast({
@@ -43,7 +42,7 @@ export default function SettingsPage() {
     })
   }
 
-  const handleThemeChange = (value) => {
+  const handleThemeChange = (value: any) => {
     setTheme(value)
 
     toast({
@@ -65,7 +64,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <h1 className="text-2xl font-bold">Settings</h1>
@@ -184,6 +183,6 @@ export default function SettingsPage() {
           </Button>
         </div>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

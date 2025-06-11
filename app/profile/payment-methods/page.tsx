@@ -10,8 +10,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreditCard, Smartphone, Plus, ChevronLeft, Trash2, Check } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PaymentMethodsPage() {
   const [paymentMethods, setPaymentMethods] = useState([
@@ -35,7 +34,7 @@ export default function PaymentMethodsPage() {
   const [newMethodType, setNewMethodType] = useState("card")
   const { toast } = useToast()
 
-  const handleSetDefault = (id) => {
+  const handleSetDefault = (id: any) => {
     setPaymentMethods(
       paymentMethods.map((method) => ({
         ...method,
@@ -49,7 +48,7 @@ export default function PaymentMethodsPage() {
     })
   }
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: any) => {
     setPaymentMethods(paymentMethods.filter((method) => method.id !== id))
 
     toast({
@@ -58,7 +57,7 @@ export default function PaymentMethodsPage() {
     })
   }
 
-  const handleAddMethod = (e) => {
+  const handleAddMethod = (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
@@ -80,7 +79,7 @@ export default function PaymentMethodsPage() {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
@@ -226,6 +225,6 @@ export default function PaymentMethodsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

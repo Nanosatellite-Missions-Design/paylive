@@ -20,10 +20,9 @@ import {
   PictureInPicture,
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
 import QRCodeScanner from "@/components/qr-code-scanner"
 
-export default function LiveSaleDetailPage({ params }) {
+export default function LiveSaleDetailPage({ params }: {params: any}) {
   const { id } = params
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isPiP, setIsPiP] = useState(false)
@@ -76,7 +75,7 @@ export default function LiveSaleDetailPage({ params }) {
 
   useEffect(() => {
     // Scroll to bottom of chat when new messages arrive
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [chatMessages])
 
   const handleBuyNow = () => {
@@ -104,7 +103,7 @@ export default function LiveSaleDetailPage({ params }) {
         await document.exitPictureInPicture()
         setIsPiP(false)
       } else if (videoRef.current) {
-        await videoRef.current.requestPictureInPicture()
+        // await videoRef.current.requestPictureInPicture()
         setIsPiP(true)
       }
     } catch (error) {
@@ -117,7 +116,7 @@ export default function LiveSaleDetailPage({ params }) {
     }
   }
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = (e: any) => {
     e.preventDefault()
 
     if (!newMessage.trim()) return
@@ -135,7 +134,7 @@ export default function LiveSaleDetailPage({ params }) {
     setNewMessage("")
   }
 
-  const handleQRScan = (data) => {
+  const handleQRScan = (data: any) => {
     toast({
       title: "QR Code Scanned",
       description: `Product ID: ${data}`,
@@ -145,7 +144,7 @@ export default function LiveSaleDetailPage({ params }) {
   }
 
   return (
-    <AuthLayout>
+    <div>
       <div
         className={`${isFullscreen ? "fixed inset-0 z-50 bg-black" : "container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6"}`}
       >
@@ -327,6 +326,6 @@ export default function LiveSaleDetailPage({ params }) {
           </>
         )}
       </div>
-    </AuthLayout>
+    </div>
   )
 }

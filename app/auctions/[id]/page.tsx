@@ -7,10 +7,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { ChevronLeft, Clock, ArrowUp, ArrowDown, AlertCircle } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import AuthLayout from "@/components/auth-layout"
+import { useToast } from "@/hooks/use-toast"
 
-export default function AuctionDetailPage({ params }) {
+export default function AuctionDetailPage({ params }: {params:any}) {
   const { id } = params
   const { toast } = useToast()
 
@@ -45,7 +44,7 @@ export default function AuctionDetailPage({ params }) {
   const [selectedImage, setSelectedImage] = useState(0)
   const [timeLeft, setTimeLeft] = useState(auction.endsIn)
 
-  const handleBidSubmit = (e) => {
+  const handleBidSubmit = (e: any) => {
     e.preventDefault()
 
     if (bidAmount <= auction.currentBid) {
@@ -88,7 +87,7 @@ export default function AuctionDetailPage({ params }) {
   const isWinning = auction.bids[0]?.isCurrentUser
 
   return (
-    <AuthLayout>
+    <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-4">
           <div className="flex items-center mb-2">
@@ -247,6 +246,6 @@ export default function AuctionDetailPage({ params }) {
           </div>
         </div>
       </div>
-    </AuthLayout>
+    </div>
   )
 }

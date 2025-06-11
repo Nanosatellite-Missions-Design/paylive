@@ -41,7 +41,7 @@ export default function SignupPage() {
     terms: "",
   })
 
-  const { signup, isLoading } = useAuth()
+  const { signup, loading } = useAuth()
 
   const validateForm = (): boolean => {
     let valid = true
@@ -231,8 +231,8 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Create account"}
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Create account"}
           </Button>
 
           <div className="text-center text-sm">
