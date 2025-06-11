@@ -1,28 +1,33 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+
+interface FormErrors {
+  email: string
+  password: string
+}
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState({ email: "", password: "" })
-  const router = useRouter()
-  const { toast } = useToast()
+  const [errors, setErrors] = useState<FormErrors>({ email: "", password: "" })
 
-  const validateForm = () => {
+  const { login, isLoading } = useAuth()
+
+  const validateForm = (): boolean => {
     let valid = true
-    const newErrors = { email: "", password: "" }
+    const newErrors: FormErrors = { email: "", password: "" }
 
     if (!email) {
       newErrors.email = "Email is required"
@@ -41,22 +46,16 @@ export default function LoginPage() {
     return valid
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) return
 
-    setIsLoading(true)
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({
-        title: "Login successful",
-        description: "Welcome back to PayLive!",
-      })
-      router.push("/")
-    }, 1500)
+    try {
+      await login(email, password)
+    } catch (error) {
+      // Error is handled in the auth context
+    }
   }
 
   return (

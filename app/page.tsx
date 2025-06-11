@@ -1,167 +1,121 @@
-import Link from "next/link"
+"use client"
+
+import ProtectedRoute from "@/components/protected-route"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Video, Gavel, TrendingUp } from "lucide-react"
-import AuthLayout from "@/components/auth-layout"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Users, Clock, TrendingUp, Star } from "lucide-react"
+import Link from "next/link"
 
 export default function HomePage() {
-  // Sample data for featured live sales and auctions
-  const liveSales = [
-    {
-      id: 1,
-      title: "Summer Fashion Collection",
-      creator: "Style Maven",
-      viewers: 1243,
-      image: "/placeholder.svg?height=200&width=400",
-    },
-    {
-      id: 2,
-      title: "Tech Gadgets Flash Sale",
-      creator: "Gadget Guru",
-      viewers: 856,
-      image: "/placeholder.svg?height=200&width=400",
-    },
-  ]
-
-  const auctions = [
-    {
-      id: 1,
-      title: "Vintage Camera Collection",
-      currentBid: 299,
-      endsIn: "2h 15m",
-      image: "/placeholder.svg?height=200&width=400",
-    },
-    {
-      id: 2,
-      title: "Limited Edition Sneakers",
-      currentBid: 175,
-      endsIn: "45m",
-      image: "/placeholder.svg?height=200&width=400",
-    },
-  ]
-
-  const trending = [
-    {
-      id: 1,
-      title: "Handcrafted Jewelry",
-      creator: "Artisan Gems",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-    {
-      id: 2,
-      title: "Smart Home Devices",
-      creator: "TechHome",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-    {
-      id: 3,
-      title: "Organic Skincare",
-      creator: "Natural Glow",
-      image: "/placeholder.svg?height=100&width=100",
-    },
-  ]
-
   return (
-    <AuthLayout>
-      <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
+    <ProtectedRoute>
+      <div className="container max-w-lg mx-auto px-4 py-6">
         <header className="mb-6">
-          <h1 className="text-3xl font-bold text-primary">PayLive</h1>
-          <p className="text-gray-500 dark:text-gray-400">Discover live sales and auctions</p>
+          <h1 className="text-2xl font-bold">Welcome to PayLive</h1>
+          <p className="text-gray-500">Discover live sales and auctions from your favorite creators</p>
         </header>
 
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center">
-              <Video className="mr-2 h-5 w-5 text-primary" />
+        <Tabs defaultValue="live" className="mb-6">
+          <TabsList className="w-full">
+            <TabsTrigger value="live" className="flex-1">
               Live Now
-            </h2>
-            <Link href="/live" className="text-sm text-primary">
-              View all
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {liveSales.map((sale) => (
-              <Link key={sale.id} href={`/live/${sale.id}`}>
-                <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="relative">
-                    <img src={sale.image || "/placeholder.svg"} alt={sale.title} className="w-full h-48 object-cover" />
-                    <Badge className="absolute top-2 right-2 bg-red-500">LIVE</Badge>
-                    <Badge className="absolute bottom-2 left-2 bg-black/70">{sale.viewers} watching</Badge>
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold">{sale.title}</h3>
-                    <p className="text-sm text-gray-500">by {sale.creator}</p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center">
-              <Gavel className="mr-2 h-5 w-5 text-primary" />
-              Hot Auctions
-            </h2>
-            <Link href="/auctions" className="text-sm text-primary">
-              View all
-            </Link>
-          </div>
-          <div className="space-y-4">
-            {auctions.map((auction) => (
-              <Link key={auction.id} href={`/auctions/${auction.id}`}>
-                <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                  <div className="relative">
-                    <img
-                      src={auction.image || "/placeholder.svg"}
-                      alt={auction.title}
-                      className="w-full h-48 object-cover"
-                    />
-                    <Badge className="absolute top-2 right-2 bg-secondary">Ending Soon</Badge>
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold">{auction.title}</h3>
-                    <div className="flex justify-between mt-2 text-sm">
-                      <span className="text-gray-500">
-                        Current bid: <span className="text-primary font-medium">${auction.currentBid}</span>
-                      </span>
-                      <span className="text-gray-500">
-                        Ends in: <span className="text-accent font-medium">{auction.endsIn}</span>
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center">
-              <TrendingUp className="mr-2 h-5 w-5 text-primary" />
+            </TabsTrigger>
+            <TabsTrigger value="trending" className="flex-1">
               Trending
-            </h2>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            {trending.map((item) => (
-              <Link key={item.id} href={`/product/${item.id}`}>
-                <div className="text-center">
-                  <div className="rounded-full overflow-hidden mb-2 mx-auto w-20 h-20 border-2 border-primary/20">
-                    <img
-                      src={item.image || "/placeholder.svg"}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <h3 className="text-xs font-medium truncate">{item.title}</h3>
+            </TabsTrigger>
+            <TabsTrigger value="featured" className="flex-1">
+              Featured
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="live" className="space-y-4">
+            <Link href="/live/1">
+              <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                <div className="relative">
+                  <img
+                    src="/placeholder.svg?height=200&width=400"
+                    alt="Live Sale"
+                    className="w-full h-48 object-cover"
+                  />
+                  <Badge className="absolute top-2 right-2 bg-red-500">Live Now</Badge>
+                  <Badge className="absolute bottom-2 left-2 bg-black/70">
+                    <Users className="h-3 w-3 mr-1" />
+                    1,243 watching
+                  </Badge>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold">Summer Fashion Collection</h3>
+                  <p className="text-sm text-gray-500 mt-1">Jane Cooper • Fashion & Lifestyle</p>
+                  <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
+                    <span>8 products featured</span>
+                    <span className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      Started 2h ago
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </TabsContent>
+
+          <TabsContent value="trending" className="space-y-4">
+            <Card className="overflow-hidden">
+              <div className="relative">
+                <img src="/placeholder.svg?height=200&width=400" alt="Trending" className="w-full h-48 object-cover" />
+                <Badge className="absolute top-2 right-2 bg-orange-500">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Trending
+                </Badge>
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-semibold">Tech Gadgets Flash Sale</h3>
+                <p className="text-sm text-gray-500 mt-1">Mike Johnson • Electronics</p>
+                <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
+                  <span>12 products</span>
+                  <span>Starts in 2 hours</span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="featured" className="space-y-4">
+            <Card className="overflow-hidden">
+              <div className="relative">
+                <img src="/placeholder.svg?height=200&width=400" alt="Featured" className="w-full h-48 object-cover" />
+                <Badge className="absolute top-2 right-2 bg-yellow-500">
+                  <Star className="h-3 w-3 mr-1" />
+                  Featured
+                </Badge>
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-semibold">Home Decor Showcase</h3>
+                <p className="text-sm text-gray-500 mt-1">Sarah Wilson • Home & Garden</p>
+                <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
+                  <span>15 products</span>
+                  <span>Tomorrow at 6 PM</span>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Link href="/live">
+            <Button variant="outline" className="w-full h-20 flex flex-col">
+              <Users className="h-6 w-6 mb-2" />
+              <span>Live Sales</span>
+            </Button>
+          </Link>
+          <Link href="/auctions">
+            <Button variant="outline" className="w-full h-20 flex flex-col">
+              <Clock className="h-6 w-6 mb-2" />
+              <span>Auctions</span>
+            </Button>
+          </Link>
+        </div>
       </div>
-    </AuthLayout>
+    </ProtectedRoute>
   )
 }

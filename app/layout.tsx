@@ -1,22 +1,25 @@
+import type React from "react"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
-import DesktopNavigation from "@/components/desktop-navigation"
+import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import ClientLayout from "./client-layout"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export default function RootLayout({ children }) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light">
-          <div className="flex min-h-screen">
-            <div className="hidden md:flex">
-              <DesktopNavigation />
-            </div>
-            <main className="flex-1">{children}</main>
-          </div>
+          <AuthProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

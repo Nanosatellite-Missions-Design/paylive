@@ -1,26 +1,38 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context"
+import type { SignupData } from "@/types/auth"
+
+interface FormErrors {
+  name: string
+  email: string
+  phone: string
+  password: string
+  confirmPassword: string
+  terms: string
+}
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isCreator, setIsCreator] = useState(false)
+  const [formData, setFormData] = useState<SignupData>({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    isCreator: false,
+  })
   const [acceptTerms, setAcceptTerms] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState({
+  const [errors, setErrors] = useState<FormErrors>({
     name: "",
     email: "",
     phone: "",
@@ -28,12 +40,12 @@ export default function SignupPage() {
     confirmPassword: "",
     terms: "",
   })
-  const router = useRouter()
-  const { toast } = useToast()
 
-  const validateForm = () => {
+  const { signup, isLoading } = useAuth()
+
+  const validateForm = (): boolean => {
     let valid = true
-    const newErrors = {
+    const newErrors: FormErrors = {
       name: "",
       email: "",
       phone: "",
@@ -42,36 +54,36 @@ export default function SignupPage() {
       terms: "",
     }
 
-    if (!name) {
+    if (!formData.name) {
       newErrors.name = "Name is required"
       valid = false
     }
 
-    if (!email) {
+    if (!formData.email) {
       newErrors.email = "Email is required"
       valid = false
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid"
       valid = false
     }
 
-    if (!phone) {
+    if (!formData.phone) {
       newErrors.phone = "Phone number is required"
       valid = false
-    } else if (!/^\+?[0-9]{10,15}$/.test(phone.replace(/\s/g, ""))) {
+    } else if (!/^\+?[0-9]{10,15}$/.test(formData.phone.replace(/\s/g, ""))) {
       newErrors.phone = "Phone number is invalid"
       valid = false
     }
 
-    if (!password) {
+    if (!formData.password) {
       newErrors.password = "Password is required"
       valid = false
-    } else if (password.length < 8) {
+    } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters"
       valid = false
     }
 
-    if (password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match"
       valid = false
     }
@@ -85,22 +97,20 @@ export default function SignupPage() {
     return valid
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) return
 
-    setIsLoading(true)
+    try {
+      await signup(formData)
+    } catch (error) {
+      // Error is handled in the auth context
+    }
+  }
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      toast({
-        title: "Account created",
-        description: "Welcome to PayLive!",
-      })
-      router.push("/")
-    }, 1500)
+  const handleInputChange = (field: keyof SignupData, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   return (
@@ -118,8 +128,8 @@ export default function SignupPage() {
               id="name"
               type="text"
               placeholder="John Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={(e) => handleInputChange("name", e.target.value)}
               className={errors.name ? "border-red-500" : ""}
             />
             {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
@@ -131,8 +141,8 @@ export default function SignupPage() {
               id="email"
               type="email"
               placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
               className={errors.email ? "border-red-500" : ""}
             />
             {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
@@ -144,8 +154,8 @@ export default function SignupPage() {
               id="phone"
               type="tel"
               placeholder="+1 (555) 123-4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={formData.phone}
+              onChange={(e) => handleInputChange("phone", e.target.value)}
               className={errors.phone ? "border-red-500" : ""}
             />
             {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
@@ -158,8 +168,8 @@ export default function SignupPage() {
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
                 className={errors.password ? "border-red-500 pr-10" : "pr-10"}
               />
               <button
@@ -180,8 +190,8 @@ export default function SignupPage() {
                 id="confirmPassword"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={formData.confirmPassword}
+                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
               />
             </div>
@@ -189,7 +199,11 @@ export default function SignupPage() {
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox id="creator" checked={isCreator} onCheckedChange={(checked) => setIsCreator(checked === true)} />
+            <Checkbox
+              id="creator"
+              checked={formData.isCreator}
+              onCheckedChange={(checked) => handleInputChange("isCreator", checked === true)}
+            />
             <Label htmlFor="creator" className="text-sm font-normal">
               I want to be a content creator and sell products
             </Label>

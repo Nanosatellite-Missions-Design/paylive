@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation"
 import { Home, Video, Gavel, User, Settings, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function DesktopNavigation() {
   const pathname = usePathname()
+  const { logout } = useAuth()
 
   const navItems = [
     {
@@ -66,6 +68,7 @@ export default function DesktopNavigation() {
         <Button
           variant="ghost"
           className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          onClick={logout}
         >
           <LogOut className="h-5 w-5 mr-3" />
           Logout
