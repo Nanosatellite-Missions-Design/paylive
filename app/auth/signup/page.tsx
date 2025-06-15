@@ -4,121 +4,142 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/contexts/auth-context"
-import type { SignupData } from "@/types/auth"
+import { useToast } from "@/hooks/use-toast"
+import { auth, db } from "@/functions/firebase";
+import { RecaptchaVerifier } from "firebase/auth";
 
 interface FormErrors {
   name: string
-  email: string
   phone: string
-  password: string
-  confirmPassword: string
-  terms: string
+  otp: string
 }
 
 export default function SignupPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [formData, setFormData] = useState<SignupData>({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    isCreator: false,
-  })
-  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [otp, setOtp] = useState("")
+  const [verificationId, setVerificationId] = useState("")
+  const [codeSent, setCodeSent] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({
     name: "",
-    email: "",
     phone: "",
-    password: "",
-    confirmPassword: "",
-    terms: "",
+    otp: "",
   })
+  const [sendingCode, setSendingCode] = useState(false)
+  const [verifyingCode, setVerifyingCode] = useState(false)
 
-  const { signup, loading } = useAuth()
+  const { loginWithPhoneNumber, confirmOtp, loading } = useAuth()
+  const { toast } = useToast()
 
-  const validateForm = (): boolean => {
-    let valid = true
-    const newErrors: FormErrors = {
-      name: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      terms: "",
+  const validatePhone = (): boolean => {
+    // Basic phone validation - can be enhanced
+    if (!phone) {
+      setErrors((prev) => ({ ...prev, phone: "Phone number is required" }))
+      return false
     }
 
-    if (!formData.name) {
-      newErrors.name = "Name is required"
-      valid = false
+    // Remove spaces and check if it's a valid phone format
+    const cleanPhone = phone.replace(/\s/g, "")
+    if (!/^\+?[0-9]{10,15}$/.test(cleanPhone)) {
+      setErrors((prev) => ({ ...prev, phone: "Enter a valid phone number" }))
+      return false
     }
 
-    if (!formData.email) {
-      newErrors.email = "Email is required"
-      valid = false
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid"
-      valid = false
-    }
-
-    if (!formData.phone) {
-      newErrors.phone = "Phone number is required"
-      valid = false
-    } else if (!/^\+?[0-9]{10,15}$/.test(formData.phone.replace(/\s/g, ""))) {
-      newErrors.phone = "Phone number is invalid"
-      valid = false
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Password is required"
-      valid = false
-    } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters"
-      valid = false
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match"
-      valid = false
-    }
-
-    if (!acceptTerms) {
-      newErrors.terms = "You must accept the terms and conditions"
-      valid = false
-    }
-
-    setErrors(newErrors)
-    return valid
+    setErrors((prev) => ({ ...prev, phone: "" }))
+    return true
   }
+
+  const validateName = (): boolean => {
+    if (!name.trim()) {
+      setErrors((prev) => ({ ...prev, name: "Name is required" }))
+      return false
+    }
+
+    setErrors((prev) => ({ ...prev, name: "" }))
+    return true
+  }
+
+  const validateOTP = (): boolean => {
+    if (!otp) {
+      setErrors((prev) => ({ ...prev, otp: "Verification code is required" }))
+      return false
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      setErrors((prev) => ({ ...prev, otp: "Enter a valid 6-digit code" }))
+      return false
+    }
+
+    setErrors((prev) => ({ ...prev, otp: "" }))
+    return true
+  }
+
+  const handleSendCode = async () => {
+  const isPhoneValid = validatePhone();
+  const isNameValid = validateName();
+
+  if (!isPhoneValid || !isNameValid) return;
+
+  setSendingCode(true);
+
+  try {
+    // Init recaptchaVerifier only once
+    if (typeof window !== "undefined" && !window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth,
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: () => console.log("reCAPTCHA solved"),
+        }
+      );
+
+      await window.recaptchaVerifier.render();
+    }
+
+    // 🔥 Call your custom login function with the verifier
+    const result = await loginWithPhoneNumber(phone, window.recaptchaVerifier);
+    setVerificationId(result.verificationId); // if you use this later
+    setCodeSent(true);
+
+    toast({ title: "Code sent!", description: "Check your phone." });
+  } catch (error: any) {
+    console.error(error);
+    toast({
+      title: "Error",
+      description: error.message || "Failed to send code",
+    });
+  } finally {
+    setSendingCode(false);
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validateForm()) return
+    if (!validateOTP()) return;
 
+    setVerifyingCode(true);
     try {
-      await signup(formData)
-    } catch (error) {
-      // Error is handled in the auth context
+      await confirmOtp(otp, name); // This should create the user in Firestore in your context
+      toast({ title: "Account created", description: "Welcome to PayLive!" });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Error", description: error.message || "Verification failed" });
+    } finally {
+      setVerifyingCode(false);
     }
-  }
-
-  const handleInputChange = (field: keyof SignupData, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col justify-center p-4 bg-gradient-to-b from-primary/5 to-secondary/5">
       <div className="max-w-md w-full mx-auto space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold text-primary">PayLive</h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">Create your account and start selling or buying</p>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Create your account to start selling or buying</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-950 p-6 rounded-xl shadow-sm space-y-6">
@@ -128,111 +149,50 @@ export default function SignupPage() {
               id="name"
               type="text"
               placeholder="John Doe"
-              value={formData.name}
-              onChange={(e) => handleInputChange("name", e.target.value)}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className={errors.name ? "border-red-500" : ""}
             />
             {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className={errors.email ? "border-red-500" : ""}
-            />
-            {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+1 (555) 123-4567"
-              value={formData.phone}
-              onChange={(e) => handleInputChange("phone", e.target.value)}
-              className={errors.phone ? "border-red-500" : ""}
-            />
+            <div className="flex space-x-2">
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className={errors.phone ? "border-red-500" : ""}
+                disabled={codeSent}
+              />
+              <Button type="button" onClick={handleSendCode} disabled={sendingCode || codeSent} variant="outline">
+                {sendingCode ? "Sending..." : codeSent ? "Sent" : "Send Code"}
+              </Button>
+            </div>
             {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
+          {codeSent && (
+            <div className="space-y-2">
+              <Label htmlFor="otp">Verification Code</Label>
               <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                id="otp"
+                type="text"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className={errors.otp ? "border-red-500" : ""}
+                maxLength={6}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              {errors.otp && <p className="text-red-500 text-sm">{errors.otp}</p>}
             </div>
-            {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className={errors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
-              />
-            </div>
-            {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword}</p>}
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="creator"
-              checked={formData.isCreator}
-              onCheckedChange={(checked) => handleInputChange("isCreator", checked === true)}
-            />
-            <Label htmlFor="creator" className="text-sm font-normal">
-              I want to be a content creator and sell products
-            </Label>
-          </div>
-
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="terms"
-              checked={acceptTerms}
-              onCheckedChange={(checked) => setAcceptTerms(checked === true)}
-              className={errors.terms ? "border-red-500" : ""}
-            />
-            <div>
-              <Label htmlFor="terms" className="text-sm font-normal">
-                I agree to the{" "}
-                <Link href="/terms" className="text-primary hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-primary hover:underline">
-                  Privacy Policy
-                </Link>
-              </Label>
-              {errors.terms && <p className="text-red-500 text-sm">{errors.terms}</p>}
-            </div>
-          </div>
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating account..." : "Create account"}
+          <Button type="submit" className="w-full" disabled={loading || verifyingCode || !codeSent}>
+            {verifyingCode ? "Creating account..." : "Create account"}
           </Button>
 
           <div className="text-center text-sm">
@@ -243,6 +203,9 @@ export default function SignupPage() {
           </div>
         </form>
       </div>
+
+      {/* Invisible reCAPTCHA container */}
+      <div id="recaptcha-container"></div>
     </div>
   )
 }

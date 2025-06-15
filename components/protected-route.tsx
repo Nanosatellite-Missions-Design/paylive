@@ -1,9 +1,8 @@
 "use client"
 
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useEffect, type ReactNode } from "react"
-import { usePathname } from "next/navigation"
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -16,20 +15,15 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthPage = pathname.startsWith("/auth")
 
   useEffect(() => {
-    console.log(user)
+    console.log("User:", user)
   }, [user])
 
-  if (isAuthPage) {
-    // Auth pages don't need navigation
-    return <main className="min-h-screen">{children}</main>
-  }
-
   useEffect(() => {
-    if (!loading && !user) {
-      console.log("humm")
-      router.push("/auth/login");
+    if (!loading && !user && !isAuthPage) {
+      console.log("Redirecting...")
+      router.push("/auth/login")
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isAuthPage])
 
   if (loading) {
     return (
@@ -39,5 +33,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  return user ? <>{children}</> : null;
+  // Separate logic after hooks
+  if (isAuthPage) {
+    return <main className="min-h-screen">{children}</main>
+  }
+
+  return user ? <>{children}</> : null
 }

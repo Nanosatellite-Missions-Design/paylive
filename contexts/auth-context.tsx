@@ -15,9 +15,10 @@ import {
   signOut,
   sendEmailVerification,
   updateProfile,
+  signInWithPhoneNumber
 } from "firebase/auth";
 import { auth, db } from "@/functions/firebase";
-import { getADocument } from "@/functions/get-a-document";
+import { getADocument, getSingleDocument } from "@/functions/get-a-document";
 import { getACollection } from "@/functions/get-a-collection";
 import { setToCollection } from "@/functions/add-to-collection";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
@@ -27,7 +28,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   userInfo: any;
-  deliverers: any[];
+  lives: any[];
   deliveries: any[];
   transactions: any[];
   referrals: any[];
@@ -38,6 +39,8 @@ interface AuthContextType {
     formData: any
   ) => Promise<void>;
   logout: () => Promise<void>;
+  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promis<void>,
+  confirmOtp: (otp: string) => Promise<void>,
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,13 +49,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
-  const [deliverers, setDeliverers] = useState<any[]>([]);
+  const [lives, setLives] = useState<any[]>([]);
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [referralsEarnings, setReferralsEarnings] = useState(0);
   const [users, setUsers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const router = useRouter();
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+
+  const loginWithPhoneNumber = async (phone: string, appVerifier: any) => {
+    setLoading(true);
+    try {
+      const result = await signInWithPhoneNumber(auth, phone, appVerifier);
+      setConfirmationResult(result);
+      return result;
+    } catch (error) {
+      console.error("Phone login error:", error);
+      throw new Error("Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmOtp = async (otp: string, name: string) => {
+    setLoading(true);
+    try {
+      if (!confirmationResult) {
+        throw new Error("No confirmation result found");
+      }
+
+      const result = await confirmationResult.confirm(otp);
+      const user = result.user;
+
+      // Create user document if it doesn't exist
+      const existing = await getSingleDocument(user.uid, "users");
+      console.log(existing)
+      if (!existing) {
+        await setToCollection("users", user.uid, {
+          uid: user.uid,
+          name: name,
+          phone: user.phoneNumber,
+          role: "user"
+        });
+      }
+
+      router.push("/");
+    } catch (error) {
+      console.error("OTP confirmation error:", error);
+      throw new Error("Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Authentication methods
   const login = async (email: string, password: string) => {
@@ -175,6 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let unsubscribeDeliverers: () => void = () => {};
     let unsubscribeSellers: () => void = () => {};
     let unsubscribeTransactions: () => void = () => {};
+    let unsubscribeLives: () => void = () => {};
 
     switch (userInfo.role) {
       case "admin":
@@ -195,13 +245,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeTransactions =
           getACollection("transaction", setTransactions) ?? (() => {});
         break;
-      case "deliverer":
-        unsubscribeDeliveries =
-          getACollection("deliveries", setDeliveries) ?? (() => {});
-        break;
       case "user":
-        unsubscribeDeliveries =
-          getACollection("deliveries", setDeliveries) ?? (() => {});
+        unsubscribeLives =
+          getACollection("lives", setLives) ?? (() => {});
         break;
     }
 
@@ -211,6 +257,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribeDeliverers();
       unsubscribeSellers();
       unsubscribeTransactions();
+      unsubscribeLives();
     };
   }, [userInfo, user]);
 
@@ -219,6 +266,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      console.log(currentUser)
       setLoading(false)
     });
     return () => unsubscribeAuth();
@@ -230,7 +278,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         loading,
         userInfo,
-        deliverers,
+        lives,
         referralsEarnings,
         deliveries,
         referrals,
@@ -239,6 +287,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         signup,
         logout,
+        loginWithPhoneNumber,
+        confirmOtp,
       }}
     >
       {children}

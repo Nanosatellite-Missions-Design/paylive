@@ -16,8 +16,11 @@ import {
   Package,
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { useEffect } from "react"
 
 export default function ProfilePage() {
+
+  const { userInfo } = useAuth();
 
   const user = {
     name: "Jane Cooper",
@@ -49,11 +52,11 @@ export default function ProfilePage() {
         <h1 className="text-2xl font-bold mb-2">My Account</h1>
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
-            <img src={user.avatar || "/placeholder-user.jpg"} alt={user.name} className="w-full h-full object-cover" />
+            <img src={user.avatar || "/placeholder-user.jpg"} alt={userInfo?.name} className="w-full h-full object-cover" />
           </div>
           <div>
-            <h2 className="font-semibold">{user.name}</h2>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <h2 className="font-semibold">{userInfo?.name}</h2>
+            <p className="text-sm text-gray-500">{userInfo?.phone}</p>
           </div>
           <Link href="/profile/edit" className="ml-auto">
             <Button variant="outline" size="sm">
@@ -64,7 +67,7 @@ export default function ProfilePage() {
       </header>
 
       {/* Financial Overview - Only for creators */}
-      {user.isCreator && (
+      {true && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Financial Overview</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -74,7 +77,7 @@ export default function ProfilePage() {
                   <h3 className="text-sm text-gray-500">Current Balance</h3>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
-                <p className="text-2xl font-bold text-green-600">XAF{financialStats.currentBalance.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600">XAF{userInfo?.balance ?? 0}</p>
               </CardContent>
             </Card>
 
@@ -84,7 +87,7 @@ export default function ProfilePage() {
                   <h3 className="text-sm text-gray-500">This Month</h3>
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
-                <p className="text-2xl font-bold">XAF{financialStats.monthlyEarnings.toFixed(2)}</p>
+                <p className="text-2xl font-bold">XAF{userInfo?.balance ?? 0}</p>
               </CardContent>
             </Card>
 
@@ -94,7 +97,7 @@ export default function ProfilePage() {
                   <h3 className="text-sm text-gray-500">Total Earnings</h3>
                   <BarChart3 className="h-4 w-4 text-purple-500" />
                 </div>
-                <p className="text-2xl font-bold">XAF{financialStats.totalEarnings.toFixed(2)}</p>
+                <p className="text-2xl font-bold">XAF{userInfo?.balance ?? 0}</p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">Total Sales: {financialStats.totalSales}</span>
                   <Link href="/profile/transactions" className="text-blue-600 flex items-center">
@@ -108,7 +111,7 @@ export default function ProfilePage() {
       )}
 
       {/* Activity Summary - For non-creators */}
-      {!user.isCreator && (
+      {!true && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">Activity Summary</h2>
           <Card>
@@ -139,7 +142,7 @@ export default function ProfilePage() {
       <section className="mb-6">
         <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
-          {user.isCreator && (
+          {true && (
             <Link href="/profile/products">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Package className="h-6 w-6 mb-2" />
@@ -148,7 +151,7 @@ export default function ProfilePage() {
             </Link>
           )}
 
-          {user.isCreator && (
+          {true && (
             <Link href="/profile/live-sales">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Video className="h-6 w-6 mb-2" />

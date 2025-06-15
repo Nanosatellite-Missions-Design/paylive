@@ -1,5 +1,5 @@
 import { db } from "./firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
 
 export const getADocument = (
   id: string,
@@ -31,6 +31,24 @@ export const getADocument = (
   } catch (error) {
     console.error("Error getting document:", error);
     // Handle error (e.g., show an error message)
+    return null;
+  }
+};
+
+
+export const getSingleDocument = async (id: string, collection: string) => {
+  if (!id || !collection) return null;
+  try {
+    const docRef = doc(db, collection, id);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching document:", error);
     return null;
   }
 };

@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, Clock, TrendingUp, Star } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function HomePage() {
+  const { lives } = useAuth()
+
   return (
     <div>
       <div className="container max-w-lg mx-auto px-4 py-6">
@@ -57,6 +60,35 @@ export default function HomePage() {
                 </CardContent>
               </Card>
             </Link>
+            {lives?.map((live: any) => (
+                <Link href={`/live/${live.id}`}>
+                  <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                    <div className="relative">
+                      <img
+                        src="/placeholder.svg?height=200&width=400"
+                        alt="Live Sale"
+                        className="w-full h-48 object-cover"
+                      />
+                      <Badge className="absolute top-2 right-2 bg-red-500">Live Now</Badge>
+                      <Badge className="absolute bottom-2 left-2 bg-black/70">
+                        <Users className="h-3 w-3 mr-1" />
+                        1,243 watching
+                      </Badge>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold">{live.name}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{live.creatorName}</p>
+                      <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
+                        <span>8 products featured</span>
+                        <span className="flex items-center">
+                          <Clock className="h-4 w-4 mr-1" />
+                          Started 2h ago
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+            ))}
           </TabsContent>
 
           <TabsContent value="trending" className="space-y-4">
