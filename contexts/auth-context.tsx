@@ -20,6 +20,7 @@ import {
 import { auth, db } from "@/functions/firebase";
 import { getADocument, getSingleDocument } from "@/functions/get-a-document";
 import { getACollection } from "@/functions/get-a-collection";
+import { listenToSubCollection } from "@/functions/get-a-sub-collection"
 import { setToCollection } from "@/functions/add-to-collection";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ interface AuthContextType {
   loading: boolean;
   userInfo: any;
   lives: any[];
-  deliveries: any[];
+  userProducts: any[];
   transactions: any[];
   referrals: any[];
   referralsEarnings: number;
@@ -50,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [lives, setLives] = useState<any[]>([]);
-  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [userProducts, setUserProducts] = useState<any[]>([]);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [referralsEarnings, setReferralsEarnings] = useState(0);
   const [users, setUsers] = useState<any[]>([]);
@@ -194,8 +195,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Clear all application data
   const clearAllData = () => {
     setUserInfo(null);
-    setDeliverers([]);
-    setDeliveries([]);
+    setLives([]);
+    setUserProducts([]);
     setUsers([]);
   };
 
@@ -220,44 +221,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!userInfo?.role) return;
 
     // Initialize with no-op functions and proper typing
-    let unsubscribeDeliveries: () => void = () => {};
-    let unsubscribeDeliverers: () => void = () => {};
-    let unsubscribeSellers: () => void = () => {};
-    let unsubscribeTransactions: () => void = () => {};
     let unsubscribeLives: () => void = () => {};
+    let unsubscribeUserProducts: () => void = () => {};
 
     switch (userInfo.role) {
       case "admin":
-        unsubscribeDeliverers =
-          getACollection("deliverers", setDeliverers) ?? (() => {});
-        unsubscribeSellers = getACollection("users", setUsers) ?? (() => {});
-        unsubscribeDeliveries =
-          getACollection("deliveries", setDeliveries) ?? (() => {});
-        unsubscribeTransactions =
-          getACollection("transaction", setTransactions) ?? (() => {});
         break;
       case "super":
-        unsubscribeDeliverers =
-          getACollection("deliverers", setDeliverers) ?? (() => {});
-        unsubscribeSellers = getACollection("users", setUsers) ?? (() => {});
-        unsubscribeDeliveries =
-          getACollection("deliveries", setDeliveries) ?? (() => {});
-        unsubscribeTransactions =
-          getACollection("transaction", setTransactions) ?? (() => {});
         break;
       case "user":
         unsubscribeLives =
           getACollection("lives", setLives) ?? (() => {});
+        unsubscribeUserProducts = listenToSubCollection("users", user.uid, "products", setUserProducts) ?? (() => {});
         break;
     }
 
     return () => {
       // Safe to call even if undefined due to nullish coalescing
-      unsubscribeDeliveries();
-      unsubscribeDeliverers();
-      unsubscribeSellers();
-      unsubscribeTransactions();
       unsubscribeLives();
+      unsubscribeUserProducts();
     };
   }, [userInfo, user]);
 
@@ -280,7 +262,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userInfo,
         lives,
         referralsEarnings,
-        deliveries,
+        userProducts,
         referrals,
         users,
         transactions,

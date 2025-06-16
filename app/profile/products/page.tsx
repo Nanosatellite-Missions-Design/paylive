@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef  } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,9 +10,26 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, Plus, Edit, Trash2, QrCode } from "lucide-react"
+import { ChevronLeft, Plus, Edit, Trash2, QrCode, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import QRCodeGenerator from "@/components/qr-code-generator"
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
+import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection"
+import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document"
+import { useAuth } from "@/contexts/auth-context"
+import { storage } from "@/functions/firebase"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any>([
@@ -44,64 +61,159 @@ export default function ProductsPage() {
       status: "sold",
     },
   ])
-
+  const { user, userInfo, userProducts } = useAuth()
   const [isAddingProduct, setIsAddingProduct] = useState(false)
   const [showQRCode, setShowQRCode] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [editingExistingImages, setEditingExistingImages] = useState<string[]>([]) // Firebase image URLs
+  const [editingNewImageFiles, setEditingNewImageFiles] = useState<File[]>([])
+  const [editingNewImagePreviews, setEditingNewImagePreviews] = useState<string[]>([])
+
+  const editFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [newProductName, setNewProductName] = useState("")
+  const [newProductPrice, setNewProductPrice] = useState("")
+  const [newProductDescription, setNewProductDescription] = useState("")
+  const [newProductStatus, setNewProductStatus] = useState("")
+  const [newProductCategory, setNewProductCategory] = useState("")
+  const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { toast } = useToast()
 
-  const handleAddProduct = (e: any) => {
+  const handleAddProduct = async (e: any) => {
     e.preventDefault()
-
-    // In a real app, you would validate and process the form data
-    const newProduct = {
-      id: products.length + 1,
-      name: "New Product",
-      price: 49.99,
-      description: "Product description goes here",
-      image: "/placeholder.svg?height=100&width=100",
-      category: "Other",
-      status: "available",
+    if(!user) return
+    if (!newProductName || !newProductPrice || !newProductDescription || !newProductCategory || newProductImageFiles.length === 0) {
+      toast({ title: "Missing fields", description: "Fill all fields and upload images." })
+      return
     }
+    setLoading(true)
 
-    setProducts([...products, newProduct])
-    setIsAddingProduct(false)
+    try {
+      // Upload all images
+      const uploadPromises = newProductImageFiles.map((file) => {
+        const storageRef = ref(storage, `products/${Date.now()}-${file.name}`)
+        return uploadBytes(storageRef, file).then(snapshot => getDownloadURL(snapshot.ref))
+      })
 
-    toast({
-      title: "Product added",
-      description: "Your new product has been added successfully.",
-    })
+      const imageUrls = await Promise.all(uploadPromises)
+
+      const newProduct = {
+        name: newProductName,
+        creatorId: user.uid,
+        creatorName: userInfo.name,
+        price: parseFloat(newProductPrice),
+        description: newProductDescription,
+        image: imageUrls, // Array of image URLs
+        category: newProductCategory,
+        status: "available",
+      }
+
+      console.log("New Product:", newProduct)
+      await addToSubCollection(newProduct, "users", user.uid, "products")
+      setProducts((prev) => [...prev, newProduct])
+      setIsAddingProduct(false)
+
+      // Reset
+      setNewProductName("")
+      setNewProductPrice("")
+      setNewProductDescription("")
+      setNewProductCategory("")
+      setNewProductStatus("")
+      setNewProductImageFiles([])
+      setLoading(false)
+      toast({
+        title: "Product added",
+        description: "Your new product has been added successfully.",
+      })
+    } catch (error) {
+      console.error("Image upload error:", error)
+      setLoading(false)
+      toast({
+        title: "Upload failed",
+        description: "Could not upload one or more images.",
+      })
+    }
   }
 
   const handleEditProduct = (product: any) => {
     setEditingProduct(product)
+    setEditingExistingImages(product.images || [])  // ← assumes `images` is an array of Firebase URLs
+    setEditingNewImageFiles([])
+    setEditingNewImagePreviews([])
     setIsEditing(true)
   }
 
-  const handleSaveEdit = (e: any) => {
+  const handleSaveEdit = async (e: any) => {
     e.preventDefault()
+    setLoading(true)
 
-    // In a real app, you would validate and process the form data
-    setProducts(products.map((product: any) => (product.id === editingProduct.id ? editingProduct : product)))
+    try {
+    // const uploadedUrls: string[] = []
 
-    setIsEditing(false)
-    setEditingProduct(null)
+    // // Upload new files to Firebase
+    // if (editingNewImageFiles.length > 0) {
+    //   const uploadPromises = editingNewImageFiles.map(async (file) => {
+    //     const imageRef = ref(storage, `products/${editingProduct.id}/${Date.now()}-${file.name}`)
+    //     await uploadBytes(imageRef, file)
+    //     return await getDownloadURL(imageRef)
+    //   })
+
+    //   const newUrls = await Promise.all(uploadPromises)
+    //   uploadedUrls.push(...newUrls)
+    // }
+
+    const updatedProduct = {
+      ...editingProduct,
+      images: [...editingExistingImages, ...uploadedUrls],
+    }
+
+    console.log("Updated Product:", updatedProduct)
+    await updateSubcollectionDocument("users", user.uid, "products", editingProduct.id, updatedProduct)
+    // You can replace this with a Firestore update
+    setProducts(products.map((p: any) =>
+      p.id === editingProduct.id ? updatedProduct : p
+    ))
 
     toast({
       title: "Product updated",
       description: "Your product has been updated successfully.",
     })
+    setLoading(false)
+    setIsEditing(false)
+    setEditingProduct(null)
+  } catch (error) {
+    console.error("Error updating product:", error)
+    setLoading(false)
+    toast({
+      title: "Error",
+      description: "Failed to update product.",
+      variant: "destructive",
+    })
+  }
   }
 
-  const handleDeleteProduct = (id: any) => {
-    setProducts(products.filter((product: any) => product.id !== id))
+  const handleShowDelete = (product: any) => {
+    setSelectedProduct(product)
+    setIsDeleting(true)
+  }
 
-    toast({
-      title: "Product deleted",
-      description: "Your product has been deleted successfully.",
-    })
+  const handleDeleteProduct = async () => {
+    setLoading(true)
+    try{
+      await deleteSubCollectionDocument("users", user.uid, "products", selectedProduct.id)
+    }catch(error){
+      console.error("Error updating product:", error)
+      setLoading(false)
+      toast({
+        title: "Error",
+        description: "Failed to delete product.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleShowQRCode = (product: any) => {
@@ -125,7 +237,7 @@ export default function ProductsPage() {
         </header>
 
         <div className="space-y-4 mb-6">
-          {products.map((product: any) => (
+          {userProducts?.map((product: any) => (
             <Card key={product.id}>
               <CardContent className="p-4">
                 <div className="flex items-center">
@@ -145,7 +257,7 @@ export default function ProductsPage() {
                     </div>
                     <p className="text-sm text-gray-500 line-clamp-1">{product.description}</p>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="font-medium">${product.price.toFixed(2)}</p>
+                      <p className="font-medium">XAF{product.price.toFixed(2)}</p>
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -166,7 +278,7 @@ export default function ProductsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteProduct(product.id)}
+                          onClick={() => handleShowDelete(product)}
                           className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -180,6 +292,21 @@ export default function ProductsPage() {
           ))}
         </div>
 
+        <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the product {selectedProduct?.name}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={loading} onClick={handleDeleteProduct}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <Dialog open={isAddingProduct} onOpenChange={setIsAddingProduct}>
           <DialogTrigger asChild>
             <Button className="w-full">
@@ -187,26 +314,26 @@ export default function ProductsPage() {
               Add New Product
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddProduct} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Product Name</Label>
-                <Input id="name" placeholder="Enter product name" />
+                <Input id="name" placeholder="Enter product name" onChange={(e) => setNewProductName(e.target.value)}/>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price ($)</Label>
-                <Input id="price" type="number" step="0.01" placeholder="0.00" />
+                <Label htmlFor="price">Price (XAF)</Label>
+                <Input id="price" type="number" step="0.01" placeholder="0.00" onChange={(e) => setNewProductPrice(e.target.value)}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" placeholder="Enter product description" />
+                <Textarea id="description" placeholder="Enter product description" onChange={(e) => setNewProductDescription(e.target.value)}/>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
-                <Select defaultValue="electronics">
+                <Select defaultValue="electronics" onValueChange={setNewProductCategory}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -221,24 +348,66 @@ export default function ProductsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="image">Product Images</Label>
-                <div className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50">
+
+                {/* Clickable Upload Box */}
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
+                >
                   <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
                   <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
+                </div>
+
+                {/* Hidden Input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      setNewProductImageFiles((prev) => [...prev, ...Array.from(e.target.files)])
+                    }
+                  }}
+                />
+
+                {/* Image Previews */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {newProductImageFiles.map((file, index) => (
+                    <div key={index} className="relative w-20 h-20">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`preview-${index}`}
+                        className="w-full h-full object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setNewProductImageFiles((prev) => prev.filter((_, i) => i !== index))
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsAddingProduct(false)}>
+                <Button disabled={loading} variant="outline" type="button" onClick={() => setIsAddingProduct(false)}>
                   Cancel
                 </Button>
-                <Button type="submit">Add Product</Button>
+                <Button disabled={loading} type="submit">{loading ? <Loader2 className="animate-spin" /> : "Add Product"}</Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Product</DialogTitle>
             </DialogHeader>
@@ -253,7 +422,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-price">Price ($)</Label>
+                  <Label htmlFor="edit-price">Price (XAF)</Label>
                   <Input
                     id="edit-price"
                     type="number"
@@ -304,11 +473,74 @@ export default function ProductsPage() {
                   </Select>
                 </div>
 
+                {/* <div className="space-y-2">
+                  <Label>Product Images</Label>
+
+                  <div
+                    onClick={() => editFileInputRef.current?.click()}
+                    className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
+                  >
+                    <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    ref={editFileInputRef}
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        const files = Array.from(e.target.files)
+                        setEditingNewImageFiles(prev => [...prev, ...files])
+                        setEditingNewImagePreviews(prev => [
+                          ...prev,
+                          ...files.map(file => URL.createObjectURL(file)),
+                        ])
+                      }
+                    }}
+                  />
+                  
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {editingExistingImages.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative w-20 h-20 rounded-md overflow-hidden border">
+                        <img src={url} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingExistingImages(prev => prev.filter((_, i) => i !== index))
+                          }
+                          className="absolute top-0 right-0 bg-white text-red-500 rounded-full p-1 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+
+                    {editingNewImagePreviews.map((preview, index) => (
+                      <div key={`new-${index}`} className="relative w-20 h-20 rounded-md overflow-hidden border">
+                        <img src={preview} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingNewImagePreviews(prev => prev.filter((_, i) => i !== index))
+                            setEditingNewImageFiles(prev => prev.filter((_, i) => i !== index))
+                          }}
+                          className="absolute top-0 right-0 bg-white text-red-500 rounded-full p-1 text-xs"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div> */}
+
                 <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" type="button" onClick={() => setIsEditing(false)}>
+                  <Button disabled={loading} variant="outline" type="button" onClick={() => setIsEditing(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">Save Changes</Button>
+                  <Button diasbled={loading} type="submit">{loading ? <Loader2 className="animate-spin" /> : "Save Changes"}</Button>
                 </div>
               </form>
             )}

@@ -1,7 +1,7 @@
 import { doc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-export async function deleteSubcollectionDocument(
+export async function deleteSubCollectionDocument(
   collectionName: string,
   collectionId: string,
   subcollectionName: string,
