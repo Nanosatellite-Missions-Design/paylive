@@ -1,6 +1,11 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAuth, RecaptchaVerifier } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  getAuth,
+  initializeAuth,
+  RecaptchaVerifier,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -16,12 +21,15 @@ const firebaseConfig = {
   storageBucket: "paylive-cd9a1.firebasestorage.app",
   messagingSenderId: "163452827765",
   appId: "1:163452827765:web:ee5cd11c4ee0497dcda03c",
-  measurementId: "G-NYG1GEHPFY"
+  measurementId: "G-NYG1GEHPFY",
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence,
+  popupRedirectResolver: undefined, // disables Enterprise flow
+});
 const db = getFirestore(app);
 const storage = getStorage(app);
 

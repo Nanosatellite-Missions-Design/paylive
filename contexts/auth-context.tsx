@@ -15,12 +15,12 @@ import {
   signOut,
   sendEmailVerification,
   updateProfile,
-  signInWithPhoneNumber
+  signInWithPhoneNumber,
 } from "firebase/auth";
 import { auth, db } from "@/functions/firebase";
 import { getADocument, getSingleDocument } from "@/functions/get-a-document";
 import { getACollection } from "@/functions/get-a-collection";
-import { listenToSubCollection } from "@/functions/get-a-sub-collection"
+import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { setToCollection } from "@/functions/add-to-collection";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useRouter } from "next/navigation";
@@ -31,17 +31,16 @@ interface AuthContextType {
   userInfo: any;
   lives: any[];
   userProducts: any[];
+  userLives: any[];
   transactions: any[];
   referrals: any[];
   referralsEarnings: number;
   users: any[];
   login: (email: string, password: string) => Promise<void>;
-  signup: (
-    formData: any
-  ) => Promise<void>;
+  signup: (formData: any) => Promise<void>;
   logout: () => Promise<void>;
-  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promis<void>,
-  confirmOtp: (otp: string) => Promise<void>,
+  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<any>;
+  confirmOtp: (otp: string, name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [lives, setLives] = useState<any[]>([]);
   const [userProducts, setUserProducts] = useState<any[]>([]);
+  const [userLives, setUserLives] = useState<any[]>([]);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [referralsEarnings, setReferralsEarnings] = useState(0);
   const [users, setUsers] = useState<any[]>([]);
@@ -85,13 +85,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Create user document if it doesn't exist
       const existing = await getSingleDocument(user.uid, "users");
-      console.log(existing)
+      console.log(existing);
       if (!existing) {
         await setToCollection("users", user.uid, {
           uid: user.uid,
           name: name,
           phone: user.phoneNumber,
-          role: "user"
+          role: "user",
         });
       }
 
@@ -110,15 +110,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log({ email, password });
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/")
+      router.push("/");
     } finally {
       setLoading(false);
     }
   };
 
-  const signup = async (
-    formData: any
-  ) => {
+  const signup = async (formData: any) => {
     setLoading(true);
     try {
       // 1. Create authentication user
@@ -146,7 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: formData.name,
           phone: formData.phone,
         });
-      router.push("/")
+        router.push("/");
 
         // console.log("Firestore document created");
       } catch (firestoreError) {
@@ -218,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // // Role-based data loading
   useEffect(() => {
-    if (!userInfo?.role) return;
+    if (!userInfo?.role || user) return;
 
     // Initialize with no-op functions and proper typing
     let unsubscribeLives: () => void = () => {};
@@ -230,9 +228,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       case "super":
         break;
       case "user":
-        unsubscribeLives =
-          getACollection("lives", setLives) ?? (() => {});
-        unsubscribeUserProducts = listenToSubCollection("users", user.uid, "products", setUserProducts) ?? (() => {});
+        unsubscribeLives = getACollection("lives", setLives) ?? (() => {});
+        unsubscribeUserProducts =
+          listenToSubCollection(
+            "users",
+            userInfo.uid,
+            "products",
+            setUserProducts
+          ) ?? (() => {});
         break;
     }
 
@@ -243,13 +246,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [userInfo, user]);
 
-
   // Auth state listener
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      console.log(currentUser)
-      setLoading(false)
+      console.log(currentUser);
+      setLoading(false);
     });
     return () => unsubscribeAuth();
   }, []);
@@ -263,6 +265,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lives,
         referralsEarnings,
         userProducts,
+        userLives,
         referrals,
         users,
         transactions,
