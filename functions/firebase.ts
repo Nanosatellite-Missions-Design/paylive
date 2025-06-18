@@ -26,10 +26,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-  popupRedirectResolver: undefined, // disables Enterprise flow
-});
+const auth = getAuth(app,);
 const db = getFirestore(app);
 const storage = getStorage(app);
 

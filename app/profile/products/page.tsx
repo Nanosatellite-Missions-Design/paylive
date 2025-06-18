@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -69,6 +69,10 @@ export default function ProductsPage() {
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    console.log(userProducts)
+  }, [user, userProducts])
 
   const handleAddProduct = async (e: any) => {
     e.preventDefault();

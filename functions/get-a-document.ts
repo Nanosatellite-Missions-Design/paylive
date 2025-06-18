@@ -52,3 +52,29 @@ export const getSingleDocument = async (id: string, collection: string) => {
     return null;
   }
 };
+
+export const getASubDocument = (
+  parentId: string,
+  subCollection: string,
+  subDocId: string,
+  callback: (data: any | null) => void
+) => {
+  if (!parentId || !subCollection || !subDocId) return null;
+
+  try {
+    const docRef = doc(db, "users", parentId, subCollection, subDocId);
+
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        callback({ id: docSnap.id, ...docSnap.data() });
+      } else {
+        callback(null);
+      }
+    });
+
+    return unsubscribe; // So you can stop listening later if needed
+  } catch (error) {
+    console.error("Error listening to subdocument:", error);
+    return null;
+  }
+};

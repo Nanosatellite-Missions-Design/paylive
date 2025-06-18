@@ -7,6 +7,7 @@ import ClientLayout from "./client-layout"
 import "./globals.css"
 import ProtectedRoute from "@/components/protected-route"
 
+
 const inter = Inter({ subsets: ["latin"] })
 
 interface RootLayoutProps {

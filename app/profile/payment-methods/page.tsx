@@ -11,45 +11,44 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreditCard, Smartphone, Plus, ChevronLeft, Trash2, Check } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context";
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
+import { updateDocument } from "@/functions/update-doc-in-collection"
 
 export default function PaymentMethodsPage() {
-  const [paymentMethods, setPaymentMethods] = useState([
-    {
-      id: 1,
-      type: "card",
-      name: "Visa ending in 4242",
-      details: "Expires 04/25",
-      isDefault: true,
-    },
-    {
-      id: 2,
-      type: "mobile",
-      name: "Mobile Money",
-      details: "+1 555-123-4567",
-      isDefault: false,
-    },
-  ])
+  const { userInfo } = useAuth()
 
   const [isAddingMethod, setIsAddingMethod] = useState(false)
-  const [newMethodType, setNewMethodType] = useState("card")
+  const [newMethodType, setNewMethodType] = useState("mobile")
+  const [newNumber, setNewNumber] = useState("")
+  const [newNetwork, setNewNetwork] = useState("Orange")
   const { toast } = useToast()
 
-  const handleSetDefault = (id: any) => {
-    setPaymentMethods(
-      paymentMethods.map((method) => ({
-        ...method,
-        isDefault: method.id === id,
-      })),
-    )
+  const handleSetDefault = async (methodToSet: any) => {
+    console.log(methodToSet)
+    const updatedMethods = userInfo.paymentMethods.map((method: any) => ({
+      ...method,
+      isDefault:
+        method.number === methodToSet.number &&
+        method.type === methodToSet.type &&
+        method.network === methodToSet.network,
+    }));
+
+    await updateDocument("users", userInfo.uid, {
+      paymentMethods: updatedMethods,
+    });
 
     toast({
       title: "Default payment method updated",
       description: "Your default payment method has been updated successfully.",
-    })
-  }
+    });
+  };
 
-  const handleDelete = (id: any) => {
-    setPaymentMethods(paymentMethods.filter((method) => method.id !== id))
+
+  const handleDelete = async (id: any) => {
+    const toRemove = userInfo.paymentMethods.find((method: any) => method.id === id)
+
+    await updateDocument("users", userInfo.uid, {paymentMethods: arrayRemove(toRemove)})
 
     toast({
       title: "Payment method removed",
@@ -57,19 +56,18 @@ export default function PaymentMethodsPage() {
     })
   }
 
-  const handleAddMethod = (e: any) => {
+  const handleAddMethod = async (e: any) => {
     e.preventDefault()
 
     // In a real app, you would validate and process the form data
     const newMethod = {
-      id: paymentMethods.length + 1,
       type: newMethodType,
-      name: newMethodType === "card" ? "Mastercard ending in 5678" : "Mobile Money",
-      details: newMethodType === "card" ? "Expires 05/26" : "+1 555-987-6543",
+      number: newNumber,
+      network: newNetwork,
       isDefault: false,
     }
 
-    setPaymentMethods([...paymentMethods, newMethod])
+    await updateDocument("users", userInfo.uid, {paymentMethods: arrayUnion(newMethod)})
     setIsAddingMethod(false)
 
     toast({
@@ -94,7 +92,7 @@ export default function PaymentMethodsPage() {
         </header>
 
         <div className="space-y-4 mb-6">
-          {paymentMethods.map((method) => (
+          {userInfo?.paymentMethods.map((method) => (
             <Card key={method.id}>
               <CardContent className="p-4">
                 <div className="flex items-center">
@@ -106,8 +104,8 @@ export default function PaymentMethodsPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium">{method.name}</h3>
-                    <p className="text-sm text-gray-500">{method.details}</p>
+                    <h3 className="font-medium">{method.type}</h3>
+                    <p className="text-sm text-gray-500">{method.number}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {method.isDefault ? (
@@ -116,7 +114,7 @@ export default function PaymentMethodsPage() {
                         Default
                       </span>
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => handleSetDefault(method.id)} className="text-xs">
+                      <Button variant="ghost" size="sm" onClick={() => handleSetDefault(method)} className="text-xs">
                         Set default
                       </Button>
                     )}
@@ -156,17 +154,17 @@ export default function PaymentMethodsPage() {
                   className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card" className="flex items-center cursor-pointer">
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Credit Card
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
                     <RadioGroupItem value="mobile" id="mobile" />
                     <Label htmlFor="mobile" className="flex items-center cursor-pointer">
                       <Smartphone className="h-4 w-4 mr-2" />
                       Mobile Money
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card" className="flex items-center cursor-pointer">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Credit Card
                     </Label>
                   </div>
                 </RadioGroup>
@@ -197,18 +195,17 @@ export default function PaymentMethodsPage() {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input id="phoneNumber" placeholder="+1 555-123-4567" />
+                    <Input id="phoneNumber" placeholder="697882533" onChange={(e) => setNewNumber(e.target.value)}/>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="provider">Provider</Label>
-                    <Select defaultValue="provider1">
+                    <Select defaultValue="Orange" onValueChange={setNewNetwork}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="provider1">Provider 1</SelectItem>
-                        <SelectItem value="provider2">Provider 2</SelectItem>
-                        <SelectItem value="provider3">Provider 3</SelectItem>
+                        <SelectItem value="Orange">Orange Money</SelectItem>
+                        <SelectItem value="MTN">MTN Mobile Money</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

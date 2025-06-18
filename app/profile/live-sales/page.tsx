@@ -40,75 +40,80 @@ import { useAuth } from "@/contexts/auth-context";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "@/functions/firebase";
 import { addToCollection } from "@/functions/add-to-collection";
+import { updateDocument } from "@/functions/update-doc-in-collection"
+import { getASubDocument } from "@/functions/get-a-document"
 
 export default function LiveSalesManagementPage() {
-  const { lives, userInfo } = useAuth();
+  const { lives, userInfo, userProducts } = useAuth();
   const [userLives, setUserLives] = useState<any[]>([]);
-  const [liveSales, setLiveSales] = useState([
-    {
-      id: 1,
-      title: "Summer Fashion Collection",
-      status: "active",
-      scheduledFor: "Now",
-      startedAt: "2 hours ago",
-      viewers: 1243,
-      products: [
-        { id: 1, name: "Premium Cotton T-Shirt", price: 29.99, featured: true },
-        { id: 2, name: "Slim Fit Jeans", price: 59.99, featured: false },
-        { id: 3, name: "Summer Hat", price: 19.99, featured: false },
-      ],
-      description:
-        "Showcasing our latest summer fashion collection with exclusive discounts!",
-      image: "/placeholder.svg?height=200&width=400",
-    },
-    {
-      id: 2,
-      title: "Tech Gadgets Flash Sale",
-      status: "scheduled",
-      scheduledFor: "Apr 30, 2023 - 7:00 PM",
-      startedAt: "",
-      viewers: 0,
-      products: [
-        { id: 4, name: "Wireless Earbuds", price: 89.99, featured: false },
-        { id: 5, name: "Smart Watch", price: 129.99, featured: false },
-        { id: 6, name: "Bluetooth Speaker", price: 79.99, featured: false },
-      ],
-      description: "Flash sale on the latest tech gadgets with up to 30% off!",
-      image: "/placeholder.svg?height=200&width=400",
-    },
-    {
-      id: 3,
-      title: "Home Decor Showcase",
-      status: "ended",
-      scheduledFor: "Apr 15, 2023 - 6:00 PM",
-      startedAt: "Apr 15, 2023",
-      viewers: 876,
-      products: [
-        { id: 7, name: "Decorative Pillows", price: 24.99, featured: false },
-        { id: 8, name: "Wall Art Print", price: 39.99, featured: false },
-        { id: 9, name: "Table Lamp", price: 49.99, featured: false },
-      ],
-      description: "Discover our new home decor collection for spring!",
-      image: "/placeholder.svg?height=200&width=400",
-    },
-  ]);
-
   const [newLiveTitle, setNewLiveTitle] = useState("");
   const [newLiveDescritpion, setNewLiveDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isCreatingLiveSale, setIsCreatingLiveSale] = useState(false);
   const [selectedLiveSale, setSelectedLiveSale] = useState<any>(null);
   const [showProductsDialog, setShowProductsDialog] = useState(false);
+  const [loadingLives, setLoadingLives] = useState(false);
   const { toast } = useToast();
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const allUsersLives = lives.filter(
-      (live: any) => live.creatorId === userInfo.uid
-    );
-    setUserLives(allUsersLives);
-  }, [userInfo, lives]);
+    if (!userInfo?.uid || !lives) return;
+
+    setLoadingLives(true);
+    const unsubscribes: (() => void)[] = [];
+    const enrichedLivesMap = new Map<string, any>();
+
+    const updateUserLives = () => {
+      setUserLives(Array.from(enrichedLivesMap.values()));
+    };
+
+    const userLives = lives.filter((live: any) => live.creatorId === userInfo.uid);
+
+    userLives.forEach((live: any) => {
+      if (!Array.isArray(live.products) || live.products.length === 0) {
+        enrichedLivesMap.set(live.id, { ...live, products: [] });
+        updateUserLives();
+        return;
+      }
+
+      const productMap = new Map<string, any>();
+
+      const handleProductUpdate = (productId: string, data: any | null) => {
+        if (data) {
+          productMap.set(productId, data);
+        } else {
+          productMap.delete(productId);
+        }
+
+        enrichedLivesMap.set(live.id, {
+          ...live,
+          products: Array.from(productMap.values()),
+        });
+
+        updateUserLives();
+      };
+
+      // Set up real-time listeners for each product in the live
+      live.products.forEach((productId: string) => {
+        const unsub = getASubDocument(
+          live.creatorId,
+          "products",
+          productId,
+          (data) => handleProductUpdate(productId, data)
+        );
+        if (unsub) unsubscribes.push(unsub);
+      });
+    });
+
+    setLoadingLives(false);
+
+    return () => {
+      unsubscribes.forEach((unsub) => unsub());
+    };
+  }, [userInfo?.uid, lives]);
+
 
   const handleCreateLiveSale = async (e: any) => {
     e.preventDefault();
@@ -132,16 +137,19 @@ export default function LiveSalesManagementPage() {
     const newLiveSale = {
       title,
       status: "scheduled",
+      creatorId: userInfo.uid,
+      creatorName: userInfo.name,
       scheduledFor: `${date} - ${time}`,
       startedAt: "",
       viewers: 0,
-      products: [], // implement product selection later
+      products: selectedProducts, // implement product selection later
       description,
       image: imageUrl,
     };
 
-    // await addToCollection("lives", newLiveSale)
+    await addToCollection("lives", newLiveSale)
     setIsCreatingLiveSale(false);
+    setSelectedProducts([]);
     setThumbnail(null);
     setLoading(true);
 
@@ -153,40 +161,19 @@ export default function LiveSalesManagementPage() {
     console.log("New Live Sale:", newLiveSale);
   };
 
-  const handleStartLiveSale = (id: any) => {
-    setLiveSales(
-      liveSales.map((sale) => {
-        if (sale.id === id) {
-          return {
-            ...sale,
-            status: "active",
-            scheduledFor: "Now",
-            startedAt: "Just now",
-          };
-        }
-        return sale;
-      })
-    );
-
+  const handleStartLiveSale = async (id: any) => {
+    const now = new Date().toISOString();
+    await updateDocument("lives", id, {status: "active", startedAt: now})
     toast({
       title: "Live sale started",
       description: "Your live sale has started successfully.",
     });
   };
 
-  const handleEndLiveSale = (id: any) => {
-    setLiveSales(
-      liveSales.map((sale) => {
-        if (sale.id === id) {
-          return {
-            ...sale,
-            status: "ended",
-            scheduledFor: sale.scheduledFor,
-          };
-        }
-        return sale;
-      })
-    );
+  const handleEndLiveSale = async (id: any) => {
+    const now = new Date().toISOString();
+
+    await updateDocument("lives", id, {status: "ended", endedAt: now})
 
     toast({
       title: "Live sale ended",
@@ -194,21 +181,8 @@ export default function LiveSalesManagementPage() {
     });
   };
 
-  const handleSetFeaturedProduct = (saleId: any, productId: any) => {
-    setLiveSales(
-      liveSales.map((sale) => {
-        if (sale.id === saleId) {
-          return {
-            ...sale,
-            products: sale.products.map((product) => ({
-              ...product,
-              featured: product.id === productId,
-            })),
-          };
-        }
-        return sale;
-      })
-    );
+  const handleSetFeaturedProduct = async (saleId: any, productId: any) => {
+    await updateDocument("lives", saleId, {currentFeaturedProduct: productId})
 
     toast({
       title: "Featured product updated",
@@ -290,22 +264,31 @@ export default function LiveSalesManagementPage() {
                     <Input id="time" name="time" type="time" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="products">Select Products</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select products" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="product1">
-                          Wireless Earbuds
-                        </SelectItem>
-                        <SelectItem value="product2">Smart Watch</SelectItem>
-                        <SelectItem value="product3">
-                          Designer Handbag
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <Label>Select Products</Label>
+                    <div className="grid gap-2 max-h-40 overflow-y-auto border p-2 rounded-md">
+                      {userProducts.map((product: any) => (
+                        <label
+                          key={product.id}
+                          className="flex items-center gap-2 cursor-pointer text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            value={product.id}
+                            checked={selectedProducts.includes(product.id)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setSelectedProducts((prev) =>
+                                e.target.checked
+                                  ? [...prev, value]
+                                  : prev.filter((id) => id !== value)
+                              );
+                            }}
+                          />
+                          {product.name}
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500">
                       You can select multiple products during the live sale
                     </p>
                   </div>
@@ -480,10 +463,10 @@ export default function LiveSalesManagementPage() {
                                         {product.name}
                                       </p>
                                       <p className="text-sm text-gray-500">
-                                        ${product.price.toFixed(2)}
+                                        XAF{product.price}
                                       </p>
                                     </div>
-                                    {product.featured ? (
+                                    {sale.currentFeaturedProduct === product.id ? (
                                       <Badge className="bg-primary">
                                         Featured
                                       </Badge>
@@ -617,7 +600,7 @@ export default function LiveSalesManagementPage() {
                                       {product.name}
                                     </p>
                                     <p className="text-sm text-gray-500">
-                                      ${product.price.toFixed(2)}
+                                      XAF{product.price}
                                     </p>
                                   </div>
                                   {product.featured ? (
@@ -707,7 +690,7 @@ export default function LiveSalesManagementPage() {
           </TabsContent>
 
           <TabsContent value="ended" className="space-y-4">
-            {liveSales
+            {userLives
               .filter((sale) => sale.status === "ended")
               .map((sale) => (
                 <Card key={sale.id} className="overflow-hidden">

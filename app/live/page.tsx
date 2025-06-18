@@ -12,8 +12,10 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Users, Calendar, Clock } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/contexts/auth-context";
 
 export default function LiveSalesPage() {
+  const { lives } = useAuth()
   const [liveSales, setLiveSales] = useState([
     {
       id: 1,
@@ -161,7 +163,7 @@ export default function LiveSalesPage() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="space-y-4">
-            {liveSales.map((sale) => (
+            {lives.map((sale) => (
               <Link key={sale.id} href={`/live/${sale.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow">
                   <div className="relative">
@@ -185,7 +187,7 @@ export default function LiveSalesPage() {
                         )}
                         <span>{sale.scheduledFor}</span>
                       </div>
-                      <span>{sale.products} products</span>
+                      <span>{sale.products.length} products</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -193,7 +195,7 @@ export default function LiveSalesPage() {
             ))}
           </TabsContent>
           <TabsContent value="live" className="space-y-4">
-            {liveSales
+            {lives
               .filter((sale) => sale.status === "active")
               .map((sale) => (
                 <Link key={sale.id} href={`/live/${sale.id}`}>
@@ -213,7 +215,7 @@ export default function LiveSalesPage() {
                           <Clock className="h-4 w-4 mr-1" />
                           <span>{sale.scheduledFor}</span>
                         </div>
-                        <span>{sale.products} products</span>
+                        <span>{sale.products.length} products</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -221,7 +223,7 @@ export default function LiveSalesPage() {
               ))}
           </TabsContent>
           <TabsContent value="scheduled" className="space-y-4">
-            {liveSales
+            {lives
               .filter((sale) => sale.status === "scheduled")
               .map((sale) => (
                 <Link key={sale.id} href={`/live/${sale.id}`}>
@@ -237,7 +239,7 @@ export default function LiveSalesPage() {
                           <Calendar className="h-4 w-4 mr-1" />
                           <span>{sale.scheduledFor}</span>
                         </div>
-                        <span>{sale.products} products</span>
+                        <span>{sale.products.length} products</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -245,7 +247,7 @@ export default function LiveSalesPage() {
               ))}
           </TabsContent>
           <TabsContent value="ended" className="space-y-4">
-            {liveSales
+            {lives
               .filter((sale) => sale.status === "ended")
               .map((sale) => (
                 <Link key={sale.id} href={`/live/${sale.id}`}>
@@ -261,7 +263,7 @@ export default function LiveSalesPage() {
                           <Clock className="h-4 w-4 mr-1" />
                           <span>{sale.scheduledFor}</span>
                         </div>
-                        <span>{sale.products} products</span>
+                        <span>{sale.products.length} products</span>
                       </div>
                     </CardContent>
                   </Card>

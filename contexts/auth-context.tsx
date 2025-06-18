@@ -39,7 +39,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (formData: any) => Promise<void>;
   logout: () => Promise<void>;
-  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<any>;
+  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<void>;
   confirmOtp: (otp: string, name: string) => Promise<void>;
 }
 
@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: name,
           phone: user.phoneNumber,
           role: "user",
+          paymentMethods: []
         });
       }
 
@@ -216,7 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // // Role-based data loading
   useEffect(() => {
-    if (!userInfo?.role || user) return;
+    if (!userInfo?.role || !user) return;
 
     // Initialize with no-op functions and proper typing
     let unsubscribeLives: () => void = () => {};
@@ -232,7 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         unsubscribeUserProducts =
           listenToSubCollection(
             "users",
-            userInfo.uid,
+            user.uid,
             "products",
             setUserProducts
           ) ?? (() => {});
@@ -250,7 +251,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      console.log(currentUser);
       setLoading(false);
     });
     return () => unsubscribeAuth();

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, Clock, TrendingUp, Star } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
-
+import { getTimeAgo } from "@/functions/get-time-ago"
 export default function HomePage() {
   const { lives } = useAuth()
 
@@ -33,56 +33,29 @@ export default function HomePage() {
           </TabsList>
 
           <TabsContent value="live" className="space-y-4">
-            <Link href="/live/1">
-              <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative">
-                  <img
-                    src="/placeholder.svg?height=200&width=400"
-                    alt="Live Sale"
-                    className="w-full h-48 object-cover"
-                  />
-                  <Badge className="absolute top-2 right-2 bg-red-500">Live Now</Badge>
-                  <Badge className="absolute bottom-2 left-2 bg-black/70">
-                    <Users className="h-3 w-3 mr-1" />
-                    1,243 watching
-                  </Badge>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold">Summer Fashion Collection</h3>
-                  <p className="text-sm text-gray-500 mt-1">Jane Cooper • Fashion & Lifestyle</p>
-                  <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
-                    <span>8 products featured</span>
-                    <span className="flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      Started 2h ago
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
             {lives?.map((live: any) => (
                 <Link href={`/live/${live.id}`}>
                   <Card className="overflow-hidden hover:shadow-md transition-shadow">
                     <div className="relative">
                       <img
-                        src="/placeholder.svg?height=200&width=400"
+                        src={live.image}
                         alt="Live Sale"
                         className="w-full h-48 object-cover"
                       />
                       <Badge className="absolute top-2 right-2 bg-red-500">Live Now</Badge>
                       <Badge className="absolute bottom-2 left-2 bg-black/70">
                         <Users className="h-3 w-3 mr-1" />
-                        1,243 watching
+                        {live.viewers}
                       </Badge>
                     </div>
                     <CardContent className="p-4">
                       <h3 className="font-semibold">{live.name}</h3>
                       <p className="text-sm text-gray-500 mt-1">{live.creatorName}</p>
                       <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
-                        <span>8 products featured</span>
+                        <span>{live.products.length}</span>
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
-                          Started 2h ago
+                          Started {getTimeAgo(live.startedAt)}
                         </span>
                       </div>
                     </CardContent>

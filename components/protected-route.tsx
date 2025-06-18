@@ -15,28 +15,19 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isAuthPage = pathname.startsWith("/auth")
 
   useEffect(() => {
-    console.log("User:", user)
-  }, [user])
-
-  useEffect(() => {
     if (!loading && !user && !isAuthPage) {
-      console.log("Redirecting...")
-      router.push("/auth/login")
+      router.replace("/auth/login")
     }
-  }, [user, loading, router, isAuthPage])
+  }, [user, loading, isAuthPage, router])
 
-  if (loading) {
+  // ✅ Don’t show the global spinner on auth pages
+  if (loading && !isAuthPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary" />
       </div>
     )
   }
 
-  // Separate logic after hooks
-  if (isAuthPage) {
-    return <main className="min-h-screen">{children}</main>
-  }
-
-  return user ? <>{children}</> : null
+  return <>{children}</>
 }
