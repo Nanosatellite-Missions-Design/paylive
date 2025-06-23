@@ -98,7 +98,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      router.push("/");
+      const referrer = document.referrer;
+      const isAuthRoute = referrer.includes("/auth");
+
+      if (!isAuthRoute && referrer) {
+        router.back();
+      } else {
+        router.push("/");
+      }
+
     } catch (error) {
       console.error("OTP confirmation error:", error);
       throw new Error("Invalid OTP");
