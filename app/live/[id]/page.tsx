@@ -29,6 +29,8 @@ import { addToSubCollection, setToSubCollection } from "@/functions/add-to-a-sub
 import { formatDistanceToNow } from "date-fns";
 import { PaymentDialog } from "@/components/payment-dialog"
 import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection"
+import { updateDocument } from "@/functions/update-doc-in-collection"
+import { increment } from "firebase/firestore"
 
 export default function LiveSaleDetailPage() {
   const { id } = useParams()
@@ -48,6 +50,8 @@ export default function LiveSaleDetailPage() {
   const [featuredProduct, setFeaturedProduct] = useState<any>(null)
   const [productToBuy, setProductToBuy] = useState<any>({})
   const [depositId, setDepositId] = useState("")
+  const [paymentState, setPaymentState] = useState("selecting")
+
   useEffect(() => {
     const currentLive = lives.find((live: any) => live.id === id)
       setLiveSale(currentLive)
@@ -104,7 +108,8 @@ export default function LiveSaleDetailPage() {
 
           if (status === "COMPLETED") {
             await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "completed"})
-            await addToSubCollection({...transaction, status: "completed"}, "users", transaction.sellerId, "transactions")
+            await addToSubCollection({...transaction, status: "completed", type: "income"}, "users", transaction.sellerId, "transactions")
+            await updateDocument("users", transaction.sellerId, {balance: increment(transaction.amount)})
           } else if (status === "FAILED") {
             await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "failed"})
           }
@@ -217,6 +222,11 @@ export default function LiveSaleDetailPage() {
       title: "Added to wishlist",
       description: `${liveSale?.featuredProduct.name} has been added to your wishlist.`,
     })
+  }
+
+  const handleCancelPaymentDialog = () => {
+    setPaymentState("selecting")
+    setShowSelectPaymentNumber(false)
   }
 
   const toggleFullscreen = () => {
@@ -459,7 +469,7 @@ export default function LiveSaleDetailPage() {
           </>
         )}
       </div>
-      <PaymentDialog open={showSelectPaymentNumber} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
+      <PaymentDialog open={showSelectPaymentNumber} handleCancel={handleCancelPaymentDialog} paymentState={paymentState} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
     </div>
   )
 }

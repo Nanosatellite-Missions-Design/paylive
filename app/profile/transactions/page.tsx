@@ -11,6 +11,7 @@ import WithdrawDialog from "@/components/withdraw-dialog"
 import type { Transaction, FinancialStats, WithdrawRequest } from "@/types/financial"
 
 export default function TransactionsPage() {
+  const { userInfo, userTransactions } = useAuth()
   const user = {
     name: "Jane Cooper",
     email: "jane@example.com",
@@ -85,8 +86,8 @@ export default function TransactionsPage() {
   ]
 
   // Group transactions by month
-  const groupedTransactions = transactions.reduce((groups: Record<string, Transaction[]>, transaction) => {
-    const date = new Date(transaction.date)
+  const groupedTransactions = userTransactions.reduce((groups: Record<string, Transaction[]>, transaction) => {
+    const date = new Date(transaction.createdAt)
     const month = date.toLocaleString("default", { month: "long", year: "numeric" })
 
     if (!groups[month]) {
@@ -157,7 +158,7 @@ export default function TransactionsPage() {
     }
   }
 
-  const renderTransactionList = (transactionList: Transaction[]) => (
+  const renderTransactionList = (transactionList: any[]) => (
     <div className="space-y-3">
       {transactionList.map((transaction) => (
         <Card key={transaction.id}>
@@ -178,15 +179,15 @@ export default function TransactionsPage() {
               )}
               <div className="flex-1">
                 <div className="flex items-center">
-                  <h3 className="font-medium">{transaction.title}</h3>
+                  <h3 className="font-medium">{transaction.productName}</h3>
                   <div className="ml-2">{getTransactionIcon(transaction.type)}</div>
                 </div>
                 <p className="text-sm text-gray-500">{transaction.date}</p>
-                {transaction.description && <p className="text-xs text-gray-400">{transaction.description}</p>}
+                <p className="text-xs text-gray-400">{transaction.type ==="purchase" ? "Purchased product" : transaction.type ==="sale" || transaction.type === "invoice" ? "Sold product" : "Withdrawal"} {transaction.productName}</p>
               </div>
               <div className="text-right">
                 <p className="font-medium">
-                  {transaction.type === "purchase" || transaction.type === "withdrawal" ? "-" : "+"}$
+                  {transaction.type === "purchase" || transaction.type === "withdrawal" ? "-" : "+"}XAF
                   {transaction.amount.toFixed(2)}
                 </p>
                 {transaction.netAmount && (
@@ -229,23 +230,23 @@ export default function TransactionsPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">XAF{financialStats.currentBalance.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-green-600">XAF{userInfo?.balance ?? 0}</p>
                 <p className="text-sm text-gray-500">Available for withdrawal</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <p className="text-lg font-semibold">XAF{financialStats.monthlyEarnings.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">XAF{userInfo?.balance ?? 0}</p>
                   <p className="text-xs text-gray-500">This Month</p>
                 </div>
                 <div>
-                  <p className="text-lg font-semibold">XAF{financialStats.pendingPayouts.toFixed(2)}</p>
+                  <p className="text-lg font-semibold">XAF{userInfo?.pendingPayout ?? 0}</p>
                   <p className="text-xs text-gray-500">Pending</p>
                 </div>
               </div>
 
               <WithdrawDialog
-                currentBalance={financialStats.currentBalance}
+                currentBalance={userInfo?.balance ?? 0}
                 pendingWithdrawals={1}
                 onWithdraw={handleWithdraw}
               />

@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { CreditCard, Building2, Smartphone, Plus, Check, Lock, AlertCircle } from "lucide-react"
+import { CreditCard, Building2, Smartphone, Plus, Check, Lock, AlertCircle, Clock, CheckCircle, XCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 interface PaymentMethod {
@@ -37,6 +37,8 @@ interface PaymentDialogProps {
   amount: string
   product: string
   onPaymentComplete?: (paymentMethodId: string) => void
+  paymentState: string
+  handleCancel?: () => void
 }
 
 const mockPaymentMethods: PaymentMethod[] = [
@@ -77,7 +79,7 @@ const mockPaymentMethods: PaymentMethod[] = [
   },
 ]
 
-export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentComplete }: PaymentDialogProps) {
+export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentComplete, paymentState, handleCancel }: PaymentDialogProps) {
   const { userInfo } = useAuth()
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     userInfo?.paymentMethods.find((method: any) => method.isDefault)?.number || userInfo?.paymentMethods[0]?.number,
@@ -94,13 +96,9 @@ export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentCo
     if (!selectedPaymentMethod) return
 
     setIsProcessing(true)
-
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    setIsProcessing(false)
     onPaymentComplete?.(selectedPaymentMethod)
-    onOpenChange(false)
+    setIsProcessing(false)
+
   }
 
 //   const formatAmount = (amount: number) => {
@@ -122,6 +120,137 @@ export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentCo
 //         return <CreditCard className="h-5 w-5" />
 //     }
 //   }
+
+  // Pending State
+  if (paymentState === "pending") {
+    return (
+      <Dialog open={open} onOpenChange={handleCancel}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-center gap-2">
+              <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
+              Processing Payment
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="relative">
+              <Clock className="h-16 w-16 text-blue-600 animate-pulse" />
+              <div className="absolute inset-0 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin"></div>
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">Waiting for you to complete the payment</h3>
+              <p className="text-sm text-muted-foreground">
+                Please complete the payment process in your payment provider's window
+              </p>
+              <p className="text-lg font-bold text-blue-600">{amount}</p>
+            </div>
+
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: "60%" }}></div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel} className="w-full">
+              Cancel Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Success State
+  if (paymentState === "success") {
+    return (
+      <Dialog open={open} onOpenChange={handleCancel}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-center gap-2">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              Payment Completed
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="relative">
+              <CheckCircle className="h-16 w-16 text-green-600" />
+              <div className="absolute inset-0 rounded-full bg-green-100 animate-ping opacity-75"></div>
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold text-green-800">Payment Successful!</h3>
+              <p className="text-sm text-muted-foreground">
+                Your payment of {amount} has been processed successfully
+              </p>
+              <div className="bg-green-50 p-3 rounded-lg">
+                <p className="text-sm text-green-700">
+                  <strong>Transaction ID:</strong> TXN-{Date.now().toString().slice(-8)}
+                </p>
+                <p className="text-sm text-green-700">
+                  <strong>Payment Method:</strong>{" "}
+                  {mockPaymentMethods.find((m) => m.id === selectedPaymentMethod)?.name}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={handleCancel} className="w-full bg-green-600 hover:bg-green-700">
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Failed State
+  if (paymentState === "failed") {
+    return (
+      <Dialog open={open} onOpenChange={handleCancel}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-center gap-2">
+              <XCircle className="h-6 w-6 text-red-600" />
+              Payment Failed
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <div className="relative">
+              <XCircle className="h-16 w-16 text-red-600" />
+              <div className="absolute inset-0 rounded-full bg-red-100 animate-pulse opacity-75"></div>
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold text-red-800">Payment Not Completed</h3>
+              <p className="text-sm text-muted-foreground">
+                We couldn't process your payment of {amount}
+              </p>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <strong>Error:</strong> Payment was declined by your payment provider
+                </p>
+                <p className="text-sm text-red-700">Please check your payment method or try a different one</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
+              Cancel
+            </Button>
+            <Button className="w-full sm:w-auto">
+              Try Again
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

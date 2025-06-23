@@ -13,10 +13,13 @@ import { Switch } from "@/components/ui/switch"
 import { ChevronLeft, Camera, Save } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import type { User } from "@/types/auth"
+import { updateDocument } from "@/functions/update-doc-in-collection"
+import { useToast } from "@/hooks/use-toast"
 
 export default function EditProfilePage() {
-  const { user, loading } = useAuth()
+  const { user, loading, userInfo} = useAuth()
   const [formData, setFormData] = useState<any>(user || {})
+  const { toast } = useToast()
 
   const handleChange = (field: keyof User, value: string | boolean) => {
     setFormData((prev: any) => ({ ...prev, [field]: value }))
@@ -25,8 +28,18 @@ export default function EditProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-
+      console.log(formData)
+      await updateDocument("users", userInfo.uid, formData)
+      toast({
+        title: "Informations Updated",
+        description: "Your account's informations have been successfully updated.",
+      });
     } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Saving failed",
+        description: (error as Error).message,
+      });
       // Error is handled in the auth context
     }
   }
@@ -73,17 +86,7 @@ export default function EditProfilePage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" value={formData.name || ""} onChange={(e) => handleChange("name", e.target.value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email || ""}
-                    onChange={(e) => handleChange("email", e.target.value)}
-                  />
+                  <Input id="name" value={formData.name || userInfo?.name} onChange={(e) => handleChange("name", e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
@@ -91,7 +94,7 @@ export default function EditProfilePage() {
                   <Input
                     id="phone"
                     type="tel"
-                    value={formData.phone || ""}
+                    value={formData.phone || userInfo?.phone}
                     onChange={(e) => handleChange("phone", e.target.value)}
                   />
                 </div>
@@ -147,7 +150,7 @@ export default function EditProfilePage() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
+                {/* <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Show Email Address</p>
                     <p className="text-sm text-gray-500">Display your email on your public profile</p>
@@ -156,7 +159,7 @@ export default function EditProfilePage() {
                     checked={formData.showEmail || false}
                     onCheckedChange={(checked) => handleChange("showEmail", checked)}
                   />
-                </div>
+                </div> */}
 
                 <div className="flex items-center justify-between">
                   <div>
