@@ -25,16 +25,19 @@ import QRCodeScanner from "@/components/qr-code-scanner"
 import { getASubDocument } from "@/functions/get-a-document"
 import { useAuth } from "@/contexts/auth-context";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
-import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
+import { addToSubCollection, setToSubCollection } from "@/functions/add-to-a-sub-collection"
 import { formatDistanceToNow } from "date-fns";
+import { PaymentDialog } from "@/components/payment-dialog"
+import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection"
 
 export default function LiveSaleDetailPage() {
   const { id } = useParams()
   const router = useRouter()
-  const { lives, userInfo } = useAuth()
+  const { lives, userInfo, userTransactions } = useAuth()
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isPiP, setIsPiP] = useState(false)
   const [showQRScanner, setShowQRScanner] = useState(false)
+  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false)
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState("")
   const chatEndRef = useRef(null)
@@ -43,7 +46,8 @@ export default function LiveSaleDetailPage() {
   const [liveSale, setLiveSale] = useState<any>({})
   const [liveProducts, setLiveProducts] = useState<any[]>([])
   const [featuredProduct, setFeaturedProduct] = useState<any>(null)
-
+  const [productToBuy, setProductToBuy] = useState<any>({})
+  const [depositId, setDepositId] = useState("")
   useEffect(() => {
     const currentLive = lives.find((live: any) => live.id === id)
       setLiveSale(currentLive)
@@ -85,8 +89,40 @@ export default function LiveSaleDetailPage() {
   }, [liveSale?.products, liveSale?.creatorId]);
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (depositId) {
+      const transaction = userTransactions.find((transaction: any) => transaction.id === depositId)
+      intervalId = setInterval(async () => {
+        try {
+          const response = await fetch(
+            `/api/pawapay/deposits?depositId=${depositId}`
+          );
+          const data = await response.json();
+
+          const status = data[0]?.status || data.status; // Handle both array and object
+
+          if (status === "COMPLETED") {
+            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "completed"})
+            await addToSubCollection({...transaction, status: "completed"}, "users", transaction.sellerId, "transactions")
+          } else if (status === "FAILED") {
+            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "failed"})
+          }
+        } catch (error) {
+          console.error("Payment verification failed:", error);
+          clearInterval(intervalId);
+        }
+      }, 10000);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [
+    depositId,
+  ]);
+
+  useEffect(() => {
     const currentFeaturedProduct = liveProducts.find((product: any) => product.id === liveSale?.currentFeaturedProduct)
-    console.log(currentFeaturedProduct)
+
     setFeaturedProduct(currentFeaturedProduct)
   }, [liveProducts])
 
@@ -105,14 +141,75 @@ export default function LiveSaleDetailPage() {
   }, [liveSale])
 
 
-  const handleBuyNow = () => {
-    if(!userInfo?.paymentMethods) {
-      router.push("/profile/payment-methods")
+  const handleBuyNow = (product: any) => {
+    setProductToBuy(product)
+    setShowSelectPaymentNumber(true)
+  }
+
+
+
+  const handleOnPay = async (paymentMethod: string) => {
+    let number = {} as any
+    if(paymentMethod !== "other"){
+      number = userInfo?.paymentMethods.find((method: any) => method.number === paymentMethod)
     }
-    toast({
-      title: "Added to cart",
-      description: `${liveSale?.featuredProduct.name} has been added to your cart.`,
+    const bodyWithNumber = JSON.stringify({
+      amount: productToBuy.price,
+      phoneNumber: number.number,
+      provider: number.netword,
+      currentUrl: "",
+      product: productToBuy.name
     })
+    const bodyWithoutNumber = JSON.stringify({
+      amount: productToBuy.price,
+      currentUrl: "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
+      product: productToBuy.name
+    })
+    try {
+      const res = await fetch("/api/pawapay/deposits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: paymentMethod === "other" ? bodyWithoutNumber : bodyWithNumber
+      });
+
+      const data = await res.json();
+      setDepositId(data.depositId)
+      const newTransaction = {
+        type: "purchase",
+        buyerId: userInfo.uid,
+        sellerId: liveSale.creatorId,
+        productId: productToBuy.id,
+        productName: productToBuy.name,
+        counterpartyId: liveSale.creatorId,
+        amount: productToBuy.price,
+        paymentMethod: number.network,
+        status: "pending",
+        liveId: id // if part of a live
+      }
+      await setToSubCollection(data.depositId, newTransaction, "users", userInfo.uid, "transactions")
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+      if (paymentMethod === "other" && data?.redirectUrl) {
+        window.location.href = data.redirectUrl; // ✅ works for external links
+      }
+      // setDepositId(data.depositId);
+      // await updateDocument("deliveries", deliveryId, {
+      //   transactionId: data.depositId,
+      // });
+      // console.log(data.depositId)
+      toast({
+        title: "Payment initiated",
+        description: "Please complete the payment on your mobile device.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Payment failed",
+        description: (error as Error).message,
+      });
+    }
+
   }
 
   const handleAddToWishlist = () => {
@@ -277,7 +374,7 @@ export default function LiveSaleDetailPage() {
                           <p className="text-sm text-gray-500 mb-2">{featuredProduct.description}</p>
                           <p className="font-bold text-lg">XAF{featuredProduct.price}</p>
                           <div className="flex gap-2 mt-2">
-                            <Button size="sm" onClick={handleBuyNow}>
+                            <Button size="sm" onClick={() => handleBuyNow(featuredProduct)}>
                               <ShoppingCart className="h-4 w-4 mr-2" />
                               Buy Now
                             </Button>
@@ -362,6 +459,7 @@ export default function LiveSaleDetailPage() {
           </>
         )}
       </div>
+      <PaymentDialog open={showSelectPaymentNumber} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
     </div>
   )
 }

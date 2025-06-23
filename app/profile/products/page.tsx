@@ -370,7 +370,7 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
-                  id="description"
+                  ierd="description"
                   placeholder="Enter product description"
                   onChange={(e) => setNewProductDescription(e.target.value)}
                 />
@@ -658,7 +658,7 @@ export default function ProductsPage() {
               <div className="bg-white p-4 rounded-md">
                 {selectedProduct && (
                   <QRCodeGenerator
-                    value={`https://paylive.app/product/${selectedProduct.id}`}
+                    value={`https://paylive.vercel.app/product/${selectedProduct.id}`}
                     size={200}
                   />
                 )}

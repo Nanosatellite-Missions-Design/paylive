@@ -32,6 +32,7 @@ interface AuthContextType {
   lives: any[];
   userProducts: any[];
   userLives: any[];
+  userTransactions: any[];
   transactions: any[];
   referrals: any[];
   referralsEarnings: number;
@@ -52,6 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [lives, setLives] = useState<any[]>([]);
   const [userProducts, setUserProducts] = useState<any[]>([]);
   const [userLives, setUserLives] = useState<any[]>([]);
+  const [userTransactions, setUserTransactions] = useState<any[]>([]);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [referralsEarnings, setReferralsEarnings] = useState(0);
   const [users, setUsers] = useState<any[]>([]);
@@ -222,6 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Initialize with no-op functions and proper typing
     let unsubscribeLives: () => void = () => {};
     let unsubscribeUserProducts: () => void = () => {};
+    let unsubscribeUserTransactions: () => void = () => {};
 
     switch (userInfo.role) {
       case "admin":
@@ -237,6 +240,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             "products",
             setUserProducts
           ) ?? (() => {});
+        unsubscribeUserTransactions =
+          listenToSubCollection(
+            "users",
+            user.uid,
+            "transactions",
+            setUserTransactions
+          ) ?? (() => {});
         break;
     }
 
@@ -244,6 +254,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Safe to call even if undefined due to nullish coalescing
       unsubscribeLives();
       unsubscribeUserProducts();
+      unsubscribeUserTransactions();
     };
   }, [userInfo, user]);
 
@@ -266,6 +277,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         referralsEarnings,
         userProducts,
         userLives,
+        userTransactions,
         referrals,
         users,
         transactions,

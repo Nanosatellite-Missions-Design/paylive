@@ -92,7 +92,7 @@ export default function PaymentMethodsPage() {
         </header>
 
         <div className="space-y-4 mb-6">
-          {userInfo?.paymentMethods.map((method) => (
+          {userInfo?.paymentMethods.map((method: any) => (
             <Card key={method.id}>
               <CardContent className="p-4">
                 <div className="flex items-center">

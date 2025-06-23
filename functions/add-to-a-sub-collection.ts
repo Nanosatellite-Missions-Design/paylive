@@ -1,5 +1,5 @@
 "use client";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 interface AddData {
@@ -41,16 +41,16 @@ export async function setToSubCollection(
 ): Promise<any | null> {
   try {
     // Reference the Firestore collection
-    const collectionRef = collection(db, collectionName, documentId, table);
+    const docRef = doc(db, collectionName, documentId, table, addId);
 
     // Add the document to the collection with auto-generated ID
-    const docRef = await addDoc(collectionRef, {
+    const result = await setDoc(docRef, {
       ...addData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
 
-    return docRef; // Return the document ID
+    return result; // Return the document ID
   } catch (error) {
     console.error("Error adding document:", error); // Log detailed error for debugging
     return null; // Indicate failure
