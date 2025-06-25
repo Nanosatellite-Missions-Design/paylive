@@ -20,83 +20,31 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { CreditCard, Building2, Smartphone, Plus, Check, Lock, AlertCircle, Clock, CheckCircle, XCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-
-interface PaymentMethod {
-  id: string
-  type: "card" | "bank" | "digital"
-  name: string
-  details: string
-  isDefault: boolean
-  lastUsed?: string
-  icon: React.ReactNode
-}
+import { Input } from "./ui/input"
+import Image from "next/image"
 
 interface PaymentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   amount: string
   product: string
-  onPaymentComplete?: (paymentMethodId: string) => void
+  onPaymentComplete?: (paymentMethodId: string, number: string, name: string) => void
   paymentState: string
   handleCancel?: () => void
 }
 
-const mockPaymentMethods: PaymentMethod[] = [
-  {
-    id: "card-1",
-    type: "card",
-    name: "Visa ending in 4242",
-    details: "Expires 12/25",
-    isDefault: true,
-    lastUsed: "2 days ago",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "card-2",
-    type: "card",
-    name: "Mastercard ending in 8888",
-    details: "Expires 08/26",
-    isDefault: false,
-    lastUsed: "1 week ago",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "bank-1",
-    type: "bank",
-    name: "Chase Business Account",
-    details: "****1234",
-    isDefault: false,
-    lastUsed: "3 weeks ago",
-    icon: <Building2 className="h-5 w-5" />,
-  },
-  {
-    id: "digital-1",
-    type: "digital",
-    name: "PayPal",
-    details: "john@lawfirm.com",
-    isDefault: false,
-    icon: <Smartphone className="h-5 w-5" />,
-  },
-]
-
 export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentComplete, paymentState, handleCancel }: PaymentDialogProps) {
-  const { userInfo } = useAuth()
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    userInfo?.paymentMethods.find((method: any) => method.isDefault)?.number || userInfo?.paymentMethods[0]?.number,
-  )
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const router = useRouter()
-
-  const handleAddPaymentMethod = () => {
-    onOpenChange(false)
-    router.push("/dashboard/settings/payment-methods")
-  }
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
 
   const handlePayment = async () => {
     if (!selectedPaymentMethod) return
 
     setIsProcessing(true)
-    onPaymentComplete?.(selectedPaymentMethod)
+    onPaymentComplete?.(selectedPaymentMethod, phone, name)
     setIsProcessing(false)
 
   }
@@ -191,7 +139,7 @@ export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentCo
                 </p>
                 <p className="text-sm text-green-700">
                   <strong>Payment Method:</strong>{" "}
-                  {mockPaymentMethods.find((m) => m.id === selectedPaymentMethod)?.name}
+                  {/* {mockPaymentMethods.find((m) => m.id === selectedPaymentMethod)?.name} */}
                 </p>
               </div>
             </div>
@@ -284,71 +232,57 @@ export function PaymentDialog({ open, onOpenChange, amount, product, onPaymentCo
 
           <Separator />
 
-          {/* Payment Methods */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Payment Methods</h3>
-              <Button variant="outline" size="sm" onClick={handleAddPaymentMethod} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button>
+          <RadioGroup
+            defaultValue={selectedPaymentMethod}
+            onValueChange={setSelectedPaymentMethod}
+            className="flex items-center gap-4"
+          >
+            {/* Orange Money Option */}
+            <div className="flex items-center space-x-2 border rounded-xl p-2 hover:shadow-md cursor-pointer">
+              <RadioGroupItem value="Orange" id="Orange" />
+              <Label htmlFor="Orange" className="flex items-center gap-2">
+                <Image
+                  src="/orange.jpeg" // Replace with your image path
+                  alt="Orange"
+                  width={40}
+                  height={40}
+                />
+                Orange Money
+              </Label>
             </div>
 
-            <RadioGroup value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod} className="space-y-3">
-              {userInfo?.paymentMethods.map((method: any) => (
-                <div key={method.number} className="relative">
-                  <Label
-                    htmlFor={method.number}
-                    className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent transition-colors"
-                  >
-                    <RadioGroupItem value={method.number} id={method.number} />
+            {/* MTN Money Option */}
+            <div className="flex items-center space-x-2 border rounded-xl p-2 hover:shadow-md cursor-pointer">
+              <RadioGroupItem value="MTN" id="MTN" />
+              <Label htmlFor="MTN" className="flex items-center gap-2">
+                <Image
+                  src="/mtn.jpg" // Replace with your image path
+                  alt="MTN"
+                  width={40}
+                  height={40}
+                />
+                MTN Money
+              </Label>
+            </div>
+          </RadioGroup>
 
-                    <div className="flex items-center gap-3 flex-1">
-                      <Smartphone className="h-5 w-5 text-purple-600"/>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{method.network}</p>
-                          {method.isDefault && (
-                            <Badge variant="secondary" className="text-xs">
-                              Default
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{method.number}</p>
-                        {method.lastUsed && (
-                          <p className="text-xs text-muted-foreground">Last used {method.lastUsed}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {selectedPaymentMethod === method.number && <Check className="h-5 w-5 text-green-600" />}
-                  </Label>
-                </div>
-              ))}
-                <div key={"other"} className="relative">
-                  <Label
-                    htmlFor={"other"}
-                    className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent transition-colors"
-                  >
-                    <RadioGroupItem value={"other"} id={"other"} />
-
-                    <div className="flex items-center gap-3 flex-1">
-                      <Smartphone className="h-5 w-5 text-purple-600"/>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">Other</p>
-                        </div>
-                        <p className="text-sm text-muted-foreground">Use another number to pay</p>
-                      </div>
-                    </div>
-
-                    {selectedPaymentMethod === "other" && <Check className="h-5 w-5 text-green-600" />}
-                  </Label>
-                </div>
-            </RadioGroup>
-          </div>
+          {/* Payment Methods */}
+          {selectedPaymentMethod && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Payment Methods</h3>
+              </div>
+              <div>
+                <Label>Name</Label>
+                <Input type="text" placeholder="Nuadje Todjo" onChange={(e) => setName(e.target.value)}/>
+              </div>
+              <div>
+                <Label>Phone Number</Label>
+                <Input type="text" placeholder="670166661" onChange={(e) => setPhone(e.target.value)}/>
+              </div>
+            </div>
+          )
+          }
 
           {/* Security Notice */}
           <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">

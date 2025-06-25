@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import QRCodeScanner from "@/components/qr-code-scanner"
-import { getADocument, getASubDocument } from "@/functions/get-a-document"
+import { getASubDocument } from "@/functions/get-a-document"
 import { useAuth } from "@/contexts/auth-context";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { addToSubCollection, setToSubCollection } from "@/functions/add-to-a-sub-collection"
@@ -51,17 +51,11 @@ export default function LiveSaleDetailPage() {
   const [productToBuy, setProductToBuy] = useState<any>({})
   const [depositId, setDepositId] = useState("")
   const [paymentState, setPaymentState] = useState("selecting")
-  const [currentTransaction, setCurrentTransaction] = useState<any>({})
 
   useEffect(() => {
-    const unsubscribeLiveSales = getADocument(id as string, "lives", (data) => {
-          setLiveSale(data);
-        });
-    
-        return () => {
-          if (unsubscribeLiveSales) unsubscribeLiveSales();
-    };
-    }, [id])
+    const currentLive = lives.find((live: any) => live.id === id)
+      setLiveSale(currentLive)
+    }, [id, lives])
 
   useEffect(() => {
     if (!liveSale?.products || !Array.isArray(liveSale?.products)) return;
@@ -102,6 +96,7 @@ export default function LiveSaleDetailPage() {
     let intervalId: NodeJS.Timeout;
 
     if (depositId) {
+      const transaction = userTransactions.find((transaction: any) => transaction.id === depositId)
       intervalId = setInterval(async () => {
         try {
           const response = await fetch(
@@ -112,11 +107,11 @@ export default function LiveSaleDetailPage() {
           const status = data[0]?.status || data.status; // Handle both array and object
 
           if (status === "COMPLETED") {
-            await updateSubcollectionDocument("users", currentTransaction.sellerId, "transactions", depositId, {status: "completed"})
-            await addToSubCollection({...currentTransaction, status: "completed", type: "income"}, "users", currentTransaction.sellerId, "transactions")
-            await updateDocument("users", currentTransaction.sellerId, {balance: increment(currentTransaction.amount)})
+            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "completed"})
+            await addToSubCollection({...transaction, status: "completed", type: "income"}, "users", transaction.sellerId, "transactions")
+            await updateDocument("users", transaction.sellerId, {balance: increment(transaction.amount)})
           } else if (status === "FAILED") {
-            await updateSubcollectionDocument("users", liveSale.creatorId, "transactions", depositId, {status: "failed"})
+            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "failed"})
           }
         } catch (error) {
           console.error("Payment verification failed:", error);
@@ -127,7 +122,7 @@ export default function LiveSaleDetailPage() {
 
     return () => clearInterval(intervalId);
   }, [
-    depositId, currentTransaction
+    depositId,
   ]);
 
   useEffect(() => {
@@ -158,11 +153,15 @@ export default function LiveSaleDetailPage() {
 
 
 
-  const handleOnPay = async (paymentMethod: string, number: string, name: string) => {
+  const handleOnPay = async (paymentMethod: string) => {
+    let number = {} as any
+    if(paymentMethod !== "other"){
+      number = userInfo?.paymentMethods.find((method: any) => method.number === paymentMethod)
+    }
     const bodyWithNumber = JSON.stringify({
       amount: productToBuy.price,
-      phoneNumber: number,
-      provider: paymentMethod,
+      phoneNumber: number.number,
+      provider: number.netword,
       currentUrl: "",
       product: productToBuy.name
     })
@@ -184,19 +183,17 @@ export default function LiveSaleDetailPage() {
       setDepositId(data.depositId)
       const newTransaction = {
         type: "purchase",
-        buyerName: name,
-        buyerPhoneNumber: number,
+        buyerId: userInfo.uid,
         sellerId: liveSale.creatorId,
         productId: productToBuy.id,
         productName: productToBuy.name,
         counterpartyId: liveSale.creatorId,
         amount: productToBuy.price,
-        paymentMethod: paymentMethod,
+        paymentMethod: number.network,
         status: "pending",
         liveId: id // if part of a live
       }
-      setCurrentTransaction(newTransaction)
-      await setToSubCollection(data.depositId, newTransaction, "users", liveSale.creatorId, "transactions")
+      await setToSubCollection(data.depositId, newTransaction, "users", userInfo.uid, "transactions")
       if (!res.ok) throw new Error(data.error || "Unknown error");
       if (paymentMethod === "other" && data?.redirectUrl) {
         window.location.href = data.redirectUrl; // ✅ works for external links

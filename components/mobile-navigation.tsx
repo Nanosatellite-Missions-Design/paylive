@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Video, Gavel, User, Settings } from "lucide-react"
+import { Home, Video, Gavel, User, Settings, ShoppingBasket, ArrowLeftRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function MobileNavigation() {
@@ -10,29 +10,29 @@ export default function MobileNavigation() {
 
   const navItems = [
     {
-      name: "Home",
-      href: "/",
-      icon: Home,
-    },
-    {
       name: "Live",
-      href: "/live",
+      href: "/dashboard/live",
       icon: Video,
     },
     {
       name: "Auctions",
-      href: "/auctions",
+      href: "/dashboard/auctions",
       icon: Gavel,
     },
     {
-      name: "Profile",
-      href: "/profile",
-      icon: User,
+      name: "Products",
+      href: "/dashboard",
+      icon: ShoppingBasket,
     },
     {
-      name: "Settings",
-      href: "/settings",
-      icon: Settings,
+      name: "Transactions",
+      href: "/dashboard/transactions",
+      icon: ArrowLeftRight,
+    },
+    {
+      name: "Profile",
+      href: "/dashboard/profile",
+      icon: User,
     },
   ]
 

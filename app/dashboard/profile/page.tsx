@@ -100,7 +100,7 @@ export default function ProfilePage() {
                 <p className="text-2xl font-bold">XAF{userInfo?.balance ?? 0}</p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">Total Sales: {financialStats.totalSales}</span>
-                  <Link href="/profile/transactions" className="text-blue-600 flex items-center">
+                  <Link href="/transactions" className="text-blue-600 flex items-center">
                     Details <ChevronRight className="h-3 w-3 ml-1" />
                   </Link>
                 </div>
@@ -127,7 +127,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div className="mt-3">
-                <Link href="/profile/transactions">
+                <Link href="/transactions">
                   <Button variant="outline" size="sm" className="w-full">
                     <History className="h-4 w-4 mr-2" />
                     Transaction History
@@ -143,7 +143,7 @@ export default function ProfilePage() {
         <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
           {true && (
-            <Link href="/profile/products">
+            <Link href="/products">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Package className="h-6 w-6 mb-2" />
                 <span>My Products</span>
@@ -152,7 +152,7 @@ export default function ProfilePage() {
           )}
 
           {true && (
-            <Link href="/profile/live-sales">
+            <Link href="/live">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Video className="h-6 w-6 mb-2" />
                 <span>Live Sales</span>
@@ -160,7 +160,7 @@ export default function ProfilePage() {
             </Link>
           )}
 
-          <Link href="/profile/auctions">
+          <Link href="/auctions">
             <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
               <Gavel className="h-6 w-6 mb-2" />
               <span>My Auctions</span>
@@ -174,7 +174,7 @@ export default function ProfilePage() {
             </Button>
           </Link>
 
-          <Link href="/profile/transactions" className="col-span-2">
+          <Link href="/transactions" className="col-span-2">
             <Button variant="outline" className="w-full">
               <History className="h-4 w-4 mr-2" />
               Transaction History
