@@ -460,7 +460,7 @@ export default function LiveSaleDetailPage() {
                       </div>
                       <h3 className="text-sm font-medium truncate">{product.name}</h3>
                       <p className="text-xs text-primary font-medium">XAF{product.price.toFixed(2)}</p>
-                      <Button size="sm" variant="outline" className="mt-2 w-full text-xs">
+                      <Button size="sm" variant="outline" className="mt-2 w-full text-xs" onClick={() => handleBuyNow(product)}>
                         <ShoppingCart className="h-3 w-3 mr-1" />
                         Buy
                       </Button>

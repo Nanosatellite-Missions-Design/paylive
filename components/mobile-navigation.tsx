@@ -11,7 +11,7 @@ export default function MobileNavigation() {
   const navItems = [
     {
       name: "Live",
-      href: "/dashboard/live",
+      href: "/dashboard/lives",
       icon: Video,
     },
     {

@@ -34,6 +34,7 @@ import {
   Pause,
   Package,
   Loader2,
+  Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -122,6 +123,7 @@ export default function LiveSalesManagementPage() {
     const description = e.target.description.value;
     const date = e.target.date.value;
     const time = e.target.time.value;
+    const switchTime = e.target.switch.value
 
     let imageUrl = "/placeholder.svg";
 
@@ -144,6 +146,7 @@ export default function LiveSalesManagementPage() {
       viewers: 0,
       products: selectedProducts, // implement product selection later
       description,
+      switchTime,
       image: imageUrl,
     };
 
@@ -266,7 +269,11 @@ export default function LiveSalesManagementPage() {
                   <div className="space-y-2">
                     <Label>Select Products</Label>
                     <div className="grid gap-2 max-h-40 overflow-y-auto border p-2 rounded-md">
-                      {userProducts.map((product: any) => (
+                      {userProducts.map((product: any) => {
+                        const selectedIndex = selectedProducts.indexOf(product.id)
+                        const isSelected = selectedIndex !== -1
+                        const orderLabel = isSelected ? `(${selectedIndex + 1})` : ""
+                        return (
                         <label
                           key={product.id}
                           className="flex items-center gap-2 cursor-pointer text-sm"
@@ -284,13 +291,24 @@ export default function LiveSalesManagementPage() {
                               );
                             }}
                           />
-                          {product.name}
+                          {product.name} <span className="text-xs text-gray-400">selected as n {orderLabel}</span>
                         </label>
-                      ))}
+                      )})}
                     </div>
                     <p className="text-xs text-gray-500">
                       You can select multiple products during the live sale
                     </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">How long to switch products</Label>
+                    <Input
+                      id="switchTime"
+                      name="switchTime"
+                      type="number"
+                      placeholder="Enter number of minutes"
+                      required
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -555,6 +573,21 @@ export default function LiveSalesManagementPage() {
                     </div>
 
                     <div className="mt-4 flex flex-col gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          const link = `https://paylive.vercel.app/lives/${sale.id}`
+                          navigator.clipboard.writeText(link)
+                          toast({
+                            title: "Copied",
+                            description: "Link Copied to Clipboard.",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy Live Link
+                      </Button>
+
                       <Button
                         onClick={() => handleEndLiveSale(sale.id)}
                         variant="destructive"
