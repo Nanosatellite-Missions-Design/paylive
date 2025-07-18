@@ -16,7 +16,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!loading && !user && !isAuthPage) {
-      router.replace("/auth/login")
+      router.replace("/auth/signup")
     }
   }, [user, loading, isAuthPage, router])
 
