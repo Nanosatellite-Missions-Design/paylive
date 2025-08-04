@@ -3,7 +3,9 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import ClientLayout from "./client-layout"
 import "./globals.css"
+import ProtectedRoute from "@/components/protected-route"
 
 
 const inter = Inter({ subsets: ["latin"] })
@@ -12,17 +14,11 @@ interface RootLayoutProps {
   children: React.ReactNode
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default function DashboardLayout({ children }: {children : React.ReactNode}) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light">
-          <AuthProvider>
-              {children}
-          </AuthProvider>
-          <Toaster />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ProtectedRoute>
+      <ClientLayout>{children}</ClientLayout>
+    </ProtectedRoute>
   )
 }
+

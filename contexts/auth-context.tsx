@@ -40,7 +40,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (formData: any) => Promise<void>;
   logout: () => Promise<void>;
-  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<void>;
+  loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<any>;
   confirmOtp: (otp: string, name: string) => Promise<void>;
 }
 

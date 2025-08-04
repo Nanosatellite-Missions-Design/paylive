@@ -143,7 +143,7 @@ export default function ProfilePage() {
         <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
           {true && (
-            <Link href="/profile/products">
+            <Link href="/products">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Package className="h-6 w-6 mb-2" />
                 <span>My Products</span>
@@ -152,7 +152,7 @@ export default function ProfilePage() {
           )}
 
           {true && (
-            <Link href="/profile/live-sales">
+            <Link href="/live-sales">
               <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
                 <Video className="h-6 w-6 mb-2" />
                 <span>Live Sales</span>
@@ -160,7 +160,7 @@ export default function ProfilePage() {
             </Link>
           )}
 
-          <Link href="/profile/auctions">
+          <Link href="/auctions">
             <Button variant="outline" className="w-full h-auto py-6 flex flex-col">
               <Gavel className="h-6 w-6 mb-2" />
               <span>My Auctions</span>

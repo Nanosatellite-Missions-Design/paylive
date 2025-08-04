@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import QRCodeScanner from "@/components/qr-code-scanner"
-import { getADocument, getASubDocument } from "@/functions/get-a-document"
+import { getASubDocument } from "@/functions/get-a-document"
 import { useAuth } from "@/contexts/auth-context";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { addToSubCollection, setToSubCollection } from "@/functions/add-to-a-sub-collection"
@@ -53,14 +53,9 @@ export default function LiveSaleDetailPage() {
   const [paymentState, setPaymentState] = useState("selecting")
 
   useEffect(() => {
-      const unsubscribeLiveSale = getADocument(id as string, "lives", (data) => {
-          setLiveSale(data);
-        });
-    
-        return () => {
-          if (unsubscribeLiveSale) unsubscribeLiveSale();
-      };
-  }, [id])
+    const currentLive = lives.find((live: any) => live.id === id)
+      setLiveSale(currentLive)
+    }, [id, lives])
 
   useEffect(() => {
     if (!liveSale?.products || !Array.isArray(liveSale?.products)) return;
@@ -198,7 +193,7 @@ export default function LiveSaleDetailPage() {
         status: "pending",
         liveId: id // if part of a live
       }
-      await setToSubCollection(data.depositId, newTransaction, "users", liveSale.creatorId, "transactions")
+      await setToSubCollection(data.depositId, newTransaction, "users", userInfo.uid, "transactions")
       if (!res.ok) throw new Error(data.error || "Unknown error");
       if (paymentMethod === "other" && data?.redirectUrl) {
         window.location.href = data.redirectUrl; // ✅ works for external links
