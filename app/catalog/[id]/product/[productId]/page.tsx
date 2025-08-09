@@ -7,16 +7,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useCart } from "@/contexts/cart-context"
 import { ArrowLeft, ShoppingCart, Plus, Minus, Star, Share2, Heart, Shield, Truck, RotateCcw } from "lucide-react"
 import type { Catalog, CatalogProduct } from "@/types/catalog"
+import { getASubDocument } from "@/functions/get-a-document"
+import { PaymentDialog } from "@/components/payment-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { setToSubCollection } from "@/functions/add-to-a-sub-collection"
 
 export default function ProductPage() {
   const params = useParams()
   const router = useRouter()
   const catalogId = params.id as string
   const productId = params.productId as string
-  const { addToCart, getCartItemCount } = useCart()
 
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [product, setProduct] = useState<CatalogProduct | null>(null)
@@ -25,59 +27,40 @@ export default function ProductPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [showShareSuccess, setShowShareSuccess] = useState(false)
+  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false)
+  const [productToBuy, setProductToBuy] = useState<any>({})
+  const [paymentState, setPaymentState] = useState("selecting")
+  const { toast } = useToast()
+  const [depositId, setDepositId] = useState("")
 
   // Mock data - replace with actual API call
   useEffect(() => {
     const fetchProduct = async () => {
-      setIsLoading(true)
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const mockCatalog: Catalog = {
-        id: catalogId,
-        userId: "user123",
-        userName: "John's Electronics Store",
-        userAvatar: "/placeholder-user.jpg",
-        title: "Premium Electronics & Gadgets",
-        description: "Your one-stop shop for the latest electronics, gadgets, and accessories.",
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        products: [
-          {
-            id: "1",
-            name: "iPhone 15 Pro",
-            description:
-              "The iPhone 15 Pro features a titanium design, advanced camera system with 5x telephoto zoom, and the powerful A17 Pro chip. Perfect for photography enthusiasts and professionals who demand the best mobile technology. Includes 128GB storage, Face ID, and wireless charging capabilities.",
-            price: 999,
-            images: ["/placeholder.jpg", "/placeholder.jpg", "/placeholder.jpg"],
-            category: "Smartphones",
-            inStock: true,
-            quantity: 10,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ],
-      }
-
-      const foundProduct = mockCatalog.products.find((p) => p.id === productId)
-      setCatalog(mockCatalog)
-      setProduct(foundProduct || null)
-      setIsLoading(false)
+        setIsLoading(true)
+        // const unsubscribeUser = getADocument(catalogId, "users", (data) => {
+        //     setCatalogData(data);
+        // });
+        const unsubscribeProduct = getASubDocument(catalogId, "products", productId, setProduct)
+        setIsLoading(false)
+        return () => {
+            // Safe to call even if undefined due to nullish coalescing
+            // if (unsubscribeUser) unsubscribeUser();
+            if (unsubscribeProduct) unsubscribeProduct();
+        };
     }
-
+  
     fetchProduct()
-  }, [catalogId, productId])
+  }, [catalogId])
 
   const handleAddToCart = () => {
     if (product) {
-      addToCart(product, quantity)
-      // Show success animation or toast
+
+        // Show success animation or toast
     }
   }
 
   const handleQuantityChange = (newQuantity: number) => {
-    if (newQuantity >= 1 && newQuantity <= (product?.quantity || 1)) {
+    if (newQuantity >= 1 && newQuantity <= (product?.inStock || 1)) {
       setQuantity(newQuantity)
     }
   }
@@ -101,6 +84,80 @@ export default function ProductPage() {
     }
   }
 
+  const handleBuyNow = () => {
+      setProductToBuy(product)
+      setShowSelectPaymentNumber(true)
+    }
+  
+    const handleOnPay = async (paymentMethod: string) => {
+      // let number = {} as any
+      // if(paymentMethod !== "other"){
+      //   number = userInfo?.paymentMethods.find((method: any) => method.number === paymentMethod)
+      // }
+      // const bodyWithNumber = JSON.stringify({
+      //   amount: productToBuy.price,
+      //   phoneNumber: number.number,
+      //   provider: number.netword,
+      //   currentUrl: "",
+      //   product: productToBuy.name
+      // })
+      if(product && product.creatorId) return
+      const bodyWithoutNumber = JSON.stringify({
+        amount: 1,
+        currentUrl: "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
+        product: productToBuy.name
+      })
+      try {
+        const res = await fetch("/api/pawapay/deposits", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: bodyWithoutNumber
+        });
+  
+        const data = await res.json();
+        setDepositId(data.depositId)
+        const newTransaction = {
+          type: "purchase",
+          buyerId: "userInfo.uid",
+          sellerId: productToBuy.creatorId,
+          productId: productToBuy.id,
+          productName: productToBuy.name,
+          counterpartyId: productToBuy.creatorId,
+          amount: productToBuy.price,
+          paymentMethod: "mobile money",
+          status: "pending",
+        }
+        await setToSubCollection(data.depositId, newTransaction, "users", productToBuy.creatorId, "transactions")
+        if (!res.ok) throw new Error(data.error || "Unknown error");
+        if (paymentMethod === "other" && data?.redirectUrl) {
+          window.location.href = data.redirectUrl; // ✅ works for external links
+        }
+        // setDepositId(data.depositId);
+        // await updateDocument("deliveries", deliveryId, {
+        //   transactionId: data.depositId,
+        // });
+        // console.log(data.depositId)
+        toast({
+          title: "Payment initiated",
+          description: "Please complete the payment on your mobile device.",
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Payment failed",
+          description: (error as Error).message,
+        });
+      }
+  
+    }
+
+    const handleCancelPaymentDialog = () => {
+      setPaymentState("selecting")
+      setShowSelectPaymentNumber(false)
+    }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -115,7 +172,7 @@ export default function ProductPage() {
     )
   }
 
-  if (!product || !catalog) {
+  if (!product) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -156,12 +213,12 @@ export default function ProductPage() {
               </Button>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
-                  <AvatarImage src={catalog.userAvatar || "/placeholder.svg"} alt={catalog.userName} />
+                  <AvatarImage src={product.creatorName || "/placeholder.svg"} alt={product.creatorName} />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                    {catalog.userName.charAt(0)}
+                    {product.creatorName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm text-gray-600 font-medium">{catalog.userName}</span>
+                <span className="text-sm text-gray-600 font-medium">{product.creatorName}</span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -185,9 +242,9 @@ export default function ProductPage() {
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />
                 Cart
-                {getCartItemCount() > 0 && (
+                {2 > 0 && (
                   <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-500 animate-pulse">
-                    {getCartItemCount()}
+                    2
                   </Badge>
                 )}
               </Button>
@@ -203,7 +260,7 @@ export default function ProductPage() {
           <div className="space-y-6">
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-xl">
               <img
-                src={product.images[selectedImage] || "/placeholder.jpg"}
+                src={product?.image?.[selectedImage] || "/placeholder.jpg"}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
@@ -218,9 +275,9 @@ export default function ProductPage() {
                 />
               </button>
             </div>
-            {product.images.length > 1 && (
+            {Array.isArray(product?.images) && product.images.length > 1 && (
               <div className="flex space-x-3 overflow-x-auto pb-2">
-                {product.images.map((image, index) => (
+                {product?.images?.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -253,11 +310,11 @@ export default function ProductPage() {
 
             <div className="flex items-center space-x-6">
               <span className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                ${product.price}
+                XAF{product.price}
               </span>
               {product.inStock ? (
                 <Badge className="bg-green-100 text-green-800 border-green-200 px-3 py-1 rounded-full">
-                  ✓ In Stock ({product.quantity} available)
+                  ✓ In Stock ({product.inStock} available)
                 </Badge>
               ) : (
                 <Badge variant="destructive" className="px-3 py-1 rounded-full">
@@ -304,13 +361,13 @@ export default function ProductPage() {
                           onChange={(e) => handleQuantityChange(Number.parseInt(e.target.value) || 1)}
                           className="w-24 text-center text-lg font-semibold h-12 rounded-xl border-2 focus:border-blue-500"
                           min="1"
-                          max={product.quantity}
+                          max={product.inStock}
                         />
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleQuantityChange(quantity + 1)}
-                          disabled={quantity >= product.quantity}
+                          disabled={quantity >= product.inStock}
                           className="h-12 w-12 rounded-xl border-2 hover:bg-blue-50 hover:border-blue-300"
                         >
                           <Plus className="h-4 w-4" />
@@ -321,17 +378,26 @@ export default function ProductPage() {
                     <div className="flex items-center justify-between text-2xl font-bold border-t pt-6">
                       <span className="text-gray-700">Total:</span>
                       <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        ${(product.price * quantity).toFixed(2)}
+                        XAF{(product.price * quantity).toFixed(2)}
                       </span>
                     </div>
 
-                    <Button
-                      onClick={handleAddToCart}
-                      className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                    >
-                      <ShoppingCart className="h-5 w-5 mr-3" />
-                      Add to Cart
-                    </Button>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={handleBuyNow}
+                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                      >
+                        Buy Now
+                      </Button>
+
+                      <Button
+                        onClick={handleAddToCart}
+                        className="w-full h-14 text-lg font-semibold bg-white text-gray-900 border border-gray-300 rounded-xl shadow hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                      >
+                        <ShoppingCart className="h-5 w-5 mr-3" />
+                        Add to Cart
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -343,13 +409,13 @@ export default function ProductPage() {
                 <h3 className="font-bold text-xl mb-6 text-gray-900">Seller Information</h3>
                 <div className="flex items-start space-x-4 mb-6">
                   <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
-                    <AvatarImage src={catalog.userAvatar || "/placeholder.svg"} alt={catalog.userName} />
+                    <AvatarImage src={product.creatorName || "/placeholder.svg"} alt={product.creatorName} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">
-                      {catalog.userName.charAt(0)}
+                      {product.creatorName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-bold text-lg text-gray-900">{catalog.userName}</p>
+                    <p className="font-bold text-lg text-gray-900">{product.creatorName}</p>
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="flex items-center space-x-1">
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -358,7 +424,7 @@ export default function ProductPage() {
                       </div>
                       <span className="text-sm text-gray-600 font-medium">4.8 (124 reviews)</span>
                     </div>
-                    <p className="text-gray-600 leading-relaxed">{catalog.description}</p>
+                    {/* <p className="text-gray-600 leading-relaxed">{catalog.description}</p> */}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -376,7 +442,7 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
-
+      <PaymentDialog open={showSelectPaymentNumber} handleCancel={handleCancelPaymentDialog} paymentState={paymentState} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
       <style jsx>{`
         .animation-delay-150 {
           animation-delay: 150ms;

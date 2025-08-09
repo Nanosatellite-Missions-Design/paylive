@@ -11,29 +11,28 @@ import { ShoppingCart, Search, Star, MapPin, Clock, Heart } from "lucide-react"
 import type { Catalog, CatalogProduct } from "@/types/catalog"
 import { getADocument } from "@/functions/get-a-document"
 import { listenToSubCollection } from "@/functions/get-a-sub-collection"
+import { useCart } from "@/contexts/cart-context"
 
 export default function CatalogPage() {
   const params = useParams()
   const router = useRouter()
   const catalogId = params.id as string
-
-  const [catalog, setCatalogData] = useState<Catalog | null>(null)
-  const [products, setProducts] = useState<CatalogProduct[]>([])
   const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const { addToCart, catalog, products, setProducts, setCatalog } = useCart()
 
   // Mock data - replace with actual API call
   useEffect(() => {
     const fetchCatalog = async () => {
         setIsLoading(true)
         const unsubscribeUser = getADocument(catalogId, "users", (data) => {
-            setCatalogData(data);
+            setCatalog(data);
         });
         const unsubscribeProducts = listenToSubCollection("users", catalogId, "products", setProducts) ?? (() => {});
-        setIsLoading(false)
+        setIsLoading(false) 
         return () => {
             // Safe to call even if undefined due to nullish coalescing
             if (unsubscribeUser) unsubscribeUser();
@@ -73,7 +72,8 @@ export default function CatalogPage() {
     }, [] as string[]) || []
 
   const handleAddToCart = (product: CatalogProduct) => {
-    // addToCart(product, 1)
+    console.log("testing")
+    addToCart(product, 1)
   }
 
   const handleProductClick = (productId: string) => {

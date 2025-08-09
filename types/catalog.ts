@@ -6,7 +6,9 @@ export interface CatalogProduct {
   image?: string[]
   images?: string[]
   category: string
-  inStock: boolean
+  inStock: number
+  creatorName: string
+  creatorId: string
   createdAt: Date
   updatedAt: Date
 }

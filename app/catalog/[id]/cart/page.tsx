@@ -186,7 +186,7 @@ export default function CartPage() {
                     }}
                   >
                     <img
-                      src={item.product.images[0] || "/placeholder.jpg"}
+                      src={item?.product?.images?.[0] || "/placeholder.jpg"}
                       alt={item.product.name}
                       className="w-24 h-24 object-cover rounded-xl shadow-md"
                     />
