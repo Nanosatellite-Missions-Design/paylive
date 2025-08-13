@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!isAuthRoute && referrer) {
         router.back();
       } else {
-        router.push("/dashboard");
+        router.push("/dashboard/live");
       }
 
     } catch (error) {
