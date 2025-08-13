@@ -10,20 +10,23 @@ const getRealTimeQuery = (
   if (!tableName || !field || value === undefined) {
     return () => {}; // Always return a function to avoid errors
   }
-
+  console.log({tableName, field, value})
   // Query for single value match
   const q = query(
     collection(db, tableName),
-    where(field, "array-contains", value)
+    where(field, "==", value)
   );
 
   // Listen for changes
   const unsubscribe = onSnapshot(q, (snapshot) => {
     if (!snapshot.empty) {
       // Map through the documents and get their data
+      console.log("yeahh")
       const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      console.log(docs)
       callback(docs); // Pass the data to the callback function
     } else {
+      console.log("Noooo")
       callback([]); // Return an empty array if no documents exist
     }
   });

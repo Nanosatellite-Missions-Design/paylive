@@ -19,7 +19,7 @@ export const listenToSubCollection = (
           id: doc.id,
           ...doc.data(),
         }));
-        console.log(items)
+        // console.log(items)
         callback(items); // Pass the updated data to the callback
       } else {
         callback([]); // Pass an empty array if no data exists

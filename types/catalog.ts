@@ -14,15 +14,23 @@ export interface CatalogProduct {
 }
 
 export interface Catalog {
+  id: string
   uid: string
   name: string
+  isActive: string
+  productCount: number
+  views: number
+  creatorName: string
+  creatorId: string
+  creatorPhone: number
   userAvatar?: string
-  title?: string
+  title: string
   phone: number
-  description?: string
+  description: string
   createdAt: Date
   updatedAt: Date
   products: CatalogProduct[]
+  selectedProducts: CatalogProduct[]
 }
 
 export interface CartItem {

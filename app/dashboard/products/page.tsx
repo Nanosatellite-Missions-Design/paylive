@@ -370,7 +370,7 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
-                  ierd="description"
+                  id="description"
                   placeholder="Enter product description"
                   onChange={(e) => setNewProductDescription(e.target.value)}
                 />

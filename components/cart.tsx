@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCart } from "@/contexts/cart-context"
 import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle, Phone, Mail, MapPin, MessageSquare } from "lucide-react"
-
+import { setToCollection } from "@/functions/add-to-collection"
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
+import { toast } from "@/hooks/use-toast"
+import Loader from "@/components/loader"
 interface FloatingCartProps {
   catalogId: string
 }
@@ -23,10 +26,108 @@ export default function FloatingCart() {
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
-    email: "",
     address: "",
     notes: "",
   })
+  const [depositId, setDepositId] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const savedDepositId = localStorage.getItem("depositId");
+    if (savedDepositId) {
+      setDepositId(savedDepositId);
+    }
+  }, []);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (depositId) {
+      intervalId = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/pawapay/deposits?depositId=${depositId}`);
+          const data = await response.json();
+          const status = data[0]?.status || data.status;
+          console.log(status)
+          console.log(depositId)
+          if (status === "COMPLETED") {
+            clearInterval(intervalId);
+
+            // Retrieve form data after payment
+            const savedFormData = localStorage.getItem("cart");
+            if (savedFormData) {
+              const parsedFormData = JSON.parse(savedFormData);
+
+              try {
+
+                const data = await response.json();
+                console.log(data)
+                console.log(customerInfo)
+
+
+                await setToCollection("users", data.userId, {
+                  uid: data.userId,
+                  idNumber: `NMD-ASSO-${nanoid(6)}`,
+                  ...parsedFormData
+                });
+
+                toast({
+                  title: "Payment Completed",
+                  description: "Your order has been has been completed.",
+                });
+
+                // Reset form and close dialog
+                setCustomerInfo({
+                  name: "",
+                  phone: "",
+                  address: "",
+                  notes: "",
+                });
+
+              // Clear localStorage
+              localStorage.removeItem("depositId");
+              localStorage.removeItem("cart");
+              setDepositId("")
+
+              console.log(parsedFormData.email)
+
+              setLoading(false)
+              } catch (error) {
+                toast({
+                  title: "Error",
+                  description: "An error has occured.",
+                });
+              }
+              // Save the transaction here
+              // await saveTransaction(depositId);
+
+            }
+
+            toast({
+              title: "Payment Completed",
+              description: "Your order has been has been completed.",
+            });
+          }
+          else if(status === undefined){
+            toast({
+              title: "Payment Error",
+              description: "The payment has failed.",
+              variant: "destructive"
+            });
+            localStorage.removeItem("depositId");
+            setDepositId("")
+            localStorage.removeItem("pendingFormData");
+            setLoading(false)
+          }
+        } catch (error) {
+          console.error("Payment verification failed:", error);
+          clearInterval(intervalId);
+        }
+      }, 10000);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [depositId]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -64,7 +165,6 @@ export default function FloatingCart() {
     setCustomerInfo({
       name: "",
       phone: "",
-      email: "",
       address: "",
       notes: "",
     })
@@ -86,6 +186,7 @@ export default function FloatingCart() {
 
   return (
     <>
+    {loading && <Loader />}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
@@ -182,24 +283,6 @@ export default function FloatingCart() {
                       onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                       placeholder="Enter your phone number"
                       required
-                      className="h-12 rounded-xl border-2 focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <Label
-                      htmlFor="checkout-email"
-                      className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
-                    >
-                      <Mail className="h-4 w-4" />
-                      <span>Email (Optional)</span>
-                    </Label>
-                    <Input
-                      id="checkout-email"
-                      type="email"
-                      value={customerInfo.email}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
-                      placeholder="Enter your email"
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
                   </div>
@@ -388,3 +471,7 @@ export default function FloatingCart() {
     </>
   )
 }
+function nanoid(arg0: number) {
+  throw new Error("Function not implemented.")
+}
+

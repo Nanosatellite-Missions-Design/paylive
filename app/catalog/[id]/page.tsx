@@ -25,23 +25,7 @@ export default function CatalogPage() {
   const { addToCart, catalog, products, setProducts, setCatalog } = useCart()
 
   // Mock data - replace with actual API call
-  useEffect(() => {
-    const fetchCatalog = async () => {
-        setIsLoading(true)
-        const unsubscribeUser = getADocument(catalogId, "users", (data) => {
-            setCatalog(data);
-        });
-        const unsubscribeProducts = listenToSubCollection("users", catalogId, "products", setProducts) ?? (() => {});
-        setIsLoading(false) 
-        return () => {
-            // Safe to call even if undefined due to nullish coalescing
-            if (unsubscribeUser) unsubscribeUser();
-            unsubscribeProducts();
-        };
-    }
-
-    fetchCatalog()
-  }, [catalogId])
+  
 
   // Filter products based on search and category
   useEffect(() => {
