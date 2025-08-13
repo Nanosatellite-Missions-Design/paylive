@@ -9,7 +9,7 @@ export interface FinancialStats {
 
 export interface WithdrawRequest {
   amount: number
-  method: "bank" | "paypal" | "stripe"
+  method: "orange" | "mtn"
   accountDetails?: string
 }
 

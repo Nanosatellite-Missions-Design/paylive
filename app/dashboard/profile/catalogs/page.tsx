@@ -71,6 +71,7 @@ interface CatalogType {
   isActive: boolean
   creatorId: string
   creatorName: string
+  creatorPhone: number
   productCount: number
   createdAt: Date
   views: number
@@ -124,6 +125,7 @@ export default function CatalogsPage() {
       title: newCatalog.title,
       description: newCatalog.description,
       creatorId: userInfo.uid,
+      creatorPhone: userInfo.phone,
       creatorName: userInfo.name,
       isActive: true,
       productCount: newCatalog.selectedProducts.length,

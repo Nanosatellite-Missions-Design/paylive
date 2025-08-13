@@ -45,7 +45,7 @@ export default function CatalogPage() {
     }
 
     setFilteredProducts(filtered)
-    }, [catalog, searchQuery, selectedCategory])
+  }, [catalog, searchQuery, selectedCategory])
 
   const categories =
     products.reduce((cats, product) => {
@@ -74,7 +74,7 @@ export default function CatalogPage() {
     setFavorites(newFavorites)
   }
 
-  if (isLoading) {
+  if (!catalog) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -113,15 +113,15 @@ export default function CatalogPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="flex items-start space-x-6">
               <Avatar className="h-20 w-20 ring-4 ring-white shadow-lg">
-                <AvatarImage src={catalog.userAvatar || "/placeholder.svg"} alt={catalog.name} />
+                <AvatarImage src={catalog.userAvatar || "/placeholder.svg"} alt={catalog.title} />
                 <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                  {catalog.name.charAt(0)}
+                  {catalog.creatorName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">{catalog.title}</h1>
                 <div className="flex items-center space-x-4 mb-3">
-                  <p className="text-lg text-gray-700 font-medium">{catalog.name}</p>
+                  <p className="text-lg text-gray-700 font-medium">{catalog.creatorName}</p>
                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm text-gray-600">4.8 (124 reviews)</span>
@@ -131,7 +131,7 @@ export default function CatalogPage() {
                 <div className="flex items-center space-x-6 mt-4 text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-4 w-4" />
-                    <span>{catalog.phone}</span>
+                    <span>{catalog.creatorPhone}</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Clock className="h-4 w-4" />
@@ -140,7 +140,7 @@ export default function CatalogPage() {
                 </div>
               </div>
             </div>
-            <div className="flex-shrink-0">
+            {/* <div className="flex-shrink-0">
               <Button
                 onClick={() => router.push(`/catalog/${catalogId}/cart`)}
                 className="relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
@@ -153,7 +153,7 @@ export default function CatalogPage() {
                   </Badge>
                 )}
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

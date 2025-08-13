@@ -1,125 +1,280 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Clock, TrendingUp, Star } from "lucide-react"
+import { Video, ShoppingCart, Users, Zap, Star, Play, CheckCircle, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/contexts/auth-context"
-import { getTimeAgo } from "@/functions/get-time-ago"
-export default function HomePage() {
-  const { lives } = useAuth()
+import LandingNavbar from "@/components/landing-navbar"
 
+export default function LandingPage() {
   return (
-    <div>
-      <div className="container max-w-lg mx-auto px-4 py-6">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold">Welcome to PayLive</h1>
-          <p className="text-gray-500">Discover live sales and auctions from your favorite creators</p>
-        </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <LandingNavbar />
 
-        <Tabs defaultValue="live" className="mb-6">
-          <TabsList className="w-full">
-            <TabsTrigger value="live" className="flex-1">
-              Live Now
-            </TabsTrigger>
-            <TabsTrigger value="trending" className="flex-1">
-              Trending
-            </TabsTrigger>
-            <TabsTrigger value="featured" className="flex-1">
-              Featured
-            </TabsTrigger>
-          </TabsList>
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <div className="max-w-4xl mx-auto">
+          <Badge className="mb-6 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200">
+            🚀 The Future of Live Commerce
+          </Badge>
 
-          <TabsContent value="live" className="space-y-4">
-            {lives?.map((live: any) => (
-                <Link href={`/live/${live.id}`}>
-                  <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="relative">
-                      <img
-                        src={live.image}
-                        alt="Live Sale"
-                        className="w-full h-48 object-cover"
-                      />
-                      <Badge className="absolute top-2 right-2 bg-red-500">Live Now</Badge>
-                      <Badge className="absolute bottom-2 left-2 bg-black/70">
-                        <Users className="h-3 w-3 mr-1" />
-                        {live.viewers}
-                      </Badge>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold">{live.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">{live.creatorName}</p>
-                      <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
-                        <span>{live.products.length}</span>
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          Started {getTimeAgo(live.startedAt)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-            ))}
-          </TabsContent>
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            Sell Live,
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              {" "}
+              Earn More
+            </span>
+          </h1>
 
-          <TabsContent value="trending" className="space-y-4">
-            <Card className="overflow-hidden">
-              <div className="relative">
-                <img src="/placeholder.svg?height=200&width=400" alt="Trending" className="w-full h-48 object-cover" />
-                <Badge className="absolute top-2 right-2 bg-orange-500">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  Trending
-                </Badge>
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-semibold">Tech Gadgets Flash Sale</h3>
-                <p className="text-sm text-gray-500 mt-1">Mike Johnson • Electronics</p>
-                <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
-                  <span>12 products</span>
-                  <span>Starts in 2 hours</span>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Transform your products into engaging live experiences. Connect with customers in real-time, showcase your
+            products, and boost your sales with PayLive's powerful live commerce platform.
+          </p>
 
-          <TabsContent value="featured" className="space-y-4">
-            <Card className="overflow-hidden">
-              <div className="relative">
-                <img src="/placeholder.svg?height=200&width=400" alt="Featured" className="w-full h-48 object-cover" />
-                <Badge className="absolute top-2 right-2 bg-yellow-500">
-                  <Star className="h-3 w-3 mr-1" />
-                  Featured
-                </Badge>
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-semibold">Home Decor Showcase</h3>
-                <p className="text-sm text-gray-500 mt-1">Sarah Wilson • Home & Garden</p>
-                <div className="flex items-center justify-between mt-2 text-sm text-gray-500">
-                  <span>15 products</span>
-                  <span>Tomorrow at 6 PM</span>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <Link href="/auth/signup">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-3"
+              >
+                <Play className="mr-2 h-5 w-5" />
+                Start Selling Live
+              </Button>
+            </Link>
+            <Link href="/catalog/demo">
+              <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-2 bg-transparent">
+                View Demo Catalog
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/live">
-            <Button variant="outline" className="w-full h-20 flex flex-col">
-              <Users className="h-6 w-6 mb-2" />
-              <span>Live Sales</span>
-            </Button>
-          </Link>
-          <Link href="/auctions">
-            <Button variant="outline" className="w-full h-20 flex flex-col">
-              <Clock className="h-6 w-6 mb-2" />
-              <span>Auctions</span>
-            </Button>
-          </Link>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600 mb-2">10K+</div>
+              <div className="text-gray-600">Active Sellers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600 mb-2">1M+</div>
+              <div className="text-gray-600">Products Sold</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">$50M+</div>
+              <div className="text-gray-600">Revenue Generated</div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">Everything You Need to Succeed</h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Powerful tools designed to help you create engaging live experiences and grow your business
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Live Streaming */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mb-4">
+                <Video className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Live Streaming</h3>
+              <p className="text-gray-600">
+                Stream live to showcase your products in real-time. Engage with customers through interactive video
+                experiences.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Product Catalogs */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center mb-4">
+                <ShoppingCart className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Smart Catalogs</h3>
+              <p className="text-gray-600">
+                Create beautiful product catalogs that customers can browse and purchase from during your live streams.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Real-time Chat */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-green-50 to-green-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center mb-4">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Live Chat</h3>
+              <p className="text-gray-600">
+                Interact with your audience in real-time. Answer questions, build relationships, and drive sales through
+                conversation.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Instant Payments */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-yellow-50 to-yellow-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-lg flex items-center justify-center mb-4">
+                <Zap className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Instant Payments</h3>
+              <p className="text-gray-600">
+                Secure, fast payment processing. Get paid instantly when customers make purchases during your live
+                streams.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Analytics */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-red-50 to-red-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-red-700 rounded-lg flex items-center justify-center mb-4">
+                <Star className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Analytics</h3>
+              <p className="text-gray-600">
+                Track your performance with detailed analytics. Understand your audience and optimize your sales
+                strategy.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Mobile Optimized */}
+          <Card className="p-6 hover:shadow-lg transition-shadow border-0 bg-gradient-to-br from-indigo-50 to-indigo-100">
+            <CardContent className="p-0">
+              <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-lg flex items-center justify-center mb-4">
+                <CheckCircle className="h-6 w-6 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Mobile First</h3>
+              <p className="text-gray-600">
+                Optimized for mobile devices. Your customers can watch, chat, and buy seamlessly from any device.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white">
+          <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Business?</h2>
+          <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+            Join thousands of sellers who are already using PayLive to grow their business through live commerce.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/auth/signup">
+              <Button
+                size="lg"
+                variant="secondary"
+                className="text-lg px-8 py-3 bg-white text-blue-600 hover:bg-gray-100"
+              >
+                Get Started Free
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg px-8 py-3 border-white text-white hover:bg-white/10 bg-transparent"
+              >
+                Contact Sales
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-12">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">PL</span>
+                </div>
+                <span className="text-xl font-bold">PayLive</span>
+              </div>
+              <p className="text-gray-400">The future of live commerce. Sell live, earn more.</p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Product</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>
+                  <Link href="/features" className="hover:text-white">
+                    Features
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pricing" className="hover:text-white">
+                    Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/demo" className="hover:text-white">
+                    Demo
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Support</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>
+                  <Link href="/help" className="hover:text-white">
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-white">
+                    Contact
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/docs" className="hover:text-white">
+                    Documentation
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Company</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>
+                  <Link href="/about" className="hover:text-white">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/careers" className="hover:text-white">
+                    Careers
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="hover:text-white">
+                    Privacy
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 PayLive. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

@@ -24,12 +24,16 @@ import {
   CreditCard,
   DollarSign,
   Loader2,
+  Phone,
   RefreshCw,
+  User,
   Wallet,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { WithdrawRequest } from "@/types/financial"
+import { useAuth } from "@/contexts/auth-context"
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
 
 interface WithdrawDialogProps {
   currentBalance: number
@@ -47,7 +51,7 @@ export default function WithdrawDialog({
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<"amount" | "method" | "confirm" | "success">("amount")
   const [amount, setAmount] = useState("")
-  const [method, setMethod] = useState<WithdrawRequest["method"]>("bank")
+  const [method, setMethod] = useState<WithdrawRequest["method"]>("orange")
   const [accountDetails, setAccountDetails] = useState("")
   const [bankName, setBankName] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
@@ -56,17 +60,17 @@ export default function WithdrawDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null)
-
+  const { user } = useAuth()
   // Constants
   const minWithdraw = 20
   const maxWithdraw = currentBalance
-  const withdrawalFee = method === "bank" ? 3.5 : method === "paypal" ? 2.5 : 2.0
+  const withdrawalFee = method === "orange" ? 3.5 : 2.0
   const netAmount = Math.max(0, Number.parseFloat(amount || "0") - withdrawalFee)
-  const estimatedDays = method === "bank" ? "2-3 business days" : method === "paypal" ? "1-2 business days" : "24 hours"
+  const estimatedDays = "24 hours"
 
   const resetForm = () => {
     setAmount("")
-    setMethod("bank")
+    setMethod("orange")
     setAccountDetails("")
     setBankName("")
     setAccountNumber("")
@@ -97,19 +101,8 @@ export default function WithdrawDialog({
 
   const handleMethodSubmit = () => {
     let isValid = true
-
-    if (method === "bank") {
-      if (!bankName.trim() || !accountNumber.trim() || !routingNumber.trim()) {
-        setError("Please fill in all bank details")
-        isValid = false
-      }
-    } else if (method === "paypal") {
-      if (!paypalEmail.trim() || !paypalEmail.includes("@")) {
-        setError("Please enter a valid PayPal email")
-        isValid = false
-      }
-    } else if (!accountDetails.trim()) {
-      setError("Please enter your account details")
+    if (!accountDetails) {
+      setError("Please fill in your account number")
       isValid = false
     }
 
@@ -122,27 +115,37 @@ export default function WithdrawDialog({
   const handleConfirmWithdrawal = async () => {
     setIsLoading(true)
     setError(null)
+    if(!user) return
+
+    const body = JSON.stringify({
+      amount: 10,
+      phoneNumber: accountDetails,
+      provider: method,
+      customerId: user.uid
+    });
 
     try {
-      const withdrawAmount = Number.parseFloat(amount)
-      let details = ""
+      const res = await fetch("/api/pawapay/withdrawals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
 
-      if (method === "bank") {
-        details = `Bank: ${bankName}, Account: XAF{accountNumber}, Routing: XAF{routingNumber}`
-      } else if (method === "paypal") {
-        details = paypalEmail
-      } else {
-        details = accountDetails
+      const data = await res.json();
+      console.log(data)
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+
+      const newTransaction = {
+        amount: amount,
+        paymentMethod: method,
+        status: "completed",
+        type: "withdrawal",
+        phoneNumber: accountDetails
       }
 
-      await onWithdraw({
-        amount: withdrawAmount,
-        method,
-        accountDetails: details,
-      })
+      await addToSubCollection(newTransaction, "users", user.uid, "transactions")
 
-      // Generate a fake withdrawal ID
-      setWithdrawalId(`WD-${Math.floor(Math.random() * 1000000)}-${Date.now().toString().slice(-4)}`)
+
       setStep("success")
     } catch (error) {
       console.error("Withdrawal failed:", error)
@@ -159,64 +162,15 @@ export default function WithdrawDialog({
 
   const getMethodDetails = () => {
     switch (method) {
-      case "bank":
-        return (
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label htmlFor="bank-name">Bank Name</Label>
-              <Input
-                id="bank-name"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                placeholder="Enter your bank name"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="account-number">Account Number</Label>
-              <Input
-                id="account-number"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                placeholder="Enter your account number"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="routing-number">Routing Number</Label>
-              <Input
-                id="routing-number"
-                value={routingNumber}
-                onChange={(e) => setRoutingNumber(e.target.value)}
-                placeholder="Enter your routing number"
-                required
-              />
-            </div>
-          </div>
-        )
-      case "paypal":
-        return (
-          <div className="space-y-2">
-            <Label htmlFor="paypal-email">PayPal Email</Label>
-            <Input
-              id="paypal-email"
-              type="email"
-              value={paypalEmail}
-              onChange={(e) => setPaypalEmail(e.target.value)}
-              placeholder="Enter your PayPal email"
-              required
-            />
-          </div>
-        )
       default:
         return (
           <div className="space-y-2">
-            <Label htmlFor="account-details">Account Details</Label>
+            <Label htmlFor="account-details">Account Phone Number</Label>
             <Input
-              id="account-details"
+              id="phoneNumber"
               value={accountDetails}
               onChange={(e) => setAccountDetails(e.target.value)}
-              placeholder="Enter your account details"
+              placeholder="Enter your account number"
               required
             />
           </div>
@@ -245,7 +199,7 @@ export default function WithdrawDialog({
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">Available Balance</span>
-                <span className="text-lg font-semibold">XAF{currentBalance.toFixed(2)}</span>
+                <span className="text-lg font-semibold">XAF{currentBalance}</span>
               </div>
 
               <div className="space-y-2">
@@ -267,7 +221,7 @@ export default function WithdrawDialog({
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>Min: XAF{minWithdraw}</span>
-                  <span>Max: XAF{maxWithdraw.toFixed(2)}</span>
+                  <span>Max: XAF{maxWithdraw}</span>
                 </div>
               </div>
 
@@ -275,16 +229,16 @@ export default function WithdrawDialog({
                 <div className="p-3 border rounded-md space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Withdrawal Amount</span>
-                    <span>XAF{Number.parseFloat(amount).toFixed(2)}</span>
+                    <span>XAF{Number.parseFloat(amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>Processing Fee</span>
-                    <span>-XAF{withdrawalFee.toFixed(2)}</span>
+                    <span>-XAF{withdrawalFee}</span>
                   </div>
                   <hr />
                   <div className="flex justify-between font-medium">
                     <span>You'll Receive</span>
-                    <span>XAF{netAmount.toFixed(2)}</span>
+                    <span>XAF{netAmount}</span>
                   </div>
                 </div>
               )}
@@ -322,39 +276,28 @@ export default function WithdrawDialog({
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">Withdrawal Amount</span>
-                <span className="text-lg font-semibold">XAF{Number.parseFloat(amount).toFixed(2)}</span>
+                <span className="text-lg font-semibold">XAF{Number.parseFloat(amount)}</span>
               </div>
 
               <RadioGroup value={method} onValueChange={(value: WithdrawRequest["method"]) => setMethod(value)}>
                 <div className="flex items-center space-x-2 border rounded-md p-3">
-                  <RadioGroupItem value="bank" id="bank" />
-                  <Label htmlFor="bank" className="flex-1 flex items-center cursor-pointer">
-                    <BanknoteIcon className="h-4 w-4 mr-2" />
+                  <RadioGroupItem value="orange" id="orange" />
+                  <Label htmlFor="orange" className="flex-1 flex items-center cursor-pointer">
+                    <Phone className="h-4 w-4 mr-2" />
                     <div>
-                      <div>Bank Transfer</div>
-                      <div className="text-xs text-gray-500">2-3 business days • XAF3.50 fee</div>
+                      <div>Orange Money</div>
+                      <div className="text-xs text-gray-500">5 Minutes</div>
                     </div>
                   </Label>
                 </div>
 
                 <div className="flex items-center space-x-2 border rounded-md p-3">
-                  <RadioGroupItem value="paypal" id="paypal" />
-                  <Label htmlFor="paypal" className="flex-1 flex items-center cursor-pointer">
-                    <CreditCard className="h-4 w-4 mr-2" />
+                  <RadioGroupItem value="mtn" id="mtn" />
+                  <Label htmlFor="mtn" className="flex-1 flex items-center cursor-pointer">
+                    <Phone className="h-4 w-4 mr-2" />
                     <div>
-                      <div>PayPal</div>
-                      <div className="text-xs text-gray-500">1-2 business days • XAF2.50 fee</div>
-                    </div>
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2 border rounded-md p-3">
-                  <RadioGroupItem value="stripe" id="stripe" />
-                  <Label htmlFor="stripe" className="flex-1 flex items-center cursor-pointer">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    <div>
-                      <div>Stripe</div>
-                      <div className="text-xs text-gray-500">24 hours • XAF2.00 fee</div>
+                      <div>MTN MOMO</div>
+                      <div className="text-xs text-gray-500">5 Minutes</div>
                     </div>
                   </Label>
                 </div>
@@ -395,15 +338,15 @@ export default function WithdrawDialog({
               <div className="space-y-3 p-4 border rounded-md">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount</span>
-                  <span className="font-medium">XAF{Number.parseFloat(amount).toFixed(2)}</span>
+                  <span className="font-medium">XAF{Number.parseFloat(amount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Fee</span>
-                  <span className="text-gray-600">-XAF{withdrawalFee.toFixed(2)}</span>
+                  <span className="text-gray-600">-XAF{withdrawalFee}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">You'll Receive</span>
-                  <span className="font-bold">XAF{netAmount.toFixed(2)}</span>
+                  <span className="font-bold">XAF{netAmount}</span>
                 </div>
                 <hr />
                 <div className="flex justify-between">
@@ -414,24 +357,10 @@ export default function WithdrawDialog({
                   <span className="text-gray-600">Estimated Arrival</span>
                   <span>{estimatedDays}</span>
                 </div>
-                {method === "bank" && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Bank</span>
-                      <span>{bankName}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Account</span>
-                      <span>****{accountNumber.slice(-4)}</span>
-                    </div>
-                  </>
-                )}
-                {method === "paypal" && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">PayPal Email</span>
-                    <span>{paypalEmail}</span>
+                    <span className="text-gray-600">Phone Number</span>
+                    <span>{accountDetails}</span>
                   </div>
-                )}
               </div>
 
               <Alert>
@@ -486,7 +415,7 @@ export default function WithdrawDialog({
               </div>
 
               <div>
-                <p className="text-xl font-semibold">XAF{netAmount.toFixed(2)}</p>
+                <p className="text-xl font-semibold">XAF{netAmount}</p>
                 <p className="text-sm text-gray-500">will be sent to your {method} account</p>
               </div>
 

@@ -24,7 +24,7 @@ import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { setToCollection } from "@/functions/add-to-collection";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useRouter } from "next/navigation";
-import { Catalog } from "@/types/catalog";
+import { Catalog, Order } from "@/types/catalog";
 import getRealTimeQuery from "@/functions/query-a-collection";
 
 interface AuthContextType {
@@ -34,6 +34,7 @@ interface AuthContextType {
   lives: any[];
   userProducts: any[];
   userCatalogs: Catalog[]
+  userOrders: Order[];
   userLives: any[];
   userTransactions: any[];
   transactions: any[];
@@ -56,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [lives, setLives] = useState<any[]>([]);
   const [userProducts, setUserProducts] = useState<any[]>([]);
   const [userCatalogs, setUserCatalogs] = useState<Catalog[]>([]);
+  const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [userLives, setUserLives] = useState<any[]>([]);
   const [userTransactions, setUserTransactions] = useState<any[]>([]);
   const [referrals, setReferrals] = useState<any[]>([]);
@@ -238,6 +240,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let unsubscribeUserProducts: () => void = () => {};
     let unsubscribeUserTransactions: () => void = () => {};
     let unsubscribeUserCatalogs: () => void = () => {};
+    let unsubscribeUserOrders: () => void = () => {};
 
     switch (userInfo.role) {
       case "admin":
@@ -266,6 +269,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user.uid,     // Value to match (must be inside an array in Firestore)
           setUserCatalogs
         );
+        unsubscribeUserCatalogs = getRealTimeQuery(
+          "orders",        // Firestore collection name
+          "sellerId",            // Field to check
+          user.uid,     // Value to match (must be inside an array in Firestore)
+          setUserOrders
+        );
         break;
     }
 
@@ -275,6 +284,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribeUserProducts();
       unsubscribeUserTransactions();
       unsubscribeUserCatalogs();
+      unsubscribeUserOrders();
     };
   }, [userInfo, user]);
 
@@ -297,6 +307,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         referralsEarnings,
         userProducts,
         userCatalogs,
+        userOrders,
         userLives,
         userTransactions,
         referrals,

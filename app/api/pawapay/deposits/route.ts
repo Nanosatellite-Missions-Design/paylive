@@ -3,58 +3,29 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, phoneNumber, currentUrl, product, provider } = await req.json();
+    const { amount, currentUrl, product } = await req.json();
+    console.log({amount, currentUrl, product})
 
     if (!amount) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
     const newDepositId = uuidv4();
-    let payload = {}
-    if(phoneNumber){
-        payload = {
-            depositId: newDepositId,
-            amount: amount,
-            currency: "XAF",
-            country: "CMR",
-            correspondent: provider === 'MTN' ? 'MTN_MOMO_CMR' : 'ORANGE_CMR',
-            payer: {
-                type: "MSISDN",
-                address: {
-                value: `237${phoneNumber}`
-                }
-            },
-            statementDescription: "Achat payLive",
-            customerTimestamp: new Date().toISOString(),
-            metadata: [
-                { fieldName: "service", fieldValue: "delivery-payment" }
-            ]
-        };
-    } else {
-        payload = {
-            depositId: newDepositId,
-            returnUrl: currentUrl,
-            customerMessage: `Achat payLive ${product}`.slice(0, 22),
-            amountDetails: {
-                amount: String(amount),
-                currency: "XAF"
-            },
-            country: "CMR",
-            language: "FR",
-            reason: `Achat ${product}`,
-            metadata: [
-                {
-                    orderId: `PAY-${newDepositId.slice(0, 8)}`
-                },
-                {
-                    product,
-                    isPII: false
-                }
-            ]
-        }
+
+    const payload = {
+        depositId: newDepositId,
+        returnUrl: currentUrl,
+        customerMessage: `Achat payLive ${product}`.slice(0, 22),
+        amountDetails: {
+            amount: String(amount),
+            currency: "XAF"
+        },
+        country: "CMR",
+        language: "FR",
+        reason: `Achat ${product}`
     }
-    
-    const response = await fetch(phoneNumber ? "https://api.pawapay.io/deposits" : "https://api.pawapay.io/v2/paymentpage", {
+
+    const response = await fetch("https://api.pawapay.io/v2/paymentpage", {
       method: 'POST',
       headers: {
         'Authorization': `Bearer eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjgxOSIsIm1hdiI6IjEiLCJleHAiOjIwNjIwNzc0NzgsImlhdCI6MTc0NjU0NDY3OCwicG0iOiJEQUYsUEFGIiwianRpIjoiMzkwMjA4Y2UtOTFhYy00Njg3LTlhMDItNmQxYjdlMDAwZWZkIn0.HCamwQRaGe3UkJD3RH5qVxs7pWaiqVfp6PtXNoy4aMST2nsvWkja0KpOX8eucxrZljU5BCaqdqgm7rvVjNMQSw`,
@@ -65,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
+
       return NextResponse.json({ error: 'PawaPay request failed', details: errorText }, { status: 500 });
     }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Video, Gavel, User, Settings, LogOut, ShoppingBasket } from "lucide-react"
+import { Home, Video, Gavel, User, Settings, LogOut, ShoppingBasket, Receipt } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -14,13 +14,13 @@ export default function DesktopNavigation() {
   const navItems = [
     {
       name: "Live",
-      href: "/dashboard/live",
+      href: "/dashboard/lives",
       icon: Video,
     },
     {
-      name: "Auctions",
-      href: "/dashboard/auctions",
-      icon: Gavel,
+      name: "Orders",
+      href: "/dashboard/orders",
+      icon: Receipt,
     },
     {
       name: "Products",

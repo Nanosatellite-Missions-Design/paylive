@@ -188,10 +188,10 @@ export default function TransactionsPage() {
               <div className="text-right">
                 <p className="font-medium">
                   {transaction.type === "purchase" || transaction.type === "withdrawal" ? "-" : "+"}XAF
-                  {transaction.amount.toFixed(2)}
+                  {transaction.amount}
                 </p>
                 {transaction.netAmount && (
-                  <p className="text-xs text-gray-500">Net: XAF{transaction.netAmount.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">Net: XAF{transaction.netAmount}</p>
                 )}
                 {getStatusBadge(transaction.status)}
               </div>

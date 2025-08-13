@@ -9,16 +9,18 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useCart } from "@/contexts/cart-context"
 import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle, Phone, Mail, MapPin, MessageSquare } from "lucide-react"
-import { setToCollection } from "@/functions/add-to-collection"
+import { addToCollection, setToCollection } from "@/functions/add-to-collection"
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
 import { toast } from "@/hooks/use-toast"
 import Loader from "@/components/loader"
+import { updateDocument } from "@/functions/update-doc-in-collection"
+import { increment } from "firebase/firestore"
 interface FloatingCartProps {
   catalogId: string
 }
 
 export default function FloatingCart() {
-  const { cart, updateQuantity, removeFromCart, clearCart, getCartItemCount, getCartTotal } = useCart()
+  const { cart, updateQuantity, catalog, removeFromCart, clearCart, getCartItemCount, getCartTotal } = useCart()
   const [isOpen, setIsOpen] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -42,7 +44,7 @@ export default function FloatingCart() {
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
 
-    if (depositId) {
+    if (depositId && catalog) {
       intervalId = setInterval(async () => {
         try {
           const response = await fetch(`/api/pawapay/deposits?depositId=${depositId}`);
@@ -54,22 +56,41 @@ export default function FloatingCart() {
             clearInterval(intervalId);
 
             // Retrieve form data after payment
-            const savedFormData = localStorage.getItem("cart");
-            if (savedFormData) {
-              const parsedFormData = JSON.parse(savedFormData);
-
+            const savedCartDatas = localStorage.getItem("cart");
+            const savedCustomerDatas = localStorage.getItem("customer");
+            if (savedCartDatas && savedCustomerDatas) {
+              const parsedCartDatas = JSON.parse(savedCartDatas);
+              const parsedCustomerDatas = JSON.parse(savedCustomerDatas)
               try {
+                console.log(parsedCartDatas)
+                console.log(parsedCustomerDatas)
+                if(!catalog) return
+                // Here you would typically send the order to your backend
+                const orderData = {
+                  catalogId: catalog.id,
+                  sellerName: catalog.creatorName,
+                  sellerId: catalog.creatorId,
+                  items: parsedCartDatas.items,
+                  total: parsedCartDatas.total,
+                  customer: parsedCustomerDatas,
+                  notes: parsedCustomerDatas.notes
+                }
+                await addToCollection("orders", orderData)
+                await addToSubCollection({
+                  amount: parsedCartDatas.total,
+                  type: "purchase",
+                  status: "completed",
+                  phoneNumber: parsedCustomerDatas.phone
+                }, "users", catalog.creatorId, "transactions")
+                await updateDocument("users", catalog.creatorId, {balance: increment(parsedCartDatas.total), lifetimeSales: increment(parsedCartDatas.total)})
+                // Retrieve existing orders from localStorage (or start empty)
+                const existingOrders = JSON.parse(localStorage.getItem("orders") || "[]");
 
-                const data = await response.json();
-                console.log(data)
-                console.log(customerInfo)
+                // Add the new order to the array
+                existingOrders.push(orderData);
 
-
-                await setToCollection("users", data.userId, {
-                  uid: data.userId,
-                  idNumber: `NMD-ASSO-${nanoid(6)}`,
-                  ...parsedFormData
-                });
+                // Save back to localStorage
+                localStorage.setItem("orders", JSON.stringify(existingOrders));
 
                 toast({
                   title: "Payment Completed",
@@ -87,10 +108,10 @@ export default function FloatingCart() {
               // Clear localStorage
               localStorage.removeItem("depositId");
               localStorage.removeItem("cart");
+              localStorage.removeItem("customer");
               setDepositId("")
-
-              console.log(parsedFormData.email)
-
+              clearCart()
+              
               setLoading(false)
               } catch (error) {
                 toast({
@@ -127,7 +148,7 @@ export default function FloatingCart() {
     }
 
     return () => clearInterval(intervalId);
-  }, [depositId]);
+  }, [depositId, catalog]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -142,40 +163,47 @@ export default function FloatingCart() {
 
     setIsSubmitting(true)
 
-    // Simulate order submission
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const body = JSON.stringify({
+      amount: cart.total,
+      currentUrl: `${window.location}`,
+      product: "PayLive Payment"
+    });
 
-    // Here you would typically send the order to your backend
-    const orderData = {
-      catalogId: "id",
-      items: cart.items,
-      total: cart.total,
-      customer: customerInfo,
-      timestamp: new Date(),
+    try {
+      setLoading(true)
+      const res = await fetch("/api/pawapay/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+
+      // Save depositId in localStorage
+      localStorage.setItem("depositId", data.depositId);
+      setDepositId(data.depositId);
+
+      // Optional: Save any form data so you can still create the account after refresh
+      localStorage.setItem("customer", JSON.stringify(customerInfo));
+
+      if (data?.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      }
+
+
+    } catch (error) {
+
     }
 
-    console.log("Order submitted:", orderData)
 
     // Clear cart and show success
-    clearCart()
     setOrderSubmitted(true)
     setShowCheckout(false)
 
-    // Reset form
-    setCustomerInfo({
-      name: "",
-      phone: "",
-      address: "",
-      notes: "",
-    })
 
     setIsSubmitting(false)
 
-    // Auto close success dialog after 3 seconds
-    setTimeout(() => {
-      setOrderSubmitted(false)
-      setIsOpen(false)
-    }, 3000)
   }
 
   const cartItemCount = getCartItemCount()
@@ -186,7 +214,7 @@ export default function FloatingCart() {
 
   return (
     <>
-    {loading && <Loader />}
+    {depositId && <Loader />}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
@@ -202,7 +230,7 @@ export default function FloatingCart() {
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0 bg-gradient-to-br from-white to-gray-50">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto p-0 bg-gradient-to-br from-white to-gray-50">
           {orderSubmitted ? (
             // Success State
             <div className="p-8 text-center">
@@ -239,12 +267,12 @@ export default function FloatingCart() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Items ({cartItemCount}):</span>
-                      <span>${getCartTotal().toFixed(2)}</span>
+                      <span>XAF{getCartTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold border-t pt-2">
                       <span>Total:</span>
                       <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        ${getCartTotal().toFixed(2)}
+                        XAF{getCartTotal().toFixed(2)}
                       </span>
                     </div>
                   </div>
