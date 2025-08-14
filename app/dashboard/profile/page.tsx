@@ -59,7 +59,7 @@ export default function ProfilePage() {
             <h2 className="font-semibold">{userInfo?.name}</h2>
             <p className="text-sm text-gray-500">{userInfo?.phone}</p>
           </div>
-          <Link href="/profile/edit" className="ml-auto">
+          <Link href="/dashboard/profile/edit" className="ml-auto">
             <Button variant="outline" size="sm">
               Edit Profile
             </Button>
@@ -199,7 +199,7 @@ export default function ProfilePage() {
         </div>
         <Card>
           <CardContent className="p-0">
-            <Link href="/profile/edit" className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
+            <Link href="/dashboard/profile/edit" className="flex items-center justify-between p-4 border-b hover:bg-gray-50">
               <div className="flex items-center">
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
                 <span>Edit Profile</span>

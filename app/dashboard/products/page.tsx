@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import QRCodeGenerator from "@/components/qr-code-generator";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection";
+import { updateDocument } from "@/functions/update-doc-in-collection"
 import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document";
 import { useAuth } from "@/contexts/auth-context";
 import { storage } from "@/functions/firebase";
@@ -44,7 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ProductsPage() {
-  const { user, userInfo, userProducts } = useAuth();
+  const { user, userInfo, userProducts, userCatalogs } = useAuth();
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -63,6 +64,7 @@ export default function ProductsPage() {
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
   const [newProductName, setNewProductName] = useState("");
   const [newProductPrice, setNewProductPrice] = useState("");
+  const [newProductQuantity, setNewProductQuantity] = useState("");
   const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductStatus, setNewProductStatus] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
@@ -109,6 +111,7 @@ export default function ProductsPage() {
         creatorName: userInfo.name,
         price: parseFloat(newProductPrice),
         description: newProductDescription,
+        inStock: newProductQuantity ? newProductQuantity : 1,
         image: imageUrls, // Array of image URLs
         category: newProductCategory,
         status: "available",
@@ -125,6 +128,7 @@ export default function ProductsPage() {
       setNewProductDescription("");
       setNewProductCategory("");
       setNewProductStatus("");
+      setNewProductQuantity("")
       setNewProductImageFiles([]);
       setLoading(false);
       toast({
@@ -238,7 +242,7 @@ export default function ProductsPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <Link href="/profile" className="mr-2">
+            <Link href="/dashboard/profile" className="mr-2">
               <Button variant="ghost" size="icon">
                 <ChevronLeft className="h-5 w-5" />
               </Button>
@@ -365,6 +369,16 @@ export default function ProductsPage() {
                   step="0.01"
                   placeholder="0.00"
                   onChange={(e) => setNewProductPrice(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="1"
+                  placeholder="1"
+                  onChange={(e) => setNewProductQuantity(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -658,7 +672,7 @@ export default function ProductsPage() {
               <div className="bg-white p-4 rounded-md">
                 {selectedProduct && (
                   <QRCodeGenerator
-                    value={`https://paylive.vercel.app/product/${selectedProduct.id}`}
+                    value={`${window.location.origin}/user/${userInfo.uid}/product/${selectedProduct.id}`}
                     size={200}
                   />
                 )}
