@@ -461,7 +461,7 @@ export default function FloatingCart() {
                   <div className="flex justify-between items-center text-xl font-bold">
                     <span className="text-gray-900">Total:</span>
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      ${getCartTotal().toFixed(2)}
+                      XAF{getCartTotal().toFixed(2)}
                     </span>
                   </div>
                   <div className="flex space-x-3">
