@@ -73,7 +73,8 @@ export default function FloatingCart() {
                   items: parsedCartDatas.items,
                   total: parsedCartDatas.total,
                   customer: parsedCustomerDatas,
-                  notes: parsedCustomerDatas.notes
+                  notes: parsedCustomerDatas.notes,
+                  status: "pending"
                 }
                 await addToCollection("orders", orderData)
                 await addToSubCollection({
