@@ -45,7 +45,7 @@ function CatalogLoader({ children }: { children: React.ReactNode }) {
     // Always subscribe to Firestore
     const unsubscribeUser = getADocument(catalogId, "catalogs", (data) => {
       callback(data);
-      setProducts(data?.selectedProducts || []);
+      setProducts(data?.selectedProducts || data?.selectedProducts || []);
     });
 
     setIsLoading(false);
