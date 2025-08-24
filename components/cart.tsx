@@ -366,7 +366,7 @@ export default function FloatingCart() {
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5 mr-3" />
-                      Submit Order - ${getCartTotal().toFixed(2)}
+                      Submit Order - XAF{getCartTotal().toFixed(2)}
                     </>
                   )}
                 </Button>
@@ -412,7 +412,7 @@ export default function FloatingCart() {
                             {item.product.description}
                           </p>
                           <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            ${item.product.price}
+                            XAF{item.product.price}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -435,7 +435,7 @@ export default function FloatingCart() {
                           </Button>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-900">${(item.product.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-bold text-gray-900">XAF{(item.product.price * item.quantity).toFixed(2)}</p>
                           <Button
                             variant="ghost"
                             size="sm"
