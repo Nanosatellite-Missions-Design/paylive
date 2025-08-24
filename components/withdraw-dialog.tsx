@@ -65,7 +65,7 @@ export default function WithdrawDialog({
   const minWithdraw = 20
   const maxWithdraw = currentBalance
   const withdrawalFee = method === "orange" ? 3.5 : 2.0
-  const netAmount = Math.max(0, Number.parseFloat(amount || "0") - withdrawalFee)
+  const netAmount = Math.max(0, Number.parseFloat(amount || "0") - (0.1*amount)
   const estimatedDays = "24 hours"
 
   const resetForm = () => {
@@ -118,7 +118,7 @@ export default function WithdrawDialog({
     if(!user) return
 
     const body = JSON.stringify({
-      amount: 10,
+      amount: netAmount,
       phoneNumber: accountDetails,
       provider: method,
       customerId: user.uid
@@ -136,7 +136,8 @@ export default function WithdrawDialog({
       if (!res.ok) throw new Error(data.error || "Unknown error");
 
       const newTransaction = {
-        amount: amount,
+        amount: netAmount,
+        fees: amount-netAmount,
         paymentMethod: method,
         status: "completed",
         type: "withdrawal",
@@ -431,7 +432,7 @@ export default function WithdrawDialog({
               </div>
 
               <p className="text-sm text-gray-500">
-                You'll receive an email confirmation shortly. You can track the status of your withdrawal in the
+                You'll receive an sms confirmation shortly. You can track the status of your withdrawal in the
                 transaction history.
               </p>
             </div>
