@@ -14,6 +14,7 @@ import Link from "next/link"
 import type { Order } from "@/types/catalog"
 import { useAuth } from "@/contexts/auth-context"
 import { Timestamp } from "firebase/firestore"
+import {updateDocument} from "@/functions/update-doc-in-collection"
 
 // Mock orders data
 const mockOrders: any[] = [
@@ -155,16 +156,22 @@ export default function OrdersPage() {
   const handleStatusUpdate = () => {
     if (!selectedOrder) return
 
-    const updatedOrders = userOrders.map((order) =>
-      order.id === selectedOrder.id
-        ? {
-            ...order,
-            status: updateStatus,
-            notes: updateNotes,
-            updatedAt: new Date(),
-          }
-        : order,
-    )
+    await updateDocument("orders", selectedOrder.id, {
+      ...order,
+      status: updateStatus,
+      notes: updateNotes,
+    })
+
+    // const updatedOrders = userOrders.map((order) =>
+    //   order.id === selectedOrder.id
+    //     ? {
+    //         ...order,
+    //         status: updateStatus,
+    //         notes: updateNotes,
+    //         updatedAt: new Date(),
+    //       }
+    //     : order,
+    // )
 
     // setOrders(updatedOrders)
     setIsUpdateDialogOpen(false)
