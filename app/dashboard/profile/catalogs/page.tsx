@@ -1,23 +1,41 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, Store, Copy, Eye, Trash2, ExternalLink, Package, ArrowLeft, Check, Edit, Info } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/contexts/auth-context"
-import { addToCollection } from "@/functions/add-to-collection"
-import { Catalog, CatalogProduct } from "@/types/catalog"
-import { updateDocument } from "@/functions/update-doc-in-collection"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Plus,
+  Store,
+  Copy,
+  Eye,
+  Trash2,
+  ExternalLink,
+  Package,
+  ArrowLeft,
+  Check,
+  Edit,
+  Info,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
+import { addToCollection } from "@/functions/add-to-collection";
+import { Catalog, CatalogProduct } from "@/types/catalog";
+import { updateDocument } from "@/functions/update-doc-in-collection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +47,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document"
-import { deleteADocument } from "@/functions/delete-a-document"
+import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document";
+import { deleteADocument } from "@/functions/delete-a-document";
 
 // Mock data
 const mockProducts = [
@@ -39,7 +57,7 @@ const mockProducts = [
   { id: "3", name: "Bluetooth Speaker", price: 15000, inStock: false },
   { id: "4", name: "Power Bank", price: 8000, inStock: true },
   { id: "5", name: "USB Cable", price: 2000, inStock: true },
-]
+];
 
 const mockCatalogs: any = [
   {
@@ -62,54 +80,54 @@ const mockCatalogs: any = [
     views: 89,
     selectedProducts: ["2", "5"],
   },
-]
+];
 
 interface CatalogType {
-  id: string
-  title: string
-  description: string
-  isActive: boolean
-  creatorId: string
-  creatorName: string
-  creatorPhone: number
-  productCount: number
-  createdAt: Date
-  views: number
-  products: any[]
+  id: string;
+  title: string;
+  description: string;
+  isActive: boolean;
+  creatorId: string;
+  creatorName: string;
+  creatorPhone: number;
+  productCount: number;
+  createdAt: Date;
+  views: number;
+  products: any[];
 }
 
 export default function CatalogsPage() {
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedCatalog, setSelectedCatalog] = useState<Catalog | null>(null);
   const [newCatalog, setNewCatalog] = useState({
     title: "",
     description: "",
     selectedProducts: [] as CatalogProduct[],
-  })
+  });
   const [editCatalog, setEditCatalog] = useState({
     id: "",
     title: "",
     description: "",
     selectedProducts: [] as CatalogProduct[],
-  })
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-  const { toast } = useToast()
-  const { userInfo, user, userProducts, userCatalogs } = useAuth()
+  });
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { userInfo, user, userProducts, userCatalogs } = useAuth();
 
   const handleCreateCatalog = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!newCatalog.title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a catalog title",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     if (newCatalog.selectedProducts.length === 0) {
@@ -117,10 +135,10 @@ export default function CatalogsPage() {
         title: "Error",
         description: "Please select at least one product",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-    setLoading(true)
+    setLoading(true);
     const catalog: Omit<CatalogType, "id"> = {
       title: newCatalog.title,
       description: newCatalog.description,
@@ -132,19 +150,19 @@ export default function CatalogsPage() {
       createdAt: new Date(),
       views: 0,
       products: newCatalog.selectedProducts,
-    }
+    };
 
-    try{
-      console.log(catalog)
-      await addToCollection("catalogs", catalog)
+    try {
+      console.log(catalog);
+      await addToCollection("catalogs", catalog);
       toast({
         title: "Success",
         description: "Catalog created successfully!",
-      })
+      });
 
-      setNewCatalog({ title: "", description: "", selectedProducts: [] })
-      setIsCreateDialogOpen(false)
-    } catch(error){
+      setNewCatalog({ title: "", description: "", selectedProducts: [] });
+      setIsCreateDialogOpen(false);
+    } catch (error) {
       console.error("Image upload error:", error);
       setLoading(false);
       toast({
@@ -152,21 +170,20 @@ export default function CatalogsPage() {
         description: "Could not upload one or more images.",
       });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-
-  }
+  };
 
   const handleEditCatalog = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!editCatalog.title.trim()) {
       toast({
         title: "Error",
         description: "Please enter a catalog title",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     if (editCatalog.selectedProducts.length === 0) {
@@ -174,23 +191,27 @@ export default function CatalogsPage() {
         title: "Error",
         description: "Please select at least one product",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-    
 
-    try{
-      console.log(editCatalog)
+    try {
+      console.log(editCatalog);
       // await addToCollection("catalogs", catalog)
-      await updateDocument("catalogs", editCatalog.id, editCatalog)
-      setIsEditDialogOpen(false)
-      setEditCatalog({ id: "", title: "", description: "", selectedProducts: [] })
+      await updateDocument("catalogs", editCatalog.id, editCatalog);
+      setIsEditDialogOpen(false);
+      setEditCatalog({
+        id: "",
+        title: "",
+        description: "",
+        selectedProducts: [],
+      });
 
       toast({
         title: "Success",
         description: "Catalog updated successfully!",
-      })
-    } catch(error){
+      });
+    } catch (error) {
       console.error("Image upload error:", error);
       setLoading(false);
       toast({
@@ -198,28 +219,30 @@ export default function CatalogsPage() {
         description: "Could not upload one or more images.",
       });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
 
-    setIsEditDialogOpen(false)
-    setEditCatalog({ id: "", title: "", description: "", selectedProducts: [] })
+    setIsEditDialogOpen(false);
+    setEditCatalog({
+      id: "",
+      title: "",
+      description: "",
+      selectedProducts: [],
+    });
 
     toast({
       title: "Success",
       description: "Catalog updated successfully!",
-    })
-  }
+    });
+  };
 
   const handleDeleteProduct = async () => {
     setLoading(true);
     try {
       if (!user || !selectedCatalog) return;
-      await deleteADocument(
-        "catalogs",
-        selectedCatalog.id
-      );
-      setSelectedCatalog(null)
-      setIsDeleteDialogOpen(false)
+      await deleteADocument("catalogs", selectedCatalog.id);
+      setSelectedCatalog(null);
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error updating catalog:", error);
       setLoading(false);
@@ -232,52 +255,52 @@ export default function CatalogsPage() {
   };
 
   const openEditDialog = (catalog: Catalog) => {
-    setEditCatalog(catalog)
-    setIsEditDialogOpen(true)
-  }
+    setEditCatalog(catalog);
+    setIsEditDialogOpen(true);
+  };
 
   const openDeleteDialog = (catalog: Catalog) => {
-    setSelectedCatalog(catalog)
-    setIsDeleteDialogOpen(true)
-  }
+    setSelectedCatalog(catalog);
+    setIsDeleteDialogOpen(true);
+  };
 
   const openViewDialog = (catalog: Catalog) => {
-    setSelectedCatalog(catalog)
-    setIsViewDialogOpen(true)
-  }
+    setSelectedCatalog(catalog);
+    setIsViewDialogOpen(true);
+  };
 
   const copyLink = async (catalogId: string) => {
-    const link = `${window.location.origin}/catalog/${catalogId}`
+    const link = `${window.location.origin}/catalog/${catalogId}`;
     try {
-      await navigator.clipboard.writeText(link)
-      setCopiedId(catalogId)
+      await navigator.clipboard.writeText(link);
+      setCopiedId(catalogId);
       toast({
         title: "Link Copied!",
         description: "Catalog link has been copied to clipboard",
-      })
-      setTimeout(() => setCopiedId(null), 2000)
+      });
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       toast({
         title: "Error",
         description: "Failed to copy link",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const toggleCatalogStatus = (catalogId: string) => {
     // setCatalogs((prev) =>
     //   prev.map((catalog) => (catalog.id === catalogId ? { ...catalog, isActive: !catalog.isActive } : catalog)),
     // )
-  }
+  };
 
   const deleteCatalog = (catalogId: string) => {
     // setCatalogs((prev) => prev.filter((catalog) => catalog.id !== catalogId))
     toast({
       title: "Catalog Deleted",
       description: "The catalog has been removed successfully",
-    })
-  }
+    });
+  };
 
   const handleProductToggle = (product: any, isEdit = false) => {
     if (isEdit) {
@@ -286,20 +309,22 @@ export default function CatalogsPage() {
         selectedProducts: prev.selectedProducts.includes(product)
           ? prev.selectedProducts.filter((id) => id !== product)
           : [...prev.selectedProducts, product],
-      }))
+      }));
     } else {
       setNewCatalog((prev) => ({
         ...prev,
         selectedProducts: prev.selectedProducts.includes(product)
           ? prev.selectedProducts.filter((id) => id !== product)
           : [...prev.selectedProducts, product],
-      }))
+      }));
     }
-  }
+  };
 
   const getSelectedProductsForCatalog = (catalog: Catalog) => {
-    return userProducts.filter((product) => catalog.selectedProducts.includes(product))
-  }
+    return userProducts.filter((product) =>
+      catalog.selectedProducts.includes(product)
+    );
+  };
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-6 pb-20 md:pb-6">
@@ -313,7 +338,9 @@ export default function CatalogsPage() {
         </Link>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">My Catalogs</h1>
-          <p className="text-gray-600">Manage your product catalogs and share them with customers</p>
+          <p className="text-gray-600">
+            Manage your product catalogs and share them with customers
+          </p>
         </div>
       </div>
 
@@ -337,7 +364,12 @@ export default function CatalogsPage() {
                   <Input
                     id="title"
                     value={newCatalog.title}
-                    onChange={(e) => setNewCatalog((prev) => ({ ...prev, title: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCatalog((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
                     placeholder="e.g., Summer Collection 2024"
                     required
                   />
@@ -347,7 +379,12 @@ export default function CatalogsPage() {
                   <Textarea
                     id="description"
                     value={newCatalog.description}
-                    onChange={(e) => setNewCatalog((prev) => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setNewCatalog((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Brief description of your catalog..."
                     rows={3}
                   />
@@ -355,24 +392,43 @@ export default function CatalogsPage() {
               </div>
 
               <div>
-                <Label className="text-base font-medium">Select Products *</Label>
-                <p className="text-sm text-gray-600 mb-3">Choose products to include in this catalog</p>
+                <Label className="text-base font-medium">
+                  Select Products *
+                </Label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Choose products to include in this catalog
+                </p>
                 <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
                   <div className="space-y-3">
                     {userProducts.map((product) => (
-                      <div key={product.id} className="flex items-center space-x-3">
+                      <div
+                        key={product.id}
+                        className="flex items-center space-x-3"
+                      >
                         <Checkbox
                           id={`create-${product.id}`}
-                          checked={newCatalog.selectedProducts.includes(product)}
+                          checked={newCatalog.selectedProducts.includes(
+                            product
+                          )}
                           onCheckedChange={() => handleProductToggle(product)}
                         />
                         <div className="flex-1 min-w-0">
-                          <label htmlFor={`create-${product.id}`} className="text-sm font-medium cursor-pointer">
+                          <label
+                            htmlFor={`create-${product.id}`}
+                            className="text-sm font-medium cursor-pointer"
+                          >
                             {product.name}
                           </label>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-sm text-gray-600">XAF {product.price}</span>
-                            <Badge variant={product.inStock ? "default" : "secondary"} className="text-xs">
+                            <span className="text-sm text-gray-600">
+                              XAF {product.price}
+                            </span>
+                            <Badge
+                              variant={
+                                product.inStock ? "default" : "secondary"
+                              }
+                              className="text-xs"
+                            >
                               {product.inStock ? "In Stock" : "Out of Stock"}
                             </Badge>
                           </div>
@@ -381,11 +437,19 @@ export default function CatalogsPage() {
                     ))}
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">{newCatalog.selectedProducts.length} product(s) selected</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {newCatalog.selectedProducts.length} product(s) selected
+                </p>
               </div>
 
               <div className="flex gap-3">
-                <Button disabled={loading} type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">
+                <Button
+                  disabled={loading}
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateDialogOpen(false)}
+                  className="flex-1"
+                >
                   Cancel
                 </Button>
                 <Button
@@ -414,7 +478,12 @@ export default function CatalogsPage() {
                 <Input
                   id="edit-title"
                   value={editCatalog.title}
-                  onChange={(e) => setEditCatalog((prev) => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) =>
+                    setEditCatalog((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
                   placeholder="e.g., Summer Collection 2024"
                   required
                 />
@@ -424,7 +493,12 @@ export default function CatalogsPage() {
                 <Textarea
                   id="edit-description"
                   value={editCatalog.description}
-                  onChange={(e) => setEditCatalog((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setEditCatalog((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   placeholder="Brief description of your catalog..."
                   rows={3}
                 />
@@ -433,23 +507,40 @@ export default function CatalogsPage() {
 
             <div>
               <Label className="text-base font-medium">Select Products *</Label>
-              <p className="text-sm text-gray-600 mb-3">Choose products to include in this catalog</p>
+              <p className="text-sm text-gray-600 mb-3">
+                Choose products to include in this catalog
+              </p>
               <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
                 <div className="space-y-3">
                   {userProducts.map((product) => (
-                    <div key={product.id} className="flex items-center space-x-3">
+                    <div
+                      key={product.id}
+                      className="flex items-center space-x-3"
+                    >
                       <Checkbox
                         id={`edit-${product.id}`}
-                        checked={editCatalog.selectedProducts.includes(product.id)}
-                        onCheckedChange={() => handleProductToggle(product.id, true)}
+                        checked={editCatalog.selectedProducts.includes(
+                          product.id
+                        )}
+                        onCheckedChange={() =>
+                          handleProductToggle(product.id, true)
+                        }
                       />
                       <div className="flex-1 min-w-0">
-                        <label htmlFor={`edit-${product.id}`} className="text-sm font-medium cursor-pointer">
+                        <label
+                          htmlFor={`edit-${product.id}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
                           {product.name}
                         </label>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm text-gray-600">XAF {product.price.toLocaleString()}</span>
-                          <Badge variant={product.inStock ? "default" : "secondary"} className="text-xs">
+                          <span className="text-sm text-gray-600">
+                            XAF {product.price.toLocaleString()}
+                          </span>
+                          <Badge
+                            variant={product.inStock ? "default" : "secondary"}
+                            className="text-xs"
+                          >
                             {product.inStock ? "In Stock" : "Out of Stock"}
                           </Badge>
                         </div>
@@ -458,11 +549,19 @@ export default function CatalogsPage() {
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">{editCatalog.selectedProducts.length} product(s) selected</p>
+              <p className="text-sm text-gray-500 mt-2">
+                {editCatalog.selectedProducts.length} product(s) selected
+              </p>
             </div>
 
             <div className="flex gap-3">
-              <Button disabled={loading} type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="flex-1">
+              <Button
+                disabled={loading}
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditDialogOpen(false)}
+                className="flex-1"
+              >
                 Cancel
               </Button>
               <Button
@@ -492,13 +591,19 @@ export default function CatalogsPage() {
                 </div>
                 <div>
                   <Label className="text-base font-medium">Description</Label>
-                  <p className="text-gray-600">{selectedCatalog.description || "No description provided"}</p>
+                  <p className="text-gray-600">
+                    {selectedCatalog.description || "No description provided"}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-base font-medium">Status</Label>
                     <div className="mt-1">
-                      <Badge variant={selectedCatalog.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          selectedCatalog.isActive ? "default" : "secondary"
+                        }
+                      >
                         {selectedCatalog.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
@@ -510,20 +615,32 @@ export default function CatalogsPage() {
                 </div>
                 <div>
                   <Label className="text-base font-medium">Created</Label>
-                  <p className="text-gray-600">{new Date(selectedCatalog.createdAt).toLocaleDateString()}</p>
+                  <p className="text-gray-600">
+                    {new Date(selectedCatalog.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
 
               <div>
-                <Label className="text-base font-medium">Products ({selectedCatalog.productCount})</Label>
+                <Label className="text-base font-medium">
+                  Products ({selectedCatalog.productCount})
+                </Label>
                 <div className="mt-3 space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4">
                   {selectedCatalog.products.map((product) => (
-                    <div key={product.id} className="flex items-center justify-between">
+                    <div
+                      key={product.id}
+                      className="flex items-center justify-between"
+                    >
                       <div>
                         <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-gray-600">XAF {product.price.toLocaleString()}</p>
+                        <p className="text-sm text-gray-600">
+                          XAF {product.price.toLocaleString()}
+                        </p>
                       </div>
-                      <Badge variant={product.inStock > 0 ? "default" : "secondary"} className="text-xs">
+                      <Badge
+                        variant={product.inStock > 0 ? "default" : "secondary"}
+                        className="text-xs"
+                      >
                         {product.inStock > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>
                     </div>
@@ -532,7 +649,11 @@ export default function CatalogsPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => copyLink(selectedCatalog.id)} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={() => copyLink(selectedCatalog.id)}
+                  className="flex-1"
+                >
                   {copiedId === selectedCatalog.id ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
@@ -557,23 +678,23 @@ export default function CatalogsPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the
-            catalog {selectedCatalog?.name}.
-          </AlertDialogDescription>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              catalog {selectedCatalog?.name}.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={loading}
-            onClick={handleDeleteProduct}
-          >
-            Continue
-          </AlertDialogAction>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={loading} onClick={handleDeleteProduct}>
+              Continue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -585,7 +706,8 @@ export default function CatalogsPage() {
             <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Catalogs Yet</h3>
             <p className="text-gray-600 mb-4">
-              Create your first catalog to start sharing your products with customers
+              Create your first catalog to start sharing your products with
+              customers
             </p>
             <Button
               onClick={() => setIsCreateDialogOpen(true)}
@@ -599,14 +721,24 @@ export default function CatalogsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {userCatalogs.map((catalog: Catalog) => (
-            <Card key={catalog.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={catalog.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg truncate">{catalog.title}</CardTitle>
-                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{catalog.description || "No description"}</p>
+                    <CardTitle className="text-lg truncate">
+                      {catalog.title}
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                      {catalog.description || "No description"}
+                    </p>
                   </div>
-                  <Badge variant={catalog.isActive ? "default" : "secondary"} className="ml-2">
+                  <Badge
+                    variant={catalog.isActive ? "default" : "secondary"}
+                    className="ml-2"
+                  >
                     {catalog.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </div>
@@ -623,21 +755,38 @@ export default function CatalogsPage() {
                   </div>
                 </div>
 
-                <div className="text-xs text-gray-500">Created {new Date(catalog.createdAt).toLocaleDateString()}</div>
+                <div className="text-xs text-gray-500">
+                  Created {new Date(catalog.createdAt).toLocaleDateString()}
+                </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openViewDialog(catalog)} className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openViewDialog(catalog)}
+                    className="flex-1"
+                  >
                     <Info className="h-3 w-3 mr-1" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(catalog)} className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditDialog(catalog)}
+                    className="flex-1"
+                  >
                     <Edit className="h-3 w-3 mr-1" />
                     Edit
                   </Button>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => copyLink(catalog.id)} className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyLink(catalog.id)}
+                    className="flex-1"
+                  >
                     {copiedId === catalog.id ? (
                       <>
                         <Check className="h-3 w-3 mr-1" />
@@ -681,5 +830,5 @@ export default function CatalogsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

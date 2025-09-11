@@ -1,38 +1,66 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { useCart } from "@/contexts/cart-context"
-import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle, Phone, Mail, MapPin, MessageSquare } from "lucide-react"
-import { addToCollection, setToCollection } from "@/functions/add-to-collection"
-import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
-import { toast } from "@/hooks/use-toast"
-import Loader from "@/components/loader"
-import { updateDocument } from "@/functions/update-doc-in-collection"
-import { increment } from "firebase/firestore"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useCart } from "@/contexts/cart-context";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  X,
+  CheckCircle,
+  Phone,
+  Mail,
+  MapPin,
+  MessageSquare,
+} from "lucide-react";
+import {
+  addToCollection,
+  setToCollection,
+} from "@/functions/add-to-collection";
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
+import { toast } from "@/hooks/use-toast";
+import Loader from "@/components/loader";
+import { updateDocument } from "@/functions/update-doc-in-collection";
+import { increment } from "firebase/firestore";
 interface FloatingCartProps {
-  catalogId: string
+  catalogId: string;
 }
 
 export default function FloatingCart() {
-  const { cart, updateQuantity, catalog, removeFromCart, clearCart, getCartItemCount, getCartTotal } = useCart()
-  const [isOpen, setIsOpen] = useState(false)
-  const [showCheckout, setShowCheckout] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [orderSubmitted, setOrderSubmitted] = useState(false)
+  const {
+    cart,
+    updateQuantity,
+    catalog,
+    removeFromCart,
+    clearCart,
+    getCartItemCount,
+    getCartTotal,
+  } = useCart();
+  const [isOpen, setIsOpen] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
     address: "",
     notes: "",
-  })
-  const [depositId, setDepositId] = useState("")
-  const [loading, setLoading] = useState(false)
+  });
+  const [depositId, setDepositId] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const savedDepositId = localStorage.getItem("depositId");
@@ -47,11 +75,13 @@ export default function FloatingCart() {
     if (depositId && catalog) {
       intervalId = setInterval(async () => {
         try {
-          const response = await fetch(`/api/pawapay/deposits?depositId=${depositId}`);
+          const response = await fetch(
+            `/api/pawapay/deposits?depositId=${depositId}`
+          );
           const data = await response.json();
           const status = data[0]?.status || data.status;
-          console.log(status)
-          console.log(depositId)
+          console.log(status);
+          console.log(depositId);
           if (status === "COMPLETED") {
             clearInterval(intervalId);
 
@@ -60,11 +90,11 @@ export default function FloatingCart() {
             const savedCustomerDatas = localStorage.getItem("customer");
             if (savedCartDatas && savedCustomerDatas) {
               const parsedCartDatas = JSON.parse(savedCartDatas);
-              const parsedCustomerDatas = JSON.parse(savedCustomerDatas)
+              const parsedCustomerDatas = JSON.parse(savedCustomerDatas);
               try {
-                console.log(parsedCartDatas)
-                console.log(parsedCustomerDatas)
-                if(!catalog) return
+                console.log(parsedCartDatas);
+                console.log(parsedCustomerDatas);
+                if (!catalog) return;
                 // Here you would typically send the order to your backend
                 const orderData = {
                   catalogId: catalog.id,
@@ -74,18 +104,37 @@ export default function FloatingCart() {
                   total: parsedCartDatas.total,
                   customer: parsedCustomerDatas,
                   notes: parsedCustomerDatas.notes,
-                  status: "pending"
-                }
-                await addToCollection("orders", orderData)
-                await addToSubCollection({
-                  amount: parsedCartDatas.total,
-                  type: "purchase",
-                  status: "completed",
-                  phoneNumber: parsedCustomerDatas.phone
-                }, "users", catalog.creatorId, "transactions")
-                await updateDocument("users", catalog.creatorId, {balance: increment(parsedCartDatas.total), lifetimeSales: increment(parsedCartDatas.total)})
+                  status: "pending",
+                };
+                await addToCollection("orders", orderData);
+                await addToSubCollection(
+                  {
+                    amount: parsedCartDatas.total,
+                    type: "purchase",
+                    status: "completed",
+                    phoneNumber: parsedCustomerDatas.phone,
+                  },
+                  "users",
+                  catalog.creatorId,
+                  "transactions"
+                );
+                await updateDocument("users", catalog.creatorId, {
+                  balance: increment(parsedCartDatas.total),
+                  lifetimeSales: increment(parsedCartDatas.total),
+                });
+
+                const res = await fetch("/api/send-sms", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: catalog.creatorPhone,
+                    body: "PayLive: Vous avez reçu une nouvelle commande paylive, veuillez vous connecter et voir les détails de la commande",
+                  }),
+                });
                 // Retrieve existing orders from localStorage (or start empty)
-                const existingOrders = JSON.parse(localStorage.getItem("orders") || "[]");
+                const existingOrders = JSON.parse(
+                  localStorage.getItem("orders") || "[]"
+                );
 
                 // Add the new order to the array
                 existingOrders.push(orderData);
@@ -106,14 +155,14 @@ export default function FloatingCart() {
                   notes: "",
                 });
 
-              // Clear localStorage
-              localStorage.removeItem("depositId");
-              localStorage.removeItem("cart");
-              localStorage.removeItem("customer");
-              setDepositId("")
-              clearCart()
-              
-              setLoading(false)
+                // Clear localStorage
+                localStorage.removeItem("depositId");
+                localStorage.removeItem("cart");
+                localStorage.removeItem("customer");
+                setDepositId("");
+                clearCart();
+
+                setLoading(false);
               } catch (error) {
                 toast({
                   title: "Error",
@@ -122,24 +171,22 @@ export default function FloatingCart() {
               }
               // Save the transaction here
               // await saveTransaction(depositId);
-
             }
 
             toast({
               title: "Payment Completed",
               description: "Your order has been has been completed.",
             });
-          }
-          else if(status === undefined){
+          } else if (status === undefined) {
             toast({
               title: "Payment Error",
               description: "The payment has failed.",
-              variant: "destructive"
+              variant: "destructive",
             });
             localStorage.removeItem("depositId");
-            setDepositId("")
+            setDepositId("");
             localStorage.removeItem("pendingFormData");
-            setLoading(false)
+            setLoading(false);
           }
         } catch (error) {
           console.error("Payment verification failed:", error);
@@ -153,29 +200,29 @@ export default function FloatingCart() {
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId)
+      removeFromCart(productId);
     } else {
-      updateQuantity(productId, newQuantity)
+      updateQuantity(productId, newQuantity);
     }
-  }
+  };
 
   const handleSubmitOrder = async () => {
-    if (!cart || cart.items.length === 0) return
+    if (!cart || cart.items.length === 0) return;
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     const body = JSON.stringify({
       amount: cart.total,
       currentUrl: `${window.location}`,
-      product: "PayLive Payment"
+      product: "PayLive Payment",
     });
 
     try {
-      setLoading(true)
+      setLoading(true);
       const res = await fetch("/api/pawapay/deposits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body
+        body,
       });
 
       const data = await res.json();
@@ -191,31 +238,24 @@ export default function FloatingCart() {
       if (data?.redirectUrl) {
         window.location.href = data.redirectUrl;
       }
-
-
-    } catch (error) {
-
-    }
-
+    } catch (error) {}
 
     // Clear cart and show success
-    setOrderSubmitted(true)
-    setShowCheckout(false)
+    setOrderSubmitted(true);
+    setShowCheckout(false);
 
+    setIsSubmitting(false);
+  };
 
-    setIsSubmitting(false)
-
-  }
-
-  const cartItemCount = getCartItemCount()
+  const cartItemCount = getCartItemCount();
 
   if (cartItemCount === 0) {
-    return null
+    return null;
   }
 
   return (
     <>
-    {depositId && <Loader />}
+      {depositId && <Loader />}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
@@ -238,10 +278,12 @@ export default function FloatingCart() {
               <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="h-12 w-12 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Submitted Successfully!</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Order Submitted Successfully!
+              </h2>
               <p className="text-gray-600 leading-relaxed">
-                Thank you for your order! The seller will contact you soon to confirm details and arrange payment &
-                delivery.
+                Thank you for your order! The seller will contact you soon to
+                confirm details and arrange payment & delivery.
               </p>
             </div>
           ) : showCheckout ? (
@@ -249,7 +291,9 @@ export default function FloatingCart() {
             <div className="flex flex-col h-full">
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <div className="flex items-center justify-between">
-                  <DialogTitle className="text-2xl font-bold text-gray-900">Checkout</DialogTitle>
+                  <DialogTitle className="text-2xl font-bold text-gray-900">
+                    Checkout
+                  </DialogTitle>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -281,16 +325,26 @@ export default function FloatingCart() {
 
                 {/* Customer Information Form */}
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Customer Information</h3>
+                  <h3 className="font-semibold text-lg">
+                    Customer Information
+                  </h3>
 
                   <div>
-                    <Label htmlFor="checkout-name" className="text-sm font-medium text-gray-700 mb-2 block">
+                    <Label
+                      htmlFor="checkout-name"
+                      className="text-sm font-medium text-gray-700 mb-2 block"
+                    >
                       Full Name *
                     </Label>
                     <Input
                       id="checkout-name"
                       value={customerInfo.name}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerInfo({
+                          ...customerInfo,
+                          name: e.target.value,
+                        })
+                      }
                       placeholder="Enter your full name"
                       required
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
@@ -309,7 +363,12 @@ export default function FloatingCart() {
                       id="checkout-phone"
                       type="tel"
                       value={customerInfo.phone}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerInfo({
+                          ...customerInfo,
+                          phone: e.target.value,
+                        })
+                      }
                       placeholder="Enter your phone number"
                       required
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
@@ -327,7 +386,12 @@ export default function FloatingCart() {
                     <Textarea
                       id="checkout-address"
                       value={customerInfo.address}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, address: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerInfo({
+                          ...customerInfo,
+                          address: e.target.value,
+                        })
+                      }
                       placeholder="Enter your delivery address"
                       required
                       className="min-h-[80px] rounded-xl border-2 focus:border-blue-500 resize-none"
@@ -345,7 +409,12 @@ export default function FloatingCart() {
                     <Textarea
                       id="checkout-notes"
                       value={customerInfo.notes}
-                      onChange={(e) => setCustomerInfo({ ...customerInfo, notes: e.target.value })}
+                      onChange={(e) =>
+                        setCustomerInfo({
+                          ...customerInfo,
+                          notes: e.target.value,
+                        })
+                      }
                       placeholder="Any special instructions..."
                       className="min-h-[60px] rounded-xl border-2 focus:border-blue-500 resize-none"
                     />
@@ -356,7 +425,12 @@ export default function FloatingCart() {
               <div className="p-6 bg-gray-50 border-t">
                 <Button
                   onClick={handleSubmitOrder}
-                  disabled={!customerInfo.name || !customerInfo.phone || !customerInfo.address || isSubmitting}
+                  disabled={
+                    !customerInfo.name ||
+                    !customerInfo.phone ||
+                    !customerInfo.address ||
+                    isSubmitting
+                  }
                   className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                 >
                   {isSubmitting ? (
@@ -372,7 +446,8 @@ export default function FloatingCart() {
                   )}
                 </Button>
                 <p className="text-xs text-gray-600 text-center mt-3">
-                  The seller will contact you to confirm and arrange payment & delivery.
+                  The seller will contact you to confirm and arrange payment &
+                  delivery.
                 </p>
               </div>
             </div>
@@ -381,7 +456,8 @@ export default function FloatingCart() {
             <div className="flex flex-col h-full">
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <DialogTitle className="text-2xl font-bold text-gray-900">
-                  Shopping Cart ({cartItemCount} {cartItemCount === 1 ? "item" : "items"})
+                  Shopping Cart ({cartItemCount}{" "}
+                  {cartItemCount === 1 ? "item" : "items"})
                 </DialogTitle>
                 {cart && (
                   <p className="text-sm text-gray-600 mt-1">
@@ -408,7 +484,9 @@ export default function FloatingCart() {
                           className="w-16 h-16 object-cover rounded-lg shadow-md"
                         />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{item.product.name}</h3>
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {item.product.name}
+                          </h3>
                           <p className="text-sm text-gray-600 break-words line-clamp-2">
                             {item.product.description}
                           </p>
@@ -420,23 +498,37 @@ export default function FloatingCart() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleQuantityChange(item.productId, item.quantity - 1)}
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.productId,
+                                item.quantity - 1
+                              )
+                            }
                             className="h-8 w-8 rounded-lg border-2 hover:bg-blue-50 hover:border-blue-300"
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-8 text-center font-semibold">{item.quantity}</span>
+                          <span className="w-8 text-center font-semibold">
+                            {item.quantity}
+                          </span>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleQuantityChange(item.productId, item.quantity + 1)}
+                            onClick={() =>
+                              handleQuantityChange(
+                                item.productId,
+                                item.quantity + 1
+                              )
+                            }
                             className="h-8 w-8 rounded-lg border-2 hover:bg-blue-50 hover:border-blue-300"
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-900">XAF{(item.product.price * item.quantity).toFixed(2)}</p>
+                          <p className="font-bold text-gray-900">
+                            XAF{(item.product.price * item.quantity).toFixed(2)}
+                          </p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -500,9 +592,8 @@ export default function FloatingCart() {
         }
       `}</style>
     </>
-  )
+  );
 }
 function nanoid(arg0: number) {
-  throw new Error("Function not implemented.")
+  throw new Error("Function not implemented.");
 }
-

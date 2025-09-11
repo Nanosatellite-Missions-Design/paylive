@@ -185,7 +185,7 @@ export default function SignupPage() {
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+1 (555) 123-4567"
+                placeholder="+2376XXXXXXXX"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className={errors.phone ? "border-red-500" : ""}

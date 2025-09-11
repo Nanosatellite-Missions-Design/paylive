@@ -1,69 +1,84 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, ShoppingCart, Plus, Minus, Star, Share2, Heart, Shield, Truck, RotateCcw } from "lucide-react"
-import type { Catalog, CatalogProduct } from "@/types/catalog"
-import { getASubDocument } from "@/functions/get-a-document"
-import { PaymentDialog } from "@/components/payment-dialog"
-import { useToast } from "@/hooks/use-toast"
-import { setToSubCollection } from "@/functions/add-to-a-sub-collection"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  ArrowLeft,
+  ShoppingCart,
+  Plus,
+  Minus,
+  Star,
+  Share2,
+  Heart,
+  Shield,
+  Truck,
+  RotateCcw,
+} from "lucide-react";
+import type { Catalog, CatalogProduct } from "@/types/catalog";
+import { getASubDocument } from "@/functions/get-a-document";
+import { PaymentDialog } from "@/components/payment-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
+import { useCart } from "@/contexts/cart-context";
 
 export default function ProductPage() {
-  const params = useParams()
-  const router = useRouter()
-  const catalogId = params.id as string
-  const productId = params.productId as string
+  const params = useParams();
+  const router = useRouter();
+  const productId = params.productId as string;
 
-  const [catalog, setCatalog] = useState<Catalog | null>(null)
-  const [product, setProduct] = useState<CatalogProduct | null>(null)
-  const [quantity, setQuantity] = useState(1)
-  const [selectedImage, setSelectedImage] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isFavorite, setIsFavorite] = useState(false)
-  const [showShareSuccess, setShowShareSuccess] = useState(false)
-  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false)
-  const [productToBuy, setProductToBuy] = useState<any>({})
-  const [paymentState, setPaymentState] = useState("selecting")
-  const { toast } = useToast()
-  const [depositId, setDepositId] = useState("")
+  const { catalog, addToCart } = useCart();
+  const [product, setProduct] = useState<CatalogProduct | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showShareSuccess, setShowShareSuccess] = useState(false);
+  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
+  const [productToBuy, setProductToBuy] = useState<any>({});
+  const [paymentState, setPaymentState] = useState("selecting");
+  const { toast } = useToast();
+  const [depositId, setDepositId] = useState("");
 
   // Mock data - replace with actual API call
   useEffect(() => {
     const fetchProduct = async () => {
-        setIsLoading(true)
-        // const unsubscribeUser = getADocument(catalogId, "users", (data) => {
-        //     setCatalogData(data);
-        // });
-        const unsubscribeProduct = getASubDocument(catalogId, "products", productId, setProduct)
-        setIsLoading(false)
-        return () => {
-            // Safe to call even if undefined due to nullish coalescing
-            // if (unsubscribeUser) unsubscribeUser();
-            if (unsubscribeProduct) unsubscribeProduct();
-        };
-    }
-  
-    fetchProduct()
-  }, [catalogId])
+      setIsLoading(true);
+      // const unsubscribeUser = getADocument(catalogId, "users", (data) => {
+      //     setCatalogData(data);
+      // });
+      const unsubscribeProduct = getASubDocument(
+        catalog?.creatorId ?? "",
+        "products",
+        productId,
+        setProduct
+      );
+      setIsLoading(false);
+      return () => {
+        // Safe to call even if undefined due to nullish coalescing
+        // if (unsubscribeUser) unsubscribeUser();
+        if (unsubscribeProduct) unsubscribeProduct();
+      };
+    };
+
+    fetchProduct();
+  }, [catalog?.creatorId]);
 
   const handleAddToCart = () => {
     if (product) {
-
-        // Show success animation or toast
+      addToCart(product, quantity);
     }
-  }
+  };
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= (product?.inStock || 1)) {
-      setQuantity(newQuantity)
+      setQuantity(newQuantity);
     }
-  }
+  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -72,91 +87,86 @@ export default function ProductPage() {
           title: product?.name,
           text: product?.description,
           url: window.location.href,
-        })
+        });
       } catch (error) {
-        console.log("Error sharing:", error)
+        console.log("Error sharing:", error);
       }
     } else {
       // Fallback: copy to clipboard
-      await navigator.clipboard.writeText(window.location.href)
-      setShowShareSuccess(true)
-      setTimeout(() => setShowShareSuccess(false), 2000)
+      await navigator.clipboard.writeText(window.location.href);
+      setShowShareSuccess(true);
+      setTimeout(() => setShowShareSuccess(false), 2000);
     }
-  }
+  };
 
   const handleBuyNow = () => {
-      setProductToBuy(product)
-      setShowSelectPaymentNumber(true)
-    }
-  
-    const handleOnPay = async (paymentMethod: string) => {
-      // let number = {} as any
-      // if(paymentMethod !== "other"){
-      //   number = userInfo?.paymentMethods.find((method: any) => method.number === paymentMethod)
-      // }
-      // const bodyWithNumber = JSON.stringify({
-      //   amount: productToBuy.price,
-      //   phoneNumber: number.number,
-      //   provider: number.netword,
-      //   currentUrl: "",
-      //   product: productToBuy.name
-      // })
-      if(product && product.creatorId) return
-      const bodyWithoutNumber = JSON.stringify({
-        amount: 1,
-        currentUrl: "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
-        product: productToBuy.name
-      })
-      try {
-        const res = await fetch("/api/pawapay/deposits", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: bodyWithoutNumber
-        });
-  
-        const data = await res.json();
-        setDepositId(data.depositId)
-        const newTransaction = {
-          type: "purchase",
-          buyerId: "userInfo.uid",
-          sellerId: productToBuy.creatorId,
-          productId: productToBuy.id,
-          productName: productToBuy.name,
-          counterpartyId: productToBuy.creatorId,
-          amount: productToBuy.price,
-          paymentMethod: "mobile money",
-          status: "pending",
-        }
-        await setToSubCollection(data.depositId, newTransaction, "users", productToBuy.creatorId, "transactions")
-        if (!res.ok) throw new Error(data.error || "Unknown error");
-        if (paymentMethod === "other" && data?.redirectUrl) {
-          window.location.href = data.redirectUrl; // ✅ works for external links
-        }
-        // setDepositId(data.depositId);
-        // await updateDocument("deliveries", deliveryId, {
-        //   transactionId: data.depositId,
-        // });
-        // console.log(data.depositId)
-        toast({
-          title: "Payment initiated",
-          description: "Please complete the payment on your mobile device.",
-        });
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Payment failed",
-          description: (error as Error).message,
-        });
-      }
-  
-    }
+    setProductToBuy(product);
+    setShowSelectPaymentNumber(true);
+  };
 
-    const handleCancelPaymentDialog = () => {
-      setPaymentState("selecting")
-      setShowSelectPaymentNumber(false)
+  const handleOnPay = async (paymentMethod: string) => {
+    if (product && product.creatorId) return;
+    const bodyWithoutNumber = JSON.stringify({
+      amount: 1,
+      currentUrl:
+        "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
+      product: productToBuy.name,
+    });
+    try {
+      const res = await fetch("/api/pawapay/deposits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: bodyWithoutNumber,
+      });
+
+      const data = await res.json();
+      setDepositId(data.depositId);
+      const newTransaction = {
+        type: "purchase",
+        buyerId: "userInfo.uid",
+        sellerId: productToBuy.creatorId,
+        productId: productToBuy.id,
+        productName: productToBuy.name,
+        counterpartyId: productToBuy.creatorId,
+        amount: productToBuy.price,
+        paymentMethod: "mobile money",
+        status: "pending",
+      };
+      await setToSubCollection(
+        data.depositId,
+        newTransaction,
+        "users",
+        productToBuy.creatorId,
+        "transactions"
+      );
+      if (!res.ok) throw new Error(data.error || "Unknown error");
+      if (paymentMethod === "other" && data?.redirectUrl) {
+        window.location.href = data.redirectUrl; // ✅ works for external links
+      }
+      // setDepositId(data.depositId);
+      // await updateDocument("deliveries", deliveryId, {
+      //   transactionId: data.depositId,
+      // });
+      // console.log(data.depositId)
+      toast({
+        title: "Payment initiated",
+        description: "Please complete the payment on your mobile device.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Payment failed",
+        description: (error as Error).message,
+      });
     }
+  };
+
+  const handleCancelPaymentDialog = () => {
+    setPaymentState("selecting");
+    setShowSelectPaymentNumber(false);
+  };
 
   if (isLoading) {
     return (
@@ -166,10 +176,12 @@ export default function ProductPage() {
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
             <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto animate-spin animation-delay-150"></div>
           </div>
-          <p className="text-gray-600 font-medium">Loading product details...</p>
+          <p className="text-gray-600 font-medium">
+            Loading product details...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!product) {
@@ -179,19 +191,21 @@ export default function ProductPage() {
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="h-12 w-12 text-gray-400" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Product Not Found</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">
+            Product Not Found
+          </h1>
           <p className="text-gray-600 mb-6 leading-relaxed">
             The product you're looking for doesn't exist or has been removed.
           </p>
           <Button
-            onClick={() => router.push(`/catalog/${catalogId}`)}
+            onClick={() => router.push(`/catalog/${catalog?.id}`)}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
           >
             Back to Catalog
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -205,7 +219,7 @@ export default function ProductPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/catalog/${catalogId}`)}
+                onClick={() => router.push(`/catalog/${catalog?.id}`)}
                 className="hover:bg-blue-50 rounded-xl"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -213,12 +227,17 @@ export default function ProductPage() {
               </Button>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
-                  <AvatarImage src={product.creatorName || "/placeholder.svg"} alt={product.creatorName} />
+                  <AvatarImage
+                    src={product.creatorName || "/placeholder.svg"}
+                    alt={product.creatorName}
+                  />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                     {product.creatorName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm text-gray-600 font-medium">{product.creatorName}</span>
+                <span className="text-sm text-gray-600 font-medium">
+                  {product.creatorName}
+                </span>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -236,7 +255,7 @@ export default function ProductPage() {
                   </div>
                 )}
               </Button>
-              <Button
+              {/* <Button
                 onClick={() => router.push(`/catalog/${catalogId}/cart`)}
                 className="relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
               >
@@ -247,7 +266,7 @@ export default function ProductPage() {
                     2
                   </Badge>
                 )}
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>
@@ -270,7 +289,9 @@ export default function ProductPage() {
               >
                 <Heart
                   className={`h-5 w-5 transition-colors duration-200 ${
-                    isFavorite ? "fill-red-500 text-red-500" : "text-gray-600 hover:text-red-500"
+                    isFavorite
+                      ? "fill-red-500 text-red-500"
+                      : "text-gray-600 hover:text-red-500"
                   }`}
                 />
               </button>
@@ -301,11 +322,18 @@ export default function ProductPage() {
           {/* Product Info */}
           <div className="space-y-8">
             <div>
-              <Badge variant="outline" className="mb-4 text-blue-600 border-blue-200 bg-blue-50 px-3 py-1 rounded-full">
+              <Badge
+                variant="outline"
+                className="mb-4 text-blue-600 border-blue-200 bg-blue-50 px-3 py-1 rounded-full"
+              >
                 {product.category}
               </Badge>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">{product.name}</h1>
-              <p className="text-gray-600 text-lg leading-relaxed">{product.description}</p>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
+                {product.name}
+              </h1>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                {product.description}
+              </p>
             </div>
 
             <div className="flex items-center space-x-6">
@@ -333,10 +361,10 @@ export default function ProductPage() {
                 <Truck className="h-5 w-5 text-blue-500" />
                 <span>Fast Shipping</span>
               </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
+              {/* <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <RotateCcw className="h-5 w-5 text-purple-500" />
                 <span>Easy Returns</span>
-              </div>
+              </div> */}
             </div>
 
             {product.inStock && (
@@ -344,7 +372,9 @@ export default function ProductPage() {
                 <CardContent className="p-8">
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-3">Quantity</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Quantity
+                      </label>
                       <div className="flex items-center space-x-4">
                         <Button
                           variant="outline"
@@ -358,7 +388,11 @@ export default function ProductPage() {
                         <Input
                           type="number"
                           value={quantity}
-                          onChange={(e) => handleQuantityChange(Number.parseInt(e.target.value) || 1)}
+                          onChange={(e) =>
+                            handleQuantityChange(
+                              Number.parseInt(e.target.value) || 1
+                            )
+                          }
                           className="w-24 text-center text-lg font-semibold h-12 rounded-xl border-2 focus:border-blue-500"
                           min="1"
                           max={product.inStock}
@@ -406,24 +440,36 @@ export default function ProductPage() {
             {/* Seller Info */}
             <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50">
               <CardContent className="p-8">
-                <h3 className="font-bold text-xl mb-6 text-gray-900">Seller Information</h3>
+                <h3 className="font-bold text-xl mb-6 text-gray-900">
+                  Seller Information
+                </h3>
                 <div className="flex items-start space-x-4 mb-6">
                   <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
-                    <AvatarImage src={product.creatorName || "/placeholder.svg"} alt={product.creatorName} />
+                    <AvatarImage
+                      src={product.creatorName || "/placeholder.svg"}
+                      alt={product.creatorName}
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">
                       {product.creatorName.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-bold text-lg text-gray-900">{product.creatorName}</p>
-                    <div className="flex items-center space-x-2 mb-2">
+                    <p className="font-bold text-lg text-gray-900">
+                      {product.creatorName}
+                    </p>
+                    {/* <div className="flex items-center space-x-2 mb-2">
                       <div className="flex items-center space-x-1">
                         {[1, 2, 3, 4, 5].map((star) => (
-                          <Star key={star} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                          <Star
+                            key={star}
+                            className="h-4 w-4 fill-yellow-400 text-yellow-400"
+                          />
                         ))}
                       </div>
-                      <span className="text-sm text-gray-600 font-medium">4.8 (124 reviews)</span>
-                    </div>
+                      <span className="text-sm text-gray-600 font-medium">
+                        4.8 (124 reviews)
+                      </span>
+                    </div> */}
                     {/* <p className="text-gray-600 leading-relaxed">{catalog.description}</p> */}
                   </div>
                 </div>
@@ -433,7 +479,9 @@ export default function ProductPage() {
                     <p className="text-blue-700">Usually within 2 hours</p>
                   </div>
                   <div className="bg-green-50 p-3 rounded-xl">
-                    <p className="font-semibold text-green-900">Satisfaction Rate</p>
+                    <p className="font-semibold text-green-900">
+                      Satisfaction Rate
+                    </p>
                     <p className="text-green-700">98% positive feedback</p>
                   </div>
                 </div>
@@ -442,12 +490,20 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
-      <PaymentDialog open={showSelectPaymentNumber} handleCancel={handleCancelPaymentDialog} paymentState={paymentState} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
+      <PaymentDialog
+        open={showSelectPaymentNumber}
+        handleCancel={handleCancelPaymentDialog}
+        paymentState={paymentState}
+        onOpenChange={setShowSelectPaymentNumber}
+        amount={productToBuy.price}
+        product={productToBuy.name}
+        onPaymentComplete={handleOnPay}
+      />
       <style jsx>{`
         .animation-delay-150 {
           animation-delay: 150ms;
         }
       `}</style>
     </div>
-  )
+  );
 }

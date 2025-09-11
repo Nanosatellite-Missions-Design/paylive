@@ -27,7 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import QRCodeGenerator from "@/components/qr-code-generator";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection";
-import { updateDocument } from "@/functions/update-doc-in-collection"
+import { updateDocument } from "@/functions/update-doc-in-collection";
 import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document";
 import { useAuth } from "@/contexts/auth-context";
 import { storage } from "@/functions/firebase";
@@ -67,14 +67,14 @@ export default function ProductsPage() {
   const [newProductQuantity, setNewProductQuantity] = useState("");
   const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductStatus, setNewProductStatus] = useState("");
-  const [newProductCategory, setNewProductCategory] = useState("");
+  const [newProductCategory, setNewProductCategory] = useState("electronics");
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log(userProducts)
-  }, [user, userProducts])
+    console.log(userProducts);
+  }, [user, userProducts]);
 
   const handleAddProduct = async (e: any) => {
     e.preventDefault();
@@ -128,7 +128,7 @@ export default function ProductsPage() {
       setNewProductDescription("");
       setNewProductCategory("");
       setNewProductStatus("");
-      setNewProductQuantity("")
+      setNewProductQuantity("");
       setNewProductImageFiles([]);
       setLoading(false);
       toast({

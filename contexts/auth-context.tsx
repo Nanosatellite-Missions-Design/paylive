@@ -33,7 +33,7 @@ interface AuthContextType {
   userInfo: any;
   lives: any[];
   userProducts: any[];
-  userCatalogs: Catalog[]
+  userCatalogs: Catalog[];
   userOrders: Order[];
   userLives: any[];
   userTransactions: any[];
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: name,
           phone: user.phoneNumber,
           role: "user",
-          paymentMethods: []
+          paymentMethods: [],
         });
       }
 
@@ -112,7 +112,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         router.push("/dashboard/lives");
       }
-
     } catch (error) {
       console.error("OTP confirmation error:", error);
       throw new Error("Invalid OTP");
@@ -127,7 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log({ email, password });
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("/");
+      router.push("//dashboard/lives");
     } finally {
       setLoading(false);
     }
@@ -161,7 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           name: formData.name,
           phone: formData.phone,
         });
-        router.push("/");
+        router.push("/dashboard/lives");
 
         // console.log("Firestore document created");
       } catch (firestoreError) {
@@ -264,15 +263,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserTransactions
           ) ?? (() => {});
         unsubscribeUserCatalogs = getRealTimeQuery(
-          "catalogs",        // Firestore collection name
-          "creatorId",            // Field to check
-          user.uid,     // Value to match (must be inside an array in Firestore)
+          "catalogs", // Firestore collection name
+          "creatorId", // Field to check
+          user.uid, // Value to match (must be inside an array in Firestore)
           setUserCatalogs
         );
         unsubscribeUserCatalogs = getRealTimeQuery(
-          "orders",        // Firestore collection name
-          "sellerId",            // Field to check
-          user.uid,     // Value to match (must be inside an array in Firestore)
+          "orders", // Firestore collection name
+          "sellerId", // Field to check
+          user.uid, // Value to match (must be inside an array in Firestore)
           setUserOrders
         );
         break;
