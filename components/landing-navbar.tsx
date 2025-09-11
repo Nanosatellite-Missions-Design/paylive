@@ -1,11 +1,12 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import Image from "next/image";
 
 export default function LandingNavbar() {
-  const { user, loading } = useAuth()
+  const { user, loading } = useAuth();
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -14,10 +15,16 @@ export default function LandingNavbar() {
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              {/* <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">PL</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">PayLive</span>
+              <span className="text-xl font-bold text-gray-900">PayLive</span> */}
+              <Image
+                src="paylive-logo.png"
+                alt="PayLive"
+                width={200}
+                height={200}
+              />
             </Link>
           </div>
 
@@ -42,5 +49,5 @@ export default function LandingNavbar() {
         </div>
       </div>
     </nav>
-  )
+  );
 }

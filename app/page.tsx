@@ -1,11 +1,20 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Video, ShoppingCart, Users, Zap, Star, Play, CheckCircle, ArrowRight } from "lucide-react"
-import Link from "next/link"
-import LandingNavbar from "@/components/landing-navbar"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Video,
+  ShoppingCart,
+  Users,
+  Zap,
+  Star,
+  Play,
+  CheckCircle,
+  ArrowRight,
+} from "lucide-react";
+import Link from "next/link";
+import LandingNavbar from "@/components/landing-navbar";
 
 export default function LandingPage() {
   return (
@@ -28,8 +37,9 @@ export default function LandingPage() {
           </h1>
 
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Transform your products into engaging live experiences. Connect with customers in real-time, showcase your
-            products, and boost your sales with PayLive's powerful live commerce platform.
+            Transform your products into engaging live experiences. Connect with
+            customers in real-time, showcase your products, and boost your sales
+            with PayLive's powerful live commerce platform.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -43,7 +53,11 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/catalog/demo">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3 border-2 bg-transparent">
+              <Button
+                variant="outline"
+                size="lg"
+                className="text-lg px-8 py-3 border-2 bg-transparent"
+              >
                 View Demo Catalog
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
@@ -51,7 +65,7 @@ export default function LandingPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
+          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600 mb-2">10K+</div>
               <div className="text-gray-600">Active Sellers</div>
@@ -64,16 +78,19 @@ export default function LandingPage() {
               <div className="text-3xl font-bold text-green-600 mb-2">$50M+</div>
               <div className="text-gray-600">Revenue Generated</div>
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
 
       {/* Features Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Everything You Need to Succeed</h2>
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Everything You Need to Succeed
+          </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Powerful tools designed to help you create engaging live experiences and grow your business
+            Powerful tools designed to help you create engaging live experiences
+            and grow your business
           </p>
         </div>
 
@@ -84,10 +101,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mb-4">
                 <Video className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Live Streaming</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Live Streaming
+              </h3>
               <p className="text-gray-600">
-                Stream live to showcase your products in real-time. Engage with customers through interactive video
-                experiences.
+                Stream live to showcase your products in real-time. Engage with
+                customers through interactive video experiences.
               </p>
             </CardContent>
           </Card>
@@ -98,9 +117,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg flex items-center justify-center mb-4">
                 <ShoppingCart className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Smart Catalogs</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Smart Catalogs
+              </h3>
               <p className="text-gray-600">
-                Create beautiful product catalogs that customers can browse and purchase from during your live streams.
+                Create beautiful product catalogs that customers can browse and
+                purchase from during your live streams.
               </p>
             </CardContent>
           </Card>
@@ -111,10 +133,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center mb-4">
                 <Users className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Live Chat</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Live Chat
+              </h3>
               <p className="text-gray-600">
-                Interact with your audience in real-time. Answer questions, build relationships, and drive sales through
-                conversation.
+                Interact with your audience in real-time. Answer questions,
+                build relationships, and drive sales through conversation.
               </p>
             </CardContent>
           </Card>
@@ -125,10 +149,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-lg flex items-center justify-center mb-4">
                 <Zap className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Instant Payments</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Instant Payments
+              </h3>
               <p className="text-gray-600">
-                Secure, fast payment processing. Get paid instantly when customers make purchases during your live
-                streams.
+                Secure, fast payment processing. Get paid instantly when
+                customers make purchases during your live streams.
               </p>
             </CardContent>
           </Card>
@@ -139,10 +165,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-red-700 rounded-lg flex items-center justify-center mb-4">
                 <Star className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Analytics</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Analytics
+              </h3>
               <p className="text-gray-600">
-                Track your performance with detailed analytics. Understand your audience and optimize your sales
-                strategy.
+                Track your performance with detailed analytics. Understand your
+                audience and optimize your sales strategy.
               </p>
             </CardContent>
           </Card>
@@ -153,9 +181,12 @@ export default function LandingPage() {
               <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-indigo-700 rounded-lg flex items-center justify-center mb-4">
                 <CheckCircle className="h-6 w-6 text-white" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Mobile First</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Mobile First
+              </h3>
               <p className="text-gray-600">
-                Optimized for mobile devices. Your customers can watch, chat, and buy seamlessly from any device.
+                Optimized for mobile devices. Your customers can watch, chat,
+                and buy seamlessly from any device.
               </p>
             </CardContent>
           </Card>
@@ -165,9 +196,12 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white">
-          <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Business?</h2>
+          <h2 className="text-4xl font-bold mb-4">
+            Ready to Transform Your Business?
+          </h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Join thousands of sellers who are already using PayLive to grow their business through live commerce.
+            Join thousands of sellers who are already using PayLive to grow
+            their business through live commerce.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
@@ -179,7 +213,7 @@ export default function LandingPage() {
                 Get Started Free
               </Button>
             </Link>
-            <Link href="/contact">
+            {/* <Link href="/contact">
               <Button
                 size="lg"
                 variant="outline"
@@ -187,7 +221,7 @@ export default function LandingPage() {
               >
                 Contact Sales
               </Button>
-            </Link>
+            </Link> */}
           </div>
         </div>
       </section>
@@ -195,7 +229,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
@@ -203,7 +237,9 @@ export default function LandingPage() {
                 </div>
                 <span className="text-xl font-bold">PayLive</span>
               </div>
-              <p className="text-gray-400">The future of live commerce. Sell live, earn more.</p>
+              <p className="text-gray-400">
+                The future of live commerce. Sell live, earn more.
+              </p>
             </div>
 
             <div>
@@ -268,7 +304,7 @@ export default function LandingPage() {
                 </li>
               </ul>
             </div>
-          </div>
+          </div> */}
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
             <p>&copy; 2024 PayLive. All rights reserved.</p>
@@ -276,5 +312,5 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
