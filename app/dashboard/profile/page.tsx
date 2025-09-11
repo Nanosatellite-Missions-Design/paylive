@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
 
 export default function ProfilePage() {
-  const { userInfo } = useAuth();
+  const { userInfo, userTransactions } = useAuth();
 
   const user = {
     name: "Jane Cooper",
@@ -110,10 +110,15 @@ export default function ProfilePage() {
                 </p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">
-                    Total Sales: {financialStats.totalSales}
+                    Total Sales:{" "}
+                    {
+                      userTransactions.filter(
+                        (transac) => transac.type === "purchase"
+                      ).length
+                    }
                   </span>
                   <Link
-                    href="/profile/transactions"
+                    href="/dashboard/profile/transactions"
                     className="text-blue-600 flex items-center"
                   >
                     Details <ChevronRight className="h-3 w-3 ml-1" />
@@ -197,7 +202,7 @@ export default function ProfilePage() {
             </Link>
           )}
 
-          <Link href="/dashboard/auctions">
+          {/* <Link href="/dashboard/auctions">
             <Button
               variant="outline"
               className="w-full h-auto py-6 flex flex-col"
@@ -205,7 +210,7 @@ export default function ProfilePage() {
               <Gavel className="h-6 w-6 mb-2" />
               <span>My Auctions</span>
             </Button>
-          </Link>
+          </Link> */}
 
           <Link href="/dashboard/profile/payment-methods">
             <Button

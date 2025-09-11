@@ -153,7 +153,7 @@ export default function SignupPage() {
     setVerifyingCode(true);
     try {
       await confirmOtp(otp, name); // This should create the user in Firestore in your context
-      toast({ title: "Account created", description: "Welcome to PayLive!" });
+      toast({ title: "User logged in", description: "Welcome to PayLive!" });
     } catch (error: any) {
       console.error(error);
       toast({
@@ -236,7 +236,7 @@ export default function SignupPage() {
               You don't have an account ?{" "}
             </span>
             <Link href="/auth/signup" className="text-primary hover:underline">
-              Sign Up !
+              Login !
             </Link>
           </div>
         </form>
