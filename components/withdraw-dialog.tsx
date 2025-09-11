@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertCircle,
   ArrowRight,
@@ -28,18 +28,20 @@ import {
   RefreshCw,
   User,
   Wallet,
-} from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type { WithdrawRequest } from "@/types/financial"
-import { useAuth } from "@/contexts/auth-context"
-import { addToSubCollection } from "@/functions/add-to-a-sub-collection"
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import type { WithdrawRequest } from "@/types/financial";
+import { useAuth } from "@/contexts/auth-context";
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
+import { updateDocument } from "@/functions/update-doc-in-collection";
+import { increment } from "firebase/firestore";
 
 interface WithdrawDialogProps {
-  currentBalance: number
-  pendingWithdrawals?: number
-  onWithdraw: (request: WithdrawRequest) => Promise<void>
-  children?: React.ReactNode
+  currentBalance: number;
+  pendingWithdrawals?: number;
+  onWithdraw: (request: WithdrawRequest) => Promise<void>;
+  children?: React.ReactNode;
 }
 
 export default function WithdrawDialog({
@@ -48,118 +50,133 @@ export default function WithdrawDialog({
   onWithdraw,
   children,
 }: WithdrawDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<"amount" | "method" | "confirm" | "success">("amount")
-  const [amount, setAmount] = useState("")
-  const [method, setMethod] = useState<WithdrawRequest["method"]>("orange")
-  const [accountDetails, setAccountDetails] = useState("")
-  const [bankName, setBankName] = useState("")
-  const [accountNumber, setAccountNumber] = useState("")
-  const [routingNumber, setRoutingNumber] = useState("")
-  const [paypalEmail, setPaypalEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [withdrawalId, setWithdrawalId] = useState<string | null>(null)
-  const { user } = useAuth()
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"amount" | "method" | "confirm" | "success">(
+    "amount"
+  );
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<WithdrawRequest["method"]>("orange");
+  const [accountDetails, setAccountDetails] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [routingNumber, setRoutingNumber] = useState("");
+  const [paypalEmail, setPaypalEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
+  const { user } = useAuth();
   // Constants
-  const minWithdraw = 20
-  const maxWithdraw = currentBalance
-  const withdrawalFee = method === "orange" ? 3.5 : 2.0
-  const netAmount = Math.max(0, Number.parseFloat(amount || "0") - (0.1*amount)
-  const estimatedDays = "24 hours"
+  const minWithdraw = 1;
+  const maxWithdraw = currentBalance;
+  const withdrawalFee = 0.1 * Number(amount) ?? 0;
+  const netAmount = Math.max(
+    0,
+    Number.parseFloat(amount || "0") - 0.1 * Number(amount)
+  );
+  const estimatedDays = "24 hours";
 
   const resetForm = () => {
-    setAmount("")
-    setMethod("orange")
-    setAccountDetails("")
-    setBankName("")
-    setAccountNumber("")
-    setRoutingNumber("")
-    setPaypalEmail("")
-    setError(null)
-    setStep("amount")
-  }
+    setAmount("");
+    setMethod("orange");
+    setAccountDetails("");
+    setBankName("");
+    setAccountNumber("");
+    setRoutingNumber("");
+    setPaypalEmail("");
+    setError(null);
+    setStep("amount");
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen)
+    setOpen(newOpen);
     if (!newOpen) {
       // Reset form when dialog closes
-      setTimeout(resetForm, 300) // Delay to allow dialog animation to complete
+      setTimeout(resetForm, 300); // Delay to allow dialog animation to complete
     }
-  }
+  };
 
   const handleAmountSubmit = () => {
-    const withdrawAmount = Number.parseFloat(amount)
+    const withdrawAmount = Number.parseFloat(amount);
     if (withdrawAmount < minWithdraw || withdrawAmount > maxWithdraw) {
-      setError(`Amount must be between XAF${minWithdraw} and XAF${maxWithdraw}`)
-      return
+      setError(
+        `Amount must be between XAF${minWithdraw} and XAF${maxWithdraw}`
+      );
+      return;
     }
 
-    setError(null)
-    setStep("method")
-  }
+    setError(null);
+    setStep("method");
+  };
 
   const handleMethodSubmit = () => {
-    let isValid = true
+    let isValid = true;
     if (!accountDetails) {
-      setError("Please fill in your account number")
-      isValid = false
+      setError("Please fill in your account number");
+      isValid = false;
     }
 
     if (isValid) {
-      setError(null)
-      setStep("confirm")
+      setError(null);
+      setStep("confirm");
     }
-  }
+  };
 
   const handleConfirmWithdrawal = async () => {
-    setIsLoading(true)
-    setError(null)
-    if(!user) return
+    setIsLoading(true);
+    setError(null);
+    if (!user) return;
 
     const body = JSON.stringify({
-      amount: netAmount,
+      amount: Math.floor(netAmount),
       phoneNumber: accountDetails,
       provider: method,
-      customerId: user.uid
+      customerId: user.uid,
     });
 
     try {
       const res = await fetch("/api/pawapay/withdrawals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body
+        body,
       });
 
       const data = await res.json();
-      console.log(data)
+      console.log(data);
       if (!res.ok) throw new Error(data.error || "Unknown error");
 
       const newTransaction = {
         amount: netAmount,
-        fees: amount-netAmount,
+        fees: Number(amount) - netAmount,
         paymentMethod: method,
         status: "completed",
         type: "withdrawal",
-        phoneNumber: accountDetails
-      }
+        phoneNumber: accountDetails,
+      };
 
-      await addToSubCollection(newTransaction, "users", user.uid, "transactions")
+      await addToSubCollection(
+        newTransaction,
+        "users",
+        user.uid,
+        "transactions"
+      );
 
+      await updateDocument("users", user.uid, {
+        balance: increment(-Number(amount)),
+      });
 
-      setStep("success")
+      setStep("success");
     } catch (error) {
-      console.error("Withdrawal failed:", error)
-      setError("Withdrawal failed. Please try again later.")
+      console.error("Withdrawal failed:", error);
+      setError("Withdrawal failed. Please try again later.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSuccessClose = () => {
-    setOpen(false)
-    resetForm()
-  }
+    setOpen(false);
+    resetForm();
+  };
 
   const getMethodDetails = () => {
     switch (method) {
@@ -175,9 +192,9 @@ export default function WithdrawDialog({
               required
             />
           </div>
-        )
+        );
     }
-  }
+  };
 
   const getDialogContent = () => {
     switch (step) {
@@ -194,13 +211,17 @@ export default function WithdrawDialog({
                   </Badge>
                 )}
               </DialogTitle>
-              <DialogDescription>Withdraw your available balance to your preferred payment method</DialogDescription>
+              <DialogDescription>
+                Withdraw your available balance to your preferred payment method
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">Available Balance</span>
-                <span className="text-lg font-semibold">XAF{currentBalance}</span>
+                <span className="text-lg font-semibold">
+                  XAF{currentBalance}
+                </span>
               </div>
 
               <div className="space-y-2">
@@ -256,7 +277,11 @@ export default function WithdrawDialog({
             <DialogFooter>
               <Button
                 onClick={handleAmountSubmit}
-                disabled={!amount || Number.parseFloat(amount) < minWithdraw || Number.parseFloat(amount) > maxWithdraw}
+                disabled={
+                  !amount ||
+                  Number.parseFloat(amount) < minWithdraw ||
+                  Number.parseFloat(amount) > maxWithdraw
+                }
                 className="w-full"
               >
                 Continue
@@ -264,26 +289,38 @@ export default function WithdrawDialog({
               </Button>
             </DialogFooter>
           </>
-        )
+        );
 
       case "method":
         return (
           <>
             <DialogHeader>
               <DialogTitle>Select Payment Method</DialogTitle>
-              <DialogDescription>Choose how you'd like to receive your withdrawal</DialogDescription>
+              <DialogDescription>
+                Choose how you'd like to receive your withdrawal
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">Withdrawal Amount</span>
-                <span className="text-lg font-semibold">XAF{Number.parseFloat(amount)}</span>
+                <span className="text-lg font-semibold">
+                  XAF{Number.parseFloat(amount)}
+                </span>
               </div>
 
-              <RadioGroup value={method} onValueChange={(value: WithdrawRequest["method"]) => setMethod(value)}>
+              <RadioGroup
+                value={method}
+                onValueChange={(value: WithdrawRequest["method"]) =>
+                  setMethod(value)
+                }
+              >
                 <div className="flex items-center space-x-2 border rounded-md p-3">
                   <RadioGroupItem value="orange" id="orange" />
-                  <Label htmlFor="orange" className="flex-1 flex items-center cursor-pointer">
+                  <Label
+                    htmlFor="orange"
+                    className="flex-1 flex items-center cursor-pointer"
+                  >
                     <Phone className="h-4 w-4 mr-2" />
                     <div>
                       <div>Orange Money</div>
@@ -294,7 +331,10 @@ export default function WithdrawDialog({
 
                 <div className="flex items-center space-x-2 border rounded-md p-3">
                   <RadioGroupItem value="mtn" id="mtn" />
-                  <Label htmlFor="mtn" className="flex-1 flex items-center cursor-pointer">
+                  <Label
+                    htmlFor="mtn"
+                    className="flex-1 flex items-center cursor-pointer"
+                  >
                     <Phone className="h-4 w-4 mr-2" />
                     <div>
                       <div>MTN MOMO</div>
@@ -325,21 +365,25 @@ export default function WithdrawDialog({
               </Button>
             </DialogFooter>
           </>
-        )
+        );
 
       case "confirm":
         return (
           <>
             <DialogHeader>
               <DialogTitle>Confirm Withdrawal</DialogTitle>
-              <DialogDescription>Please review your withdrawal details before confirming</DialogDescription>
+              <DialogDescription>
+                Please review your withdrawal details before confirming
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="space-y-3 p-4 border rounded-md">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount</span>
-                  <span className="font-medium">XAF{Number.parseFloat(amount)}</span>
+                  <span className="font-medium">
+                    XAF{Number.parseFloat(amount)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Fee</span>
@@ -358,18 +402,19 @@ export default function WithdrawDialog({
                   <span className="text-gray-600">Estimated Arrival</span>
                   <span>{estimatedDays}</span>
                 </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Phone Number</span>
-                    <span>{accountDetails}</span>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Phone Number</span>
+                  <span>{accountDetails}</span>
+                </div>
               </div>
 
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Important</AlertTitle>
                 <AlertDescription>
-                  By confirming this withdrawal, you agree to our terms and conditions. This transaction cannot be
-                  reversed once processed.
+                  By confirming this withdrawal, you agree to our terms and
+                  conditions. This transaction cannot be reversed once
+                  processed.
                 </AlertDescription>
               </Alert>
 
@@ -398,13 +443,15 @@ export default function WithdrawDialog({
               </Button>
             </DialogFooter>
           </>
-        )
+        );
 
       case "success":
         return (
           <>
             <DialogHeader>
-              <DialogTitle className="text-center text-green-600">Withdrawal Successful</DialogTitle>
+              <DialogTitle className="text-center text-green-600">
+                Withdrawal Successful
+              </DialogTitle>
               <DialogDescription className="text-center">
                 Your withdrawal has been processed successfully
               </DialogDescription>
@@ -417,7 +464,9 @@ export default function WithdrawDialog({
 
               <div>
                 <p className="text-xl font-semibold">XAF{netAmount}</p>
-                <p className="text-sm text-gray-500">will be sent to your {method} account</p>
+                <p className="text-sm text-gray-500">
+                  will be sent to your {method} account
+                </p>
               </div>
 
               <div className="p-4 bg-gray-50 rounded-md">
@@ -432,8 +481,8 @@ export default function WithdrawDialog({
               </div>
 
               <p className="text-sm text-gray-500">
-                You'll receive an sms confirmation shortly. You can track the status of your withdrawal in the
-                transaction history.
+                You'll receive an sms confirmation shortly. You can track the
+                status of your withdrawal in the transaction history.
               </p>
             </div>
 
@@ -443,9 +492,9 @@ export default function WithdrawDialog({
               </Button>
             </DialogFooter>
           </>
-        )
+        );
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -457,7 +506,9 @@ export default function WithdrawDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">{getDialogContent()}</DialogContent>
+      <DialogContent className="sm:max-w-md">
+        {getDialogContent()}
+      </DialogContent>
     </Dialog>
-  )
+  );
 }

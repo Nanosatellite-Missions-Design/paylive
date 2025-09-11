@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
+import Image from "next/image";
 
 export default function DesktopNavigation() {
   const pathname = usePathname();
@@ -51,7 +52,7 @@ export default function DesktopNavigation() {
   return (
     <div className="fixed top-0 left-0 h-screen w-64 border-r border-gray-200 dark:border-gray-800 p-4 flex flex-col overflow-y-auto bg-white dark:bg-gray-950">
       <div className="mb-8 px-4">
-        <h1 className="text-2xl font-bold text-primary">PayLive</h1>
+        <Image src="/paylive-logo.png" alt="PayLive" width={150} height={150} />
       </div>
       <nav className="space-y-2 flex-1">
         {navItems.map((item) => {

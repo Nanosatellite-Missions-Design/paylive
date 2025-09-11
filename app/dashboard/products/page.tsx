@@ -242,11 +242,6 @@ export default function ProductsPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <Link href="/dashboard/profile" className="mr-2">
-              <Button variant="ghost" size="icon">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
             <h1 className="text-2xl font-bold">My Products</h1>
           </div>
           <p className="text-gray-500">

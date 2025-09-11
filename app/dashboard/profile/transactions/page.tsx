@@ -1,17 +1,30 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ChevronLeft, ShoppingCart, Gavel, ArrowUpRight, ArrowDownLeft, TrendingUp, Download } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-import WithdrawDialog from "@/components/withdraw-dialog"
-import type { Transaction, FinancialStats, WithdrawRequest } from "@/types/financial"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ChevronLeft,
+  ShoppingCart,
+  Gavel,
+  ArrowUpRight,
+  ArrowDownLeft,
+  TrendingUp,
+  Download,
+} from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import WithdrawDialog from "@/components/withdraw-dialog";
+import type {
+  Transaction,
+  FinancialStats,
+  WithdrawRequest,
+} from "@/types/financial";
+import { Timestamp } from "firebase/firestore";
 
 export default function TransactionsPage() {
-  const { userInfo, userTransactions } = useAuth()
+  const { userInfo, userTransactions } = useAuth();
   const user = {
     name: "Jane Cooper",
     email: "jane@example.com",
@@ -22,7 +35,7 @@ export default function TransactionsPage() {
     joinedDate: "March 2023",
     location: "New York, NY",
     website: "https://janecooper.com",
-  }
+  };
 
   // Mock financial data
   const financialStats: FinancialStats = {
@@ -32,131 +45,111 @@ export default function TransactionsPage() {
     pendingPayouts: 156.2,
     totalSales: 89,
     totalPurchases: 23,
-  }
+  };
 
-  // Mock transactions data with proper typing
-  const transactions: Transaction[] = [
-    {
-      id: "1",
-      type: "purchase",
-      title: "Wireless Earbuds",
-      amount: 89.99,
-      date: "Apr 15, 2023",
-      status: "completed",
-      image: "/placeholder.svg?height=50&width=50",
-    },
-    {
-      id: "2",
-      type: "sale",
-      title: "Designer Handbag",
-      amount: 199.99,
-      date: "Apr 12, 2023",
-      status: "completed",
-      image: "/placeholder.svg?height=50&width=50",
-      fees: 15.99,
-      netAmount: 184.0,
-    },
-    {
-      id: "3",
-      type: "auction",
-      title: "Vintage Camera",
-      amount: 250.0,
-      date: "Mar 18, 2023",
-      status: "completed",
-      image: "/placeholder.svg?height=50&width=50",
-    },
-    {
-      id: "4",
-      type: "withdrawal",
-      title: "Bank Transfer",
-      amount: 500.0,
-      date: "Mar 10, 2023",
-      status: "completed",
-      description: "Withdrawal to Bank Account ****1234",
-    },
-    {
-      id: "5",
-      type: "purchase",
-      title: "Bluetooth Speaker",
-      amount: 79.99,
-      date: "Feb 28, 2023",
-      status: "failed",
-      image: "/placeholder.svg?height=50&width=50",
-    },
-  ]
+  const sortedTransactions = [...userTransactions].sort((a, b) => {
+    const dateA =
+      a.createdAt instanceof Timestamp
+        ? a.createdAt.toDate()
+        : new Date(a.createdAt);
+    const dateB =
+      b.createdAt instanceof Timestamp
+        ? b.createdAt.toDate()
+        : new Date(b.createdAt);
+
+    return dateB.getTime() - dateA.getTime(); // newest first
+  });
 
   // Group transactions by month
-  const groupedTransactions = userTransactions.reduce((groups: Record<string, Transaction[]>, transaction) => {
-    const date = new Date(transaction.createdAt)
-    const month = date.toLocaleString("default", { month: "long", year: "numeric" })
+  const groupedTransactions = sortedTransactions.reduce(
+    (groups: Record<string, Transaction[]>, transaction) => {
+      const date = new Date(transaction.createdAt);
+      const month = date.toLocaleString("default", {
+        month: "long",
+        year: "numeric",
+      });
 
-    if (!groups[month]) {
-      groups[month] = []
-    }
+      if (!groups[month]) {
+        groups[month] = [];
+      }
 
-    groups[month].push(transaction)
-    return groups
-  }, {})
+      groups[month].push(transaction);
+      return groups;
+    },
+    {}
+  );
 
   const getTransactionIcon = (type: Transaction["type"]) => {
     switch (type) {
       case "purchase":
-        return <ArrowUpRight className="h-4 w-4 text-red-500" />
+        return <ArrowUpRight className="h-4 w-4 text-green-500" />;
       case "sale":
-        return <ArrowDownLeft className="h-4 w-4 text-green-500" />
+        return <ArrowDownLeft className="h-4 w-4 text-green-500" />;
       case "auction":
-        return <Gavel className="h-4 w-4 text-amber-500" />
+        return <Gavel className="h-4 w-4 text-amber-500" />;
       case "withdrawal":
-        return <Download className="h-4 w-4 text-blue-500" />
+        return <Download className="h-4 w-4 text-blue-500" />;
       case "refund":
-        return <ArrowDownLeft className="h-4 w-4 text-purple-500" />
+        return <ArrowDownLeft className="h-4 w-4 text-purple-500" />;
       default:
-        return <ShoppingCart className="h-4 w-4" />
+        return <ShoppingCart className="h-4 w-4" />;
     }
-  }
+  };
 
   const getStatusBadge = (status: Transaction["status"]) => {
     switch (status) {
       case "completed":
         return (
-          <Badge variant="outline" className="text-green-500 border-green-200 bg-green-50">
+          <Badge
+            variant="outline"
+            className="text-green-500 border-green-200 bg-green-50"
+          >
             Completed
           </Badge>
-        )
+        );
       case "pending":
         return (
-          <Badge variant="outline" className="text-amber-500 border-amber-200 bg-amber-50">
+          <Badge
+            variant="outline"
+            className="text-amber-500 border-amber-200 bg-amber-50"
+          >
             Pending
           </Badge>
-        )
+        );
       case "failed":
         return (
-          <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">
+          <Badge
+            variant="outline"
+            className="text-red-500 border-red-200 bg-red-50"
+          >
             Failed
           </Badge>
-        )
+        );
       case "cancelled":
         return (
-          <Badge variant="outline" className="text-gray-500 border-gray-200 bg-gray-50">
+          <Badge
+            variant="outline"
+            className="text-gray-500 border-gray-200 bg-gray-50"
+          >
             Cancelled
           </Badge>
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const handleWithdraw = async (request: WithdrawRequest) => {
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      console.log("Withdrawal request:", request)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Withdrawal request:", request);
       // In real app, this would call your API
     } catch (error) {
-      console.error("Withdrawal failed:", error)
-      throw error
+      console.error("Withdrawal failed:", error);
+      throw error;
     }
-  }
+  };
 
   const renderTransactionList = (transactionList: any[]) => (
     <div className="space-y-3">
@@ -179,19 +172,36 @@ export default function TransactionsPage() {
               )}
               <div className="flex-1">
                 <div className="flex items-center">
-                  <h3 className="font-medium">{transaction.productName}</h3>
-                  <div className="ml-2">{getTransactionIcon(transaction.type)}</div>
+                  <h3 className="font-medium">
+                    {transaction.type === "purchase"
+                      ? "New Order"
+                      : "Withdrawal"}
+                  </h3>
+                  <div className="ml-2">
+                    {getTransactionIcon(transaction.type)}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500">{transaction.date}</p>
-                <p className="text-xs text-gray-400">{transaction.type ==="purchase" ? "Purchased product" : transaction.type ==="sale" || transaction.type === "invoice" ? "Sold product" : "Withdrawal"} {transaction.productName}</p>
+                <p className="text-xs text-gray-400">
+                  {transaction.type === "purchase"
+                    ? "Purchased product"
+                    : transaction.type === "sale" ||
+                      transaction.type === "invoice"
+                    ? "Sold product"
+                    : "Withdrawal"}{" "}
+                  {transaction.productName}
+                </p>
               </div>
               <div className="text-right">
                 <p className="font-medium">
-                  {transaction.type === "purchase" || transaction.type === "withdrawal" ? "-" : "+"}XAF
+                  {transaction.type === "withdrawal" ? "-" : "+"}
+                  XAF
                   {transaction.amount}
                 </p>
                 {transaction.netAmount && (
-                  <p className="text-xs text-gray-500">Net: XAF{transaction.netAmount}</p>
+                  <p className="text-xs text-gray-500">
+                    Net: XAF{transaction.netAmount}
+                  </p>
                 )}
                 {getStatusBadge(transaction.status)}
               </div>
@@ -200,9 +210,9 @@ export default function TransactionsPage() {
         </Card>
       ))}
     </div>
-  )
+  );
 
-  if (!user) return null
+  if (!user) return null;
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
@@ -215,7 +225,9 @@ export default function TransactionsPage() {
           </Link>
           <h1 className="text-2xl font-bold">Transactions</h1>
         </div>
-        <p className="text-gray-500">View your transaction history and manage your balance</p>
+        <p className="text-gray-500">
+          View your transaction history and manage your balance
+        </p>
       </header>
 
       {/* Balance Card - Only for creators */}
@@ -230,17 +242,25 @@ export default function TransactionsPage() {
           <CardContent>
             <div className="space-y-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">XAF{userInfo?.balance ?? 0}</p>
-                <p className="text-sm text-gray-500">Available for withdrawal</p>
+                <p className="text-3xl font-bold text-green-600">
+                  XAF{userInfo?.balance ?? 0}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Available for withdrawal
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <p className="text-lg font-semibold">XAF{userInfo?.balance ?? 0}</p>
+                  <p className="text-lg font-semibold">
+                    XAF{userInfo?.balance ?? 0}
+                  </p>
                   <p className="text-xs text-gray-500">This Month</p>
                 </div>
                 <div>
-                  <p className="text-lg font-semibold">XAF{userInfo?.pendingPayout ?? 0}</p>
+                  <p className="text-lg font-semibold">
+                    XAF{userInfo?.pendingPayout ?? 0}
+                  </p>
                   <p className="text-xs text-gray-500">Pending</p>
                 </div>
               </div>
@@ -261,71 +281,85 @@ export default function TransactionsPage() {
             All
           </TabsTrigger>
           <TabsTrigger value="purchases" className="flex-1">
-            Purchases
+            Sales
           </TabsTrigger>
-          <TabsTrigger value="auctions" className="flex-1">
-            Auctions
+          <TabsTrigger value="withdrawals" className="flex-1">
+            Withdrawal
           </TabsTrigger>
-          {user.isCreator && (
+          {/* {user.isCreator && (
             <TabsTrigger value="sales" className="flex-1">
               Sales
             </TabsTrigger>
-          )}
+          )} */}
         </TabsList>
 
         <TabsContent value="all">
-          {Object.entries(groupedTransactions).map(([month, monthTransactions]) => (
-            <div key={month} className="mb-6">
-              <h2 className="text-lg font-semibold mb-3">{month}</h2>
-              {renderTransactionList(monthTransactions)}
-            </div>
-          ))}
+          {Object.entries(groupedTransactions).map(
+            ([month, monthTransactions]) => (
+              <div key={month} className="mb-6">
+                <h2 className="text-lg font-semibold mb-3">{month}</h2>
+                {renderTransactionList(monthTransactions)}
+              </div>
+            )
+          )}
         </TabsContent>
 
         <TabsContent value="purchases">
-          {Object.entries(groupedTransactions).map(([month, monthTransactions]) => {
-            const purchases = monthTransactions.filter((t) => t.type === "purchase")
-            if (purchases.length === 0) return null
-
-            return (
-              <div key={month} className="mb-6">
-                <h2 className="text-lg font-semibold mb-3">{month}</h2>
-                {renderTransactionList(purchases)}
-              </div>
-            )
-          })}
-        </TabsContent>
-
-        <TabsContent value="auctions">
-          {Object.entries(groupedTransactions).map(([month, monthTransactions]) => {
-            const auctions = monthTransactions.filter((t) => t.type === "auction")
-            if (auctions.length === 0) return null
-
-            return (
-              <div key={month} className="mb-6">
-                <h2 className="text-lg font-semibold mb-3">{month}</h2>
-                {renderTransactionList(auctions)}
-              </div>
-            )
-          })}
-        </TabsContent>
-
-        {user.isCreator && (
-          <TabsContent value="sales">
-            {Object.entries(groupedTransactions).map(([month, monthTransactions]) => {
-              const sales = monthTransactions.filter((t) => t.type === "sale")
-              if (sales.length === 0) return null
+          {Object.entries(groupedTransactions).map(
+            ([month, monthTransactions]) => {
+              const purchases = monthTransactions.filter(
+                (t) => t.type === "purchase"
+              );
+              if (purchases.length === 0) return null;
 
               return (
                 <div key={month} className="mb-6">
                   <h2 className="text-lg font-semibold mb-3">{month}</h2>
-                  {renderTransactionList(sales)}
+                  {renderTransactionList(purchases)}
                 </div>
-              )
-            })}
+              );
+            }
+          )}
+        </TabsContent>
+
+        <TabsContent value="withdrawals">
+          {Object.entries(groupedTransactions).map(
+            ([month, monthTransactions]) => {
+              const auctions = monthTransactions.filter(
+                (t) => t.type === "withdrawal"
+              );
+              if (auctions.length === 0) return null;
+
+              return (
+                <div key={month} className="mb-6">
+                  <h2 className="text-lg font-semibold mb-3">{month}</h2>
+                  {renderTransactionList(auctions)}
+                </div>
+              );
+            }
+          )}
+        </TabsContent>
+
+        {user.isCreator && (
+          <TabsContent value="sales">
+            {Object.entries(groupedTransactions).map(
+              ([month, monthTransactions]) => {
+                const sales = monthTransactions.filter(
+                  (t) => t.type === "sale"
+                );
+                if (sales.length === 0) return null;
+
+                return (
+                  <div key={month} className="mb-6">
+                    <h2 className="text-lg font-semibold mb-3">{month}</h2>
+                    {renderTransactionList(sales)}
+                  </div>
+                );
+              }
+            )}
           </TabsContent>
         )}
       </Tabs>
     </div>
-  )
+  );
 }

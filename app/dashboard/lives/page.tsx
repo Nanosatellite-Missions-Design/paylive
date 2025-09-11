@@ -40,8 +40,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "@/functions/firebase";
 import { addToCollection } from "@/functions/add-to-collection";
-import { updateDocument } from "@/functions/update-doc-in-collection"
-import { getASubDocument } from "@/functions/get-a-document"
+import { updateDocument } from "@/functions/update-doc-in-collection";
+import { getASubDocument } from "@/functions/get-a-document";
 
 export default function LiveSalesManagementPage() {
   const { lives, userInfo, userProducts } = useAuth();
@@ -69,7 +69,9 @@ export default function LiveSalesManagementPage() {
       setUserLives(Array.from(enrichedLivesMap.values()));
     };
 
-    const userLives = lives.filter((live: any) => live.creatorId === userInfo.uid);
+    const userLives = lives.filter(
+      (live: any) => live.creatorId === userInfo.uid
+    );
 
     userLives.forEach((live: any) => {
       if (!Array.isArray(live.products) || live.products.length === 0) {
@@ -114,7 +116,6 @@ export default function LiveSalesManagementPage() {
     };
   }, [userInfo?.uid, lives]);
 
-
   const handleCreateLiveSale = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -147,7 +148,7 @@ export default function LiveSalesManagementPage() {
       image: imageUrl,
     };
 
-    await addToCollection("lives", newLiveSale)
+    await addToCollection("lives", newLiveSale);
     setIsCreatingLiveSale(false);
     setSelectedProducts([]);
     setThumbnail(null);
@@ -163,7 +164,7 @@ export default function LiveSalesManagementPage() {
 
   const handleStartLiveSale = async (id: any) => {
     const now = new Date().toISOString();
-    await updateDocument("lives", id, {status: "active", startedAt: now})
+    await updateDocument("lives", id, { status: "active", startedAt: now });
     toast({
       title: "Live sale started",
       description: "Your live sale has started successfully.",
@@ -173,7 +174,7 @@ export default function LiveSalesManagementPage() {
   const handleEndLiveSale = async (id: any) => {
     const now = new Date().toISOString();
 
-    await updateDocument("lives", id, {status: "ended", endedAt: now})
+    await updateDocument("lives", id, { status: "ended", endedAt: now });
 
     toast({
       title: "Live sale ended",
@@ -182,7 +183,9 @@ export default function LiveSalesManagementPage() {
   };
 
   const handleSetFeaturedProduct = async (saleId: any, productId: any) => {
-    await updateDocument("lives", saleId, {currentFeaturedProduct: productId})
+    await updateDocument("lives", saleId, {
+      currentFeaturedProduct: productId,
+    });
 
     toast({
       title: "Featured product updated",
@@ -210,11 +213,6 @@ export default function LiveSalesManagementPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <Link href="/profile" className="mr-2">
-              <Button variant="ghost" size="icon">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
             <h1 className="text-2xl font-bold">My Live Sales</h1>
           </div>
           <div className="flex items-center justify-between">
@@ -466,7 +464,8 @@ export default function LiveSalesManagementPage() {
                                         XAF{product.price}
                                       </p>
                                     </div>
-                                    {sale.currentFeaturedProduct === product.id ? (
+                                    {sale.currentFeaturedProduct ===
+                                    product.id ? (
                                       <Badge className="bg-primary">
                                         Featured
                                       </Badge>

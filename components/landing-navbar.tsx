@@ -20,10 +20,10 @@ export default function LandingNavbar() {
               </div>
               <span className="text-xl font-bold text-gray-900">PayLive</span> */}
               <Image
-                src="paylive-logo.png"
+                src="/paylive-logo.png"
                 alt="PayLive"
-                width={200}
-                height={200}
+                width={150}
+                height={150}
               />
             </Link>
           </div>
