@@ -228,7 +228,7 @@ export default function SignupPage() {
             className="w-full"
             disabled={loading || verifyingCode || !codeSent}
           >
-            {verifyingCode ? "Creating account..." : "Create account"}
+            {verifyingCode ? "Logging in..." : "Login"}
           </Button>
 
           <div className="text-center text-sm">
@@ -236,7 +236,7 @@ export default function SignupPage() {
               You don't have an account ?{" "}
             </span>
             <Link href="/auth/signup" className="text-primary hover:underline">
-              Login !
+              Sign Up !
             </Link>
           </div>
         </form>
