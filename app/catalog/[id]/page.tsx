@@ -122,10 +122,10 @@ export default function CatalogPage() {
                 <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">{catalog.title}</h1>
                 <div className="flex items-center space-x-4 mb-3">
                   <p className="text-lg text-gray-700 font-medium">{catalog.creatorName}</p>
-                  <div className="flex items-center space-x-1">
+{/*                   <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm text-gray-600">4.8 (124 reviews)</span>
-                  </div>
+                  </div> */}
                 </div>
                 {/* <p className="text-gray-600 leading-relaxed max-w-2xl">{catalog.phone}</p> */}
                 <div className="flex items-center space-x-6 mt-4 text-sm text-gray-500">
