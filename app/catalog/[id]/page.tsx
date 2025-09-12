@@ -1,78 +1,82 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ShoppingCart, Search, Star, MapPin, Clock, Heart } from "lucide-react"
-import type { Catalog, CatalogProduct } from "@/types/catalog"
-import { getADocument } from "@/functions/get-a-document"
-import { listenToSubCollection } from "@/functions/get-a-sub-collection"
-import { useCart } from "@/contexts/cart-context"
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ShoppingCart, Search, Star, MapPin, Clock, Heart } from "lucide-react";
+import type { Catalog, CatalogProduct } from "@/types/catalog";
+import { getADocument } from "@/functions/get-a-document";
+import { listenToSubCollection } from "@/functions/get-a-sub-collection";
+import { useCart } from "@/contexts/cart-context";
 
 export default function CatalogPage() {
-  const params = useParams()
-  const router = useRouter()
-  const catalogId = params.id as string
-  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [isLoading, setIsLoading] = useState(true)
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
-  const { addToCart, catalog, products, setProducts, setCatalog } = useCart()
+  const params = useParams();
+  const router = useRouter();
+  const catalogId = params.id as string;
+  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>(
+    []
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { addToCart, catalog, products, setProducts, setCatalog } = useCart();
 
   // Mock data - replace with actual API call
-  
 
   // Filter products based on search and category
   useEffect(() => {
-    if (!catalog) return
+    if (!catalog) return;
 
-    let filtered = [...products]
+    let filtered = [...products];
 
     if (searchQuery) {
-        filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
     if (selectedCategory !== "all") {
-        filtered = filtered.filter((product) => product.category === selectedCategory)
+      filtered = filtered.filter(
+        (product) => product.category === selectedCategory
+      );
     }
 
-    setFilteredProducts(filtered)
-  }, [catalog, searchQuery, selectedCategory])
+    setFilteredProducts(filtered);
+  }, [catalog, searchQuery, selectedCategory]);
 
   const categories =
     products.reduce((cats, product) => {
       if (!cats.includes(product.category)) {
-        cats.push(product.category)
+        cats.push(product.category);
       }
-      return cats
-    }, [] as string[]) || []
+      return cats;
+    }, [] as string[]) || [];
 
   const handleAddToCart = (product: CatalogProduct) => {
-    console.log("testing")
-    addToCart(product, 1)
-  }
+    console.log("testing");
+    addToCart(product, 1);
+  };
 
   const handleProductClick = (productId: string) => {
-    router.push(`/catalog/${catalogId}/product/${productId}`)
-  }
+    router.push(`/catalog/${catalogId}/product/${productId}`);
+  };
 
   const toggleFavorite = (productId: string) => {
-    const newFavorites = new Set(favorites)
+    const newFavorites = new Set(favorites);
     if (newFavorites.has(productId)) {
-      newFavorites.delete(productId)
+      newFavorites.delete(productId);
     } else {
-      newFavorites.add(productId)
+      newFavorites.add(productId);
     }
-    setFavorites(newFavorites)
-  }
+    setFavorites(newFavorites);
+  };
 
   if (!catalog) {
     return (
@@ -85,7 +89,7 @@ export default function CatalogPage() {
           <p className="text-gray-600 font-medium">Loading your catalog...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!catalog) {
@@ -95,13 +99,15 @@ export default function CatalogPage() {
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="h-12 w-12 text-gray-400" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Catalog Not Found</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">
+            Catalog Not Found
+          </h1>
           <p className="text-gray-600 leading-relaxed">
             The catalog you're looking for doesn't exist or has been removed.
           </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -113,16 +119,23 @@ export default function CatalogPage() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div className="flex items-start space-x-6">
               <Avatar className="h-20 w-20 ring-4 ring-white shadow-lg">
-                <AvatarImage src={catalog.userAvatar || "/placeholder.svg"} alt={catalog.title} />
+                <AvatarImage
+                  src={catalog.userAvatar || "/placeholder.svg"}
+                  alt={catalog.title}
+                />
                 <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                   {catalog.creatorName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">{catalog.title}</h1>
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                  {catalog.title}
+                </h1>
                 <div className="flex items-center space-x-4 mb-3">
-                  <p className="text-lg text-gray-700 font-medium">{catalog.creatorName}</p>
-{/*                   <div className="flex items-center space-x-1">
+                  <p className="text-lg text-gray-700 font-medium">
+                    {catalog.creatorName}
+                  </p>
+                  {/* <div className="flex items-center space-x-1">
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm text-gray-600">4.8 (124 reviews)</span>
                   </div> */}
@@ -188,7 +201,9 @@ export default function CatalogPage() {
               {categories.map((category) => (
                 <Button
                   key={category}
-                  variant={selectedCategory === category ? "default" : "outline"}
+                  variant={
+                    selectedCategory === category ? "default" : "outline"
+                  }
                   onClick={() => setSelectedCategory(category)}
                   className={`whitespace-nowrap rounded-xl ${
                     selectedCategory === category
@@ -235,28 +250,36 @@ export default function CatalogPage() {
                   />
                   {!product.inStock && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <Badge variant="secondary" className="bg-white/90 text-gray-800 font-semibold">
+                      <Badge
+                        variant="secondary"
+                        className="bg-white/90 text-gray-800 font-semibold"
+                      >
                         Out of Stock
                       </Badge>
                     </div>
                   )}
                   <button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      toggleFavorite(product.id)
+                      e.stopPropagation();
+                      toggleFavorite(product.id);
                     }}
                     className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition-colors duration-200 shadow-lg"
                   >
                     <Heart
                       className={`h-4 w-4 transition-colors duration-200 ${
-                        favorites.has(product.id) ? "fill-red-500 text-red-500" : "text-gray-600 hover:text-red-500"
+                        favorites.has(product.id)
+                          ? "fill-red-500 text-red-500"
+                          : "text-gray-600 hover:text-red-500"
                       }`}
                     />
                   </button>
                 </div>
                 <CardContent className="p-6">
                   <div className="mb-3">
-                    <Badge variant="outline" className="text-xs font-medium text-blue-600 border-blue-200 bg-blue-50">
+                    <Badge
+                      variant="outline"
+                      className="text-xs font-medium text-blue-600 border-blue-200 bg-blue-50"
+                    >
                       {product.category}
                     </Badge>
                   </div>
@@ -266,7 +289,9 @@ export default function CatalogPage() {
                   >
                     {product.name}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">{product.description}</p>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+                    {product.description}
+                  </p>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                       XAF{product.price}
@@ -279,8 +304,8 @@ export default function CatalogPage() {
                   </div>
                   <Button
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleAddToCart(product)
+                      e.stopPropagation();
+                      handleAddToCart(product);
                     }}
                     disabled={!product.inStock}
                     className={`w-full rounded-xl font-semibold transition-all duration-200 ${
@@ -309,9 +334,12 @@ export default function CatalogPage() {
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Search className="h-12 w-12 text-gray-400" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">No products found</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              No products found
+            </h3>
             <p className="text-gray-600 max-w-md mx-auto leading-relaxed">
-              We couldn't find any products matching your search criteria. Try adjusting your filters or search terms.
+              We couldn't find any products matching your search criteria. Try
+              adjusting your filters or search terms.
             </p>
           </div>
         )}
@@ -328,11 +356,11 @@ export default function CatalogPage() {
             transform: translateY(0);
           }
         }
-        
+
         .animation-delay-150 {
           animation-delay: 150ms;
         }
-        
+
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
@@ -341,5 +369,5 @@ export default function CatalogPage() {
         }
       `}</style>
     </div>
-  )
+  );
 }
