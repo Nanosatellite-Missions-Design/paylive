@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const API_KEY = "f7aaa21041c186f2";
 const SECRET_KEY = "fedd7af0";
-const CALLER_ID = "google";
+const CALLER_ID = "PayLive";
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const smsUrl = `http://sms.avssarl.com:4324/sendtext?apikey=${API_KEY}&secretkey=${SECRET_KEY}&callerID=${CALLER_ID}&toUser=${to}&messageContent=${encodedMessage}`;
 
     const smsResponse = await fetch(smsUrl);
-    console.log(smsResponse);
+
     if (!smsResponse.ok) {
       throw new Error("Failed to send SMS");
     }
