@@ -4,9 +4,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function LandingNavbar() {
   const { user, loading } = useAuth();
+  const router = useRouter();
+
+  function changeLanguage(locale: string) {
+    document.cookie = `NEXT_LOCALE=${locale}; path=/`;
+    router.refresh(); // instead of window.location.reload()
+  }
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -29,7 +36,8 @@ export default function LandingNavbar() {
           </div>
 
           {/* Navigation Button */}
-          <div className="flex items-center">
+          <div className="flex gap-5 items-center">
+            <Button>FR</Button>
             {loading ? (
               <div className="w-20 h-9 bg-gray-200 animate-pulse rounded-md"></div>
             ) : user ? (

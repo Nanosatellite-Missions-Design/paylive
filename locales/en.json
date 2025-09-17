@@ -1,0 +1,71 @@
+{  
+    "common": {
+        "live": "Lives",
+        "orders": "Orders",
+        "products": "products",
+        "profile": "profile",
+        "settings": "settings",
+        "logOut": "Log Out"
+    },
+    "websiteNavbar": {
+        "dashboard": "Dashboard",
+        "language": "EN",
+        "login": "Login"
+    },
+    "websiteFooter": {
+        "copyright": "All rights reserved."
+    },
+    "HomePage": {
+        "banner": {
+            "badge": "The Future of Live Commerce",
+            "title1": "Sell Live",
+            "title2": "Earn More",
+            "description": "Transform your products into engaging live experiences. Connect with customers in real-time, showcase your products, and boost your sales with PayLive's powerful live commerce platform.",
+            "button": "Start Selling Live"
+        },
+        "features": {
+            "title": "Everything You Need to Succeed",
+            "description": "Powerful tools designed to help you create engaging live experiences and grow your business",
+            "featureCard": {
+                "1": "Live Streaming",
+                "1Descritpion": "Stream live to showcase your products in real-time. Engage with customers through interactive video experiences.",
+                "2": "Smart Catalogs",
+                "2Descritpion": "Create beautiful product catalogs that customers can browse and purchase from during your live streams.",
+                "3": "Live Chat",
+                "3Descritpion": "Interact with your audience in real-time. Answer questions, build relationships, and drive sales through conversation.",
+                "4": "Instant Payments",
+                "4Descritpion": "Secure, fast payment processing. Get paid instantly when customers make purchases during your live streams.",
+                "5": "Analytics",
+                "5Descritpion": "Track your performance with detailed analytics. Understand your audience and optimize your sales strategy.",
+                "6": "Mobile First",
+                "6Descritpion": "Optimized for mobile devices. Your customers can watch, chat, and buy seamlessly from any device."
+            }
+        },
+        "CallToAction": {
+            "title": "Ready to Transform Your Business?",
+            "description": "Join thousands of sellers who are already using PayLive to grow their business through live commerce.",
+            "button": "Get Started Free"
+        }
+    },
+    "Auth": {
+        "description": "Welcome Back! log in into your account.",
+        "phone": "Phone Number",
+        "sendCode": "Senc Code",
+        "login": "Log in",
+        "signUp": "Sign Up",
+        "name": "Full Name(or Shop Name)",
+        "createAccount": "Create Account",
+        "verificationCode": "verification Code",
+        "noAccountYet": "You don't have an account ?",
+        "alreadyHaveAccount": "Already have an account ?"
+    },
+    "Dashboard": {
+        "menu": {
+            "live": "Lives",
+            "orders": "Orders",
+            "products": "products",
+            "profile": "profile",
+            "settings": "settings"
+        }
+    }
+}
