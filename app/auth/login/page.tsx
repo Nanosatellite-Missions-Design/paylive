@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/functions/firebase";
 import { RecaptchaVerifier } from "firebase/auth";
+import { useTranslations } from "@/lib/useTranslations";
 
 interface FormErrors {
   name: string;
@@ -37,7 +38,7 @@ export default function SignupPage() {
   });
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
-
+  const t = useTranslations("Auth");
   const { loginWithPhoneNumber, confirmOtp, loading } = useAuth();
   const { toast } = useToast();
 
@@ -171,7 +172,7 @@ export default function SignupPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-primary">PayLive</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Welcome Back! log in into your account.
+            {t("loginDescription")}
           </p>
         </div>
 
@@ -180,7 +181,7 @@ export default function SignupPage() {
           className="bg-white dark:bg-gray-950 p-6 rounded-xl shadow-sm space-y-6"
         >
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">{t("phone")}</Label>
             <div className="flex space-x-2">
               <Input
                 id="phone"
@@ -197,7 +198,7 @@ export default function SignupPage() {
                 disabled={sendingCode || codeSent}
                 variant="outline"
               >
-                {sendingCode ? "Sending..." : codeSent ? "Sent" : "Send Code"}
+                {sendingCode ? "Sending..." : codeSent ? "Sent" : t("sendCode")}
               </Button>
             </div>
             {errors.phone && (
@@ -207,7 +208,7 @@ export default function SignupPage() {
 
           {codeSent && (
             <div className="space-y-2">
-              <Label htmlFor="otp">Verification Code</Label>
+              <Label htmlFor="otp">{t("verificationCode")}</Label>
               <Input
                 id="otp"
                 type="text"
@@ -228,15 +229,15 @@ export default function SignupPage() {
             className="w-full"
             disabled={loading || verifyingCode || !codeSent}
           >
-            {verifyingCode ? "Logging in..." : "Login"}
+            {verifyingCode ? "Logging in..." : t("login")}
           </Button>
 
           <div className="text-center text-sm">
             <span className="text-gray-600 dark:text-gray-400">
-              You don't have an account ?{" "}
+              {t("noAccountYet")}{" "}
             </span>
             <Link href="/auth/signup" className="text-primary hover:underline">
-              Sign Up !
+              {t("signUp")} !
             </Link>
           </div>
         </form>

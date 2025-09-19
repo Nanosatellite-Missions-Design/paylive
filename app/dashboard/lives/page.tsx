@@ -42,6 +42,7 @@ import { storage } from "@/functions/firebase";
 import { addToCollection } from "@/functions/add-to-collection";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { getASubDocument } from "@/functions/get-a-document";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function LiveSalesManagementPage() {
   const { lives, userInfo, userProducts } = useAuth();
@@ -57,6 +58,7 @@ export default function LiveSalesManagementPage() {
   const { toast } = useToast();
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations("Dashboard.Lives");
 
   useEffect(() => {
     if (!userInfo?.uid || !lives) return;
@@ -213,10 +215,10 @@ export default function LiveSalesManagementPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <h1 className="text-2xl font-bold">My Live Sales</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-gray-500">Manage your live sales and products</p>
+            <p className="text-gray-500">{t("description")}</p>
             <Dialog
               open={isCreatingLiveSale}
               onOpenChange={setIsCreatingLiveSale}
@@ -224,19 +226,21 @@ export default function LiveSalesManagementPage() {
               <DialogTrigger asChild>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create
+                  {t("create")}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Create Live Sale</DialogTitle>
+                  <DialogTitle>
+                    {t("CreateLiveDialog.createLiveSale")}
+                  </DialogTitle>
                 </DialogHeader>
                 <form
                   onSubmit={handleCreateLiveSale}
                   className="space-y-4 mt-4"
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">{t("CreateLiveDialog.title")}</Label>
                     <Input
                       id="title"
                       name="title"
@@ -245,7 +249,9 @@ export default function LiveSalesManagementPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                    <Label htmlFor="description">
+                      {t("CreateLiveDialog.description")}
+                    </Label>
                     <Textarea
                       id="description"
                       name="description"
@@ -254,15 +260,15 @@ export default function LiveSalesManagementPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
+                    <Label htmlFor="date">{t("CreateLiveDialog.date")}</Label>
                     <Input id="date" name="date" type="date" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="time">Time</Label>
+                    <Label htmlFor="time">{t("CreateLiveDialog.time")}</Label>
                     <Input id="time" name="time" type="time" required />
                   </div>
                   <div className="space-y-2">
-                    <Label>Select Products</Label>
+                    <Label>{t("CreateLiveDialog.selectProducts")}</Label>
                     <div className="grid gap-2 max-h-40 overflow-y-auto border p-2 rounded-md">
                       {userProducts.map((product: any) => (
                         <label
@@ -287,12 +293,14 @@ export default function LiveSalesManagementPage() {
                       ))}
                     </div>
                     <p className="text-xs text-gray-500">
-                      You can select multiple products during the live sale
+                      {t("CreateLiveDialog.selectMultiple")}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="thumbnail">Thumbnail Image</Label>
+                    <Label htmlFor="thumbnail">
+                      {t("CreateLiveDialog.thumbnail")}
+                    </Label>
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
@@ -335,13 +343,13 @@ export default function LiveSalesManagementPage() {
                       }}
                       disabled={loading}
                     >
-                      Cancel
+                      {t("CreateLiveDialog.cancel")}
                     </Button>
                     <Button type="submit" disabled={loading}>
                       {loading ? (
                         <Loader2 className="animate-spin" />
                       ) : (
-                        "Create Live Sale"
+                        t("CreateLiveDialog.createButton")
                       )}
                     </Button>
                   </div>
@@ -354,16 +362,16 @@ export default function LiveSalesManagementPage() {
         <Tabs defaultValue="all">
           <TabsList className="w-full mb-6">
             <TabsTrigger value="all" className="flex-1">
-              All
+              {t("all")}
             </TabsTrigger>
             <TabsTrigger value="active" className="flex-1">
-              Live Now
+              {t("liveNow")}
             </TabsTrigger>
             <TabsTrigger value="scheduled" className="flex-1">
-              Scheduled
+              {t("scheduled")}
             </TabsTrigger>
             <TabsTrigger value="ended" className="flex-1">
-              Ended
+              {t("ended")}
             </TabsTrigger>
           </TabsList>
 
@@ -382,7 +390,7 @@ export default function LiveSalesManagementPage() {
                   {sale.status === "active" && (
                     <Badge className="absolute bottom-2 left-2 bg-black/70">
                       <Users className="h-3 w-3 mr-1" />
-                      {sale.viewers} watching
+                      {sale.viewers} {t("LiveCard.watching")}
                     </Badge>
                   )}
                 </div>
@@ -401,14 +409,16 @@ export default function LiveSalesManagementPage() {
                       )}
                       <span>{sale.scheduledFor}</span>
                     </div>
-                    <span>{sale.products.length} products</span>
+                    <span>
+                      {sale.products.length} {t("LiveCard.products")}
+                    </span>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2">
                     {sale.status === "scheduled" && (
                       <Button onClick={() => handleStartLiveSale(sale.id)}>
                         <Play className="h-4 w-4 mr-2" />
-                        Start Live Sale
+                        {t("LiveCard.startLive")}
                       </Button>
                     )}
 
@@ -419,7 +429,7 @@ export default function LiveSalesManagementPage() {
                           variant="destructive"
                         >
                           <Pause className="h-4 w-4 mr-2" />
-                          End Live Sale
+                          {t("LiveCard.endLive")}
                         </Button>
 
                         <Dialog
@@ -434,20 +444,18 @@ export default function LiveSalesManagementPage() {
                           <DialogTrigger asChild>
                             <Button variant="outline">
                               <Package className="h-4 w-4 mr-2" />
-                              Manage Products
+                              {t("LiveCard.manageProducts")}
                             </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>
-                                Manage Featured Products
+                                {t("LiveCard.manageProductsDialog.title")}
                               </DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 mt-4">
                               <p className="text-sm text-gray-500">
-                                Select a product to feature in your live sale.
-                                The featured product will be prominently
-                                displayed to viewers.
+                                {t("LiveCard.manageProductsDialog.description")}
                               </p>
 
                               <div className="space-y-2">
@@ -467,7 +475,9 @@ export default function LiveSalesManagementPage() {
                                     {sale.currentFeaturedProduct ===
                                     product.id ? (
                                       <Badge className="bg-primary">
-                                        Featured
+                                        {t(
+                                          "LiveCard.manageProductsDialog.featured"
+                                        )}
                                       </Badge>
                                     ) : (
                                       <Button
@@ -480,7 +490,9 @@ export default function LiveSalesManagementPage() {
                                           )
                                         }
                                       >
-                                        Set as Featured
+                                        {t(
+                                          "LiveCard.manageProductsDialog.setAsFeatured"
+                                        )}
                                       </Button>
                                     )}
                                   </div>
@@ -492,7 +504,7 @@ export default function LiveSalesManagementPage() {
                                   variant="outline"
                                   onClick={() => setShowProductsDialog(false)}
                                 >
-                                  Close
+                                  {t("LiveCard.manageProductsDialog.close")}
                                 </Button>
                               </div>
                             </div>
@@ -502,7 +514,7 @@ export default function LiveSalesManagementPage() {
                         <Link href={`/live/${sale.id}`}>
                           <Button variant="outline" className="w-full">
                             <Video className="h-4 w-4 mr-2" />
-                            View Live Stream
+                            {t("LiveCard.viewLive")}
                           </Button>
                         </Link>
                       </>
@@ -532,11 +544,11 @@ export default function LiveSalesManagementPage() {
                       className="w-full h-48 object-cover"
                     />
                     <Badge className="absolute top-2 right-2 bg-red-500">
-                      Live Now
+                      {t("liveNow")}
                     </Badge>
                     <Badge className="absolute bottom-2 left-2 bg-black/70">
                       <Users className="h-3 w-3 mr-1" />
-                      {sale.viewers} watching
+                      {sale.viewers} {t("LiveCard.watching")}
                     </Badge>
                   </div>
                   <CardContent className="p-4">
@@ -550,7 +562,9 @@ export default function LiveSalesManagementPage() {
                         <Clock className="h-4 w-4 mr-1" />
                         <span>Started {sale.startedAt}</span>
                       </div>
-                      <span>{sale.products.length} products</span>
+                      <span>
+                        {sale.products.length} {t("LiveCard.products")}
+                      </span>
                     </div>
 
                     <div className="mt-4 flex flex-col gap-2">
@@ -559,7 +573,7 @@ export default function LiveSalesManagementPage() {
                         variant="destructive"
                       >
                         <Pause className="h-4 w-4 mr-2" />
-                        End Live Sale
+                        {t("LiveCard.endLive")}
                       </Button>
 
                       <Dialog
@@ -574,18 +588,18 @@ export default function LiveSalesManagementPage() {
                         <DialogTrigger asChild>
                           <Button variant="outline">
                             <Package className="h-4 w-4 mr-2" />
-                            Manage Products
+                            {t("LiveCard.manageProducts")}
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Manage Featured Products</DialogTitle>
+                            <DialogTitle>
+                              {t("LiveCard.manageProductsDialog.title")}
+                            </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
                             <p className="text-sm text-gray-500">
-                              Select a product to feature in your live sale. The
-                              featured product will be prominently displayed to
-                              viewers.
+                              {t("CreateLiveDialog.description")}
                             </p>
 
                             <div className="space-y-2">
@@ -604,7 +618,9 @@ export default function LiveSalesManagementPage() {
                                   </div>
                                   {product.featured ? (
                                     <Badge className="bg-primary">
-                                      Featured
+                                      {t(
+                                        "LiveCard.manageProductsDialog.featured"
+                                      )}
                                     </Badge>
                                   ) : (
                                     <Button
@@ -617,7 +633,9 @@ export default function LiveSalesManagementPage() {
                                         )
                                       }
                                     >
-                                      Set as Featured
+                                      {t(
+                                        "LiveCard.manageProductsDialog.setAsFeatured"
+                                      )}
                                     </Button>
                                   )}
                                 </div>
@@ -629,7 +647,7 @@ export default function LiveSalesManagementPage() {
                                 variant="outline"
                                 onClick={() => setShowProductsDialog(false)}
                               >
-                                Close
+                                {t("LiveCard.manageProductsDialog.close")}
                               </Button>
                             </div>
                           </div>
@@ -639,7 +657,7 @@ export default function LiveSalesManagementPage() {
                       <Link href={`/live/${sale.id}`}>
                         <Button variant="outline" className="w-full">
                           <Video className="h-4 w-4 mr-2" />
-                          View Live Stream
+                          {t("LiveCard.viewLive")}
                         </Button>
                       </Link>
                     </div>
@@ -660,7 +678,7 @@ export default function LiveSalesManagementPage() {
                       className="w-full h-48 object-cover"
                     />
                     <Badge className="absolute top-2 right-2 bg-amber-500">
-                      Scheduled
+                      {t("scheduled")}
                     </Badge>
                   </div>
                   <CardContent className="p-4">
@@ -674,13 +692,15 @@ export default function LiveSalesManagementPage() {
                         <Calendar className="h-4 w-4 mr-1" />
                         <span>{sale.scheduledFor}</span>
                       </div>
-                      <span>{sale.products.length} products</span>
+                      <span>
+                        {sale.products.length} {t("LiveCard.products")}
+                      </span>
                     </div>
 
                     <div className="mt-4">
                       <Button onClick={() => handleStartLiveSale(sale.id)}>
                         <Play className="h-4 w-4 mr-2" />
-                        Start Live Sale
+                        {t("LiveCard.startLive")}
                       </Button>
                     </div>
                   </CardContent>
@@ -700,7 +720,7 @@ export default function LiveSalesManagementPage() {
                       className="w-full h-48 object-cover"
                     />
                     <Badge className="absolute top-2 right-2 bg-gray-500">
-                      Ended
+                      {t("ended")}
                     </Badge>
                   </div>
                   <CardContent className="p-4">
@@ -714,7 +734,9 @@ export default function LiveSalesManagementPage() {
                         <Clock className="h-4 w-4 mr-1" />
                         <span>{sale.scheduledFor}</span>
                       </div>
-                      <span>{sale.products.length} products</span>
+                      <span>
+                        {sale.products.length} {t("LiveCard.products")}
+                      </span>
                     </div>
 
                     <div className="mt-4 text-sm text-gray-500">

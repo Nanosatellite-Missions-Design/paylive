@@ -36,6 +36,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { increment } from "firebase/firestore";
+import { useTranslations } from "@/lib/useTranslations";
 
 interface WithdrawDialogProps {
   currentBalance: number;
@@ -65,6 +66,7 @@ export default function WithdrawDialog({
   const [error, setError] = useState<string | null>(null);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
   const { user } = useAuth();
+  const t = useTranslations("Dashboard.Transactions");
   // Constants
   const minWithdraw = 1;
   const maxWithdraw = currentBalance;
@@ -167,7 +169,7 @@ export default function WithdrawDialog({
       setStep("success");
     } catch (error) {
       console.error("Withdrawal failed:", error);
-      setError("Withdrawal failed. Please try again later.");
+      setError(t("WithdrawDialog.Error.description"));
     } finally {
       setIsLoading(false);
     }
@@ -183,12 +185,14 @@ export default function WithdrawDialog({
       default:
         return (
           <div className="space-y-2">
-            <Label htmlFor="account-details">Account Phone Number</Label>
+            <Label htmlFor="account-details">
+              {t("WithdrawDialog.2.phone")}
+            </Label>
             <Input
               id="phoneNumber"
               value={accountDetails}
               onChange={(e) => setAccountDetails(e.target.value)}
-              placeholder="Enter your account number"
+              placeholder={t("WithdrawDialog.2.phonePlaceholder")}
               required
             />
           </div>
@@ -203,29 +207,33 @@ export default function WithdrawDialog({
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
-                <span>Withdraw Funds</span>
+                <span>{t("withdrawFunds")}</span>
                 {pendingWithdrawals > 0 && (
                   <Badge variant="outline" className="font-normal">
                     <RefreshCw className="h-3 w-3 mr-1" />
-                    {pendingWithdrawals} Pending
+                    {pendingWithdrawals} {t("pending")}
                   </Badge>
                 )}
               </DialogTitle>
               <DialogDescription>
-                Withdraw your available balance to your preferred payment method
+                {t("WithdrawDialog.1.description")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                <span className="text-sm text-gray-600">Available Balance</span>
+                <span className="text-sm text-gray-600">
+                  {t("WithdrawDialog.1.availableBalance")}
+                </span>
                 <span className="text-lg font-semibold">
                   XAF{currentBalance}
                 </span>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amount">Withdrawal Amount</Label>
+                <Label htmlFor="amount">
+                  {t("WithdrawDialog.1.withdrawalAmount")}
+                </Label>
                 <div className="relative">
                   <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -250,16 +258,16 @@ export default function WithdrawDialog({
               {Number.parseFloat(amount || "0") > 0 && (
                 <div className="p-3 border rounded-md space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Withdrawal Amount</span>
+                    <span>{t("WithdrawDialog.1.withdrawalAmount")}</span>
                     <span>XAF{Number.parseFloat(amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
-                    <span>Processing Fee</span>
+                    <span>{t("WithdrawDialog.1.processingFee")}</span>
                     <span>-XAF{withdrawalFee}</span>
                   </div>
                   <hr />
                   <div className="flex justify-between font-medium">
-                    <span>You'll Receive</span>
+                    <span>{t("WithdrawDialog.1.youReceive")}</span>
                     <span>XAF{netAmount}</span>
                   </div>
                 </div>
@@ -268,7 +276,7 @@ export default function WithdrawDialog({
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
+                  <AlertTitle>{t("WithdrawDialog.Error.title")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -284,7 +292,7 @@ export default function WithdrawDialog({
                 }
                 className="w-full"
               >
-                Continue
+                {t("WithdrawDialog.continue")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </DialogFooter>
@@ -295,15 +303,17 @@ export default function WithdrawDialog({
         return (
           <>
             <DialogHeader>
-              <DialogTitle>Select Payment Method</DialogTitle>
+              <DialogTitle>{t("WithdrawDialog.2.title")}</DialogTitle>
               <DialogDescription>
-                Choose how you'd like to receive your withdrawal
+                {t("WithdrawDialog.2.description")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                <span className="text-sm text-gray-600">Withdrawal Amount</span>
+                <span className="text-sm text-gray-600">
+                  {t("WithdrawDialog.2.withdrawalAmount")}
+                </span>
                 <span className="text-lg font-semibold">
                   XAF{Number.parseFloat(amount)}
                 </span>
@@ -349,7 +359,7 @@ export default function WithdrawDialog({
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
+                  <AlertTitle>{t("WithdrawDialog.Error.title")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -357,10 +367,10 @@ export default function WithdrawDialog({
 
             <DialogFooter className="flex justify-between">
               <Button variant="outline" onClick={() => setStep("amount")}>
-                Back
+                {t("WithdrawDialog.back")}
               </Button>
               <Button onClick={handleMethodSubmit}>
-                Continue
+                {t("WithdrawDialog.continue")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </DialogFooter>
@@ -371,16 +381,18 @@ export default function WithdrawDialog({
         return (
           <>
             <DialogHeader>
-              <DialogTitle>Confirm Withdrawal</DialogTitle>
+              <DialogTitle>{t("WithdrawDialog.3.title")}</DialogTitle>
               <DialogDescription>
-                Please review your withdrawal details before confirming
+                {t("WithdrawDialog.3.description")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <div className="space-y-3 p-4 border rounded-md">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Amount</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.amount")}
+                  </span>
                   <span className="font-medium">
                     XAF{Number.parseFloat(amount)}
                   </span>
@@ -390,38 +402,44 @@ export default function WithdrawDialog({
                   <span className="text-gray-600">-XAF{withdrawalFee}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">You'll Receive</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.youReceive")}
+                  </span>
                   <span className="font-bold">XAF{netAmount}</span>
                 </div>
                 <hr />
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Method</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.method")}
+                  </span>
                   <span className="font-medium capitalize">{method}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Estimated Arrival</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.estimatedArrival")}
+                  </span>
                   <span>{estimatedDays}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Phone Number</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.phone")}
+                  </span>
                   <span>{accountDetails}</span>
                 </div>
               </div>
 
               <Alert>
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Important</AlertTitle>
+                <AlertTitle>{t("WithdrawDialog.3.Notice.title")}</AlertTitle>
                 <AlertDescription>
-                  By confirming this withdrawal, you agree to our terms and
-                  conditions. This transaction cannot be reversed once
-                  processed.
+                  {t("WithdrawDialog.3.Notice.description")}
                 </AlertDescription>
               </Alert>
 
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Error</AlertTitle>
+                  <AlertTitle>{t("WithdrawDialog.Error.title")}</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -429,7 +447,7 @@ export default function WithdrawDialog({
 
             <DialogFooter className="flex justify-between">
               <Button variant="outline" onClick={() => setStep("method")}>
-                Back
+                {t("WithdrawDialog.back")}
               </Button>
               <Button onClick={handleConfirmWithdrawal} disabled={isLoading}>
                 {isLoading ? (
@@ -438,7 +456,7 @@ export default function WithdrawDialog({
                     Processing...
                   </>
                 ) : (
-                  <>Confirm Withdrawal</>
+                  <>{t("WithdrawDialog.confirm")}</>
                 )}
               </Button>
             </DialogFooter>
@@ -465,30 +483,34 @@ export default function WithdrawDialog({
               <div>
                 <p className="text-xl font-semibold">XAF{netAmount}</p>
                 <p className="text-sm text-gray-500">
-                  will be sent to your {method} account
+                  {/* {will be sent to your {method} account} */}
+                  {t("WithdrawDialog.4.willBeSent")}
                 </p>
               </div>
 
               <div className="p-4 bg-gray-50 rounded-md">
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-gray-600">Withdrawal ID</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.4.withdrawalID")}
+                  </span>
                   <span className="font-mono">{withdrawalId}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Estimated Arrival</span>
+                  <span className="text-gray-600">
+                    {t("WithdrawDialog.3.estimatedArrival")}
+                  </span>
                   <span>{estimatedDays}</span>
                 </div>
               </div>
 
               <p className="text-sm text-gray-500">
-                You'll receive an sms confirmation shortly. You can track the
-                status of your withdrawal in the transaction history.
+                {t("WithdrawDialog.4.recieveSMS")}
               </p>
             </div>
 
             <DialogFooter>
               <Button className="w-full" onClick={handleSuccessClose}>
-                Done
+                {t("WithdrawDialog.4.done")}
               </Button>
             </DialogFooter>
           </>
@@ -502,7 +524,7 @@ export default function WithdrawDialog({
         {children || (
           <Button className="w-full" onClick={() => setOpen(true)}>
             <Wallet className="mr-2 h-4 w-4" />
-            Withdraw Funds
+            {t("withdrawFunds")}
           </Button>
         )}
       </DialogTrigger>

@@ -43,6 +43,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProductsPage() {
   const { user, userInfo, userProducts, userCatalogs } = useAuth();
@@ -71,6 +72,7 @@ export default function ProductsPage() {
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
+  const t = useTranslations("Dashboard.Products");
 
   useEffect(() => {
     console.log(userProducts);
@@ -242,11 +244,9 @@ export default function ProductsPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <h1 className="text-2xl font-bold">My Products</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
           </div>
-          <p className="text-gray-500">
-            Manage your products for live sales and auctions
-          </p>
+          <p className="text-gray-500">{t("description")}</p>
         </header>
 
         <div className="space-y-4 mb-6">
@@ -318,19 +318,20 @@ export default function ProductsPage() {
         <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogTitle>{t("DeleteDialog.title")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the
-                product {selectedProduct?.name}.
+                {t("DeleteDialog.description")} {selectedProduct?.name}.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={loading}>
+                {t("DeleteDialog.cancel")}
+              </AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
                 onClick={handleDeleteProduct}
               >
-                Delete
+                {t("DeleteDialog.delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -340,16 +341,16 @@ export default function ProductsPage() {
           <DialogTrigger asChild>
             <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
-              Add New Product
+              {t("addNew")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Product</DialogTitle>
+              <DialogTitle>{t("addNew")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddProduct} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Product Name</Label>
+                <Label htmlFor="name">{t("ProductDialog.productName")}</Label>
                 <Input
                   id="name"
                   placeholder="Enter product name"
@@ -357,7 +358,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Price (XAF)</Label>
+                <Label htmlFor="price">{t("ProductDialog.price")} (XAF)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -367,7 +368,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Quantity</Label>
+                <Label htmlFor="price">{t("ProductDialog.quantity")}</Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -377,7 +378,9 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">
+                  {t("ProductDialog.description")}
+                </Label>
                 <Textarea
                   id="description"
                   placeholder="Enter product description"
@@ -385,7 +388,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">{t("ProductDialog.category")}</Label>
                 <Select
                   defaultValue="electronics"
                   onValueChange={setNewProductCategory}
@@ -405,7 +408,9 @@ export default function ProductsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="image">Product Images</Label>
+                <Label htmlFor="image">
+                  {t("ProductDialog.productImages")}
+                </Label>
 
                 {/* Clickable Upload Box */}
                 <div
@@ -471,13 +476,13 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => setIsAddingProduct(false)}
                 >
-                  Cancel
+                  {t("ProductDialog.cancel")}
                 </Button>
                 <Button disabled={loading} type="submit">
                   {loading ? (
                     <Loader2 className="animate-spin" />
                   ) : (
-                    "Add Product"
+                    t("ProductDialog.add")
                   )}
                 </Button>
               </div>
@@ -488,12 +493,14 @@ export default function ProductsPage() {
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Product</DialogTitle>
+              <DialogTitle>{t("editDialog")}</DialogTitle>
             </DialogHeader>
             {editingProduct && (
               <form onSubmit={handleSaveEdit} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-name">Product Name</Label>
+                  <Label htmlFor="edit-name">
+                    {t("ProductDialog.productName")}
+                  </Label>
                   <Input
                     id="edit-name"
                     value={editingProduct.name}
@@ -506,7 +513,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-price">Price (XAF)</Label>
+                  <Label htmlFor="edit-price">
+                    {t("ProductDialog.price")} (XAF)
+                  </Label>
                   <Input
                     id="edit-price"
                     type="number"
@@ -521,7 +530,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-description">Description</Label>
+                  <Label htmlFor="edit-description">
+                    {t("ProductDialog.description")}
+                  </Label>
                   <Textarea
                     id="edit-description"
                     value={editingProduct.description}
@@ -534,7 +545,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-category">Category</Label>
+                  <Label htmlFor="edit-category">
+                    {t("ProductDialog.category")}
+                  </Label>
                   <Select
                     value={editingProduct.category}
                     onValueChange={(value) =>
@@ -556,7 +569,9 @@ export default function ProductsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-status">Status</Label>
+                  <Label htmlFor="edit-status">
+                    {t("ProductDialog.status")}
+                  </Label>
                   <Select
                     value={editingProduct.status}
                     onValueChange={(value) =>
@@ -643,13 +658,13 @@ export default function ProductsPage() {
                     type="button"
                     onClick={() => setIsEditing(false)}
                   >
-                    Cancel
+                    {t("ProductDialog.cancel")}
                   </Button>
                   <Button disabled={loading} type="submit">
                     {loading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
-                      "Save Changes"
+                      t("saveChanges")
                     )}
                   </Button>
                 </div>
@@ -661,7 +676,7 @@ export default function ProductsPage() {
         <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
           <DialogContent className="max-w-xs">
             <DialogHeader>
-              <DialogTitle>Product QR Code</DialogTitle>
+              <DialogTitle>{t("QRDialog.title")}</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center justify-center p-4">
               <div className="bg-white p-4 rounded-md">
@@ -676,10 +691,10 @@ export default function ProductsPage() {
                 {selectedProduct?.name}
               </p>
               <p className="text-center text-xs text-gray-500">
-                Scan to view product details
+                {t("QRDialog.description")}
               </p>
               <Button className="mt-4" onClick={() => window.print()}>
-                Print QR Code
+                {t("QRDialog.button")}
               </Button>
             </div>
           </DialogContent>

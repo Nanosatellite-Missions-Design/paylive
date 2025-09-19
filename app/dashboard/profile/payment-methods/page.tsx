@@ -33,10 +33,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { updateDocument } from "@/functions/update-doc-in-collection";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function PaymentMethodsPage() {
   const { userInfo } = useAuth();
-
+  const t = useTranslations("Dashboard.PaymentMethods");
   const [isAddingMethod, setIsAddingMethod] = useState(false);
   const [newMethodType, setNewMethodType] = useState("mobile");
   const [newNumber, setNewNumber] = useState("");
@@ -110,11 +111,9 @@ export default function PaymentMethodsPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold">Payment Methods</h1>
+            <h1 className="text-2xl font-bold">{t("title")}</h1>
           </div>
-          <p className="text-gray-500">
-            Manage your payment methods for purchases and sales
-          </p>
+          <p className="text-gray-500">{t("description")}</p>
         </header>
 
         <div className="space-y-4 mb-6">
@@ -137,7 +136,7 @@ export default function PaymentMethodsPage() {
                     {method.isDefault ? (
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full flex items-center">
                         <Check className="h-3 w-3 mr-1" />
-                        Default
+                        {t("default")}
                       </span>
                     ) : (
                       <Button
@@ -146,7 +145,7 @@ export default function PaymentMethodsPage() {
                         onClick={() => handleSetDefault(method)}
                         className="text-xs"
                       >
-                        Set default
+                        {t("AddDialog.setDefault")}
                       </Button>
                     )}
                     <Button
@@ -168,16 +167,16 @@ export default function PaymentMethodsPage() {
           <DialogTrigger asChild>
             <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
-              Add Payment Method
+              {t("addPaymentMethod")}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Payment Method</DialogTitle>
+              <DialogTitle>{t("addPaymentMethod")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddMethod} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label>Payment Type</Label>
+                <Label>{t("AddDialog.paymentType")}</Label>
                 <RadioGroup
                   defaultValue="card"
                   value={newMethodType}
@@ -194,7 +193,7 @@ export default function PaymentMethodsPage() {
                       Mobile Money
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  {/* <div className="flex items-center space-x-2">
                     <RadioGroupItem value="card" id="card" />
                     <Label
                       htmlFor="card"
@@ -203,7 +202,7 @@ export default function PaymentMethodsPage() {
                       <CreditCard className="h-4 w-4 mr-2" />
                       Credit Card
                     </Label>
-                  </div>
+                  </div> */}
                 </RadioGroup>
               </div>
 
@@ -231,7 +230,9 @@ export default function PaymentMethodsPage() {
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
+                    <Label htmlFor="phoneNumber">
+                      {t("AddDialog.phoneNumber")}
+                    </Label>
                     <Input
                       id="phoneNumber"
                       placeholder="697882533"
@@ -239,7 +240,7 @@ export default function PaymentMethodsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="provider">Provider</Label>
+                    <Label htmlFor="provider">{t("AddDialog.provider")}</Label>
                     <Select defaultValue="Orange" onValueChange={setNewNetwork}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select provider" />
@@ -259,9 +260,9 @@ export default function PaymentMethodsPage() {
                   type="button"
                   onClick={() => setIsAddingMethod(false)}
                 >
-                  Cancel
+                  {t("AddDialog.cancel")}
                 </Button>
-                <Button type="submit">Add Method</Button>
+                <Button type="submit">{t("AddDialog.addMethod")}</Button>
               </div>
             </form>
           </DialogContent>

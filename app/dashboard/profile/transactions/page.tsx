@@ -22,9 +22,11 @@ import type {
   WithdrawRequest,
 } from "@/types/financial";
 import { Timestamp } from "firebase/firestore";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function TransactionsPage() {
   const { userInfo, userTransactions } = useAuth();
+  const t = useTranslations("Dashboard.Transactions");
   const user = {
     name: "Jane Cooper",
     email: "jane@example.com",
@@ -174,8 +176,8 @@ export default function TransactionsPage() {
                 <div className="flex items-center">
                   <h3 className="font-medium">
                     {transaction.type === "purchase"
-                      ? "New Order"
-                      : "Withdrawal"}
+                      ? t("newOrder")
+                      : t("withdrawal")}
                   </h3>
                   <div className="ml-2">
                     {getTransactionIcon(transaction.type)}
@@ -184,11 +186,11 @@ export default function TransactionsPage() {
                 <p className="text-sm text-gray-500">{transaction.date}</p>
                 <p className="text-xs text-gray-400">
                   {transaction.type === "purchase"
-                    ? "Purchased product"
+                    ? t("purchasedProduct")
                     : transaction.type === "sale" ||
                       transaction.type === "invoice"
                     ? "Sold product"
-                    : "Withdrawal"}{" "}
+                    : t("withdrawal")}{" "}
                   {transaction.productName}
                 </p>
               </div>
@@ -218,16 +220,14 @@ export default function TransactionsPage() {
     <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
       <header className="mb-6">
         <div className="flex items-center mb-4">
-          <Link href="/profile" className="mr-2">
+          <Link href="/dashboard/profile" className="mr-2">
             <Button variant="ghost" size="icon">
               <ChevronLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Transactions</h1>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
         </div>
-        <p className="text-gray-500">
-          View your transaction history and manage your balance
-        </p>
+        <p className="text-gray-500">{t("descritption")}</p>
       </header>
 
       {/* Balance Card - Only for creators */}
@@ -235,7 +235,7 @@ export default function TransactionsPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Current Balance</span>
+              <span>{t("currentBalance")}</span>
               <TrendingUp className="h-5 w-5 text-green-500" />
             </CardTitle>
           </CardHeader>
@@ -245,9 +245,7 @@ export default function TransactionsPage() {
                 <p className="text-3xl font-bold text-green-600">
                   XAF{userInfo?.balance ?? 0}
                 </p>
-                <p className="text-sm text-gray-500">
-                  Available for withdrawal
-                </p>
+                <p className="text-sm text-gray-500">{t("available")}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-center">
@@ -255,13 +253,13 @@ export default function TransactionsPage() {
                   <p className="text-lg font-semibold">
                     XAF{userInfo?.balance ?? 0}
                   </p>
-                  <p className="text-xs text-gray-500">This Month</p>
+                  <p className="text-xs text-gray-500">{t("thisMonth")}</p>
                 </div>
                 <div>
                   <p className="text-lg font-semibold">
                     XAF{userInfo?.pendingPayout ?? 0}
                   </p>
-                  <p className="text-xs text-gray-500">Pending</p>
+                  <p className="text-xs text-gray-500">{t("pending")}</p>
                 </div>
               </div>
 
@@ -278,13 +276,13 @@ export default function TransactionsPage() {
       <Tabs defaultValue="all">
         <TabsList className="w-full mb-6">
           <TabsTrigger value="all" className="flex-1">
-            All
+            {t("all")}
           </TabsTrigger>
           <TabsTrigger value="purchases" className="flex-1">
-            Sales
+            {t("sales")}
           </TabsTrigger>
           <TabsTrigger value="withdrawals" className="flex-1">
-            Withdrawal
+            {t("withdrawal")}
           </TabsTrigger>
           {/* {user.isCreator && (
             <TabsTrigger value="sales" className="flex-1">

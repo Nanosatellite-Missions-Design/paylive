@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from "@/functions/firebase";
 import { RecaptchaVerifier } from "firebase/auth";
+import { useTranslations } from "@/lib/useTranslations";
 
 interface FormErrors {
   name: string;
@@ -31,7 +32,7 @@ export default function SignupPage() {
   });
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
-
+  const t = useTranslations("Auth");
   const { loginWithPhoneNumber, confirmOtp, loading } = useAuth();
   const { toast } = useToast();
 
@@ -147,7 +148,7 @@ export default function SignupPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-primary">PayLive</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Create your account to start selling or buying
+            {t("signupDescription")}
           </p>
         </div>
 
@@ -156,7 +157,7 @@ export default function SignupPage() {
           className="bg-white dark:bg-gray-950 p-6 rounded-xl shadow-sm space-y-6"
         >
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name (or Shop Name)</Label>
+            <Label htmlFor="name">{t("name")}</Label>
             <Input
               id="name"
               type="text"
@@ -171,7 +172,7 @@ export default function SignupPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">{t("phone")}</Label>
             <div className="flex space-x-2">
               <Input
                 id="phone"
@@ -198,7 +199,7 @@ export default function SignupPage() {
 
           {codeSent && (
             <div className="space-y-2">
-              <Label htmlFor="otp">Verification Code</Label>
+              <Label htmlFor="otp">{t("verificationCode")}</Label>
               <Input
                 id="otp"
                 type="text"
@@ -219,15 +220,15 @@ export default function SignupPage() {
             className="w-full"
             disabled={loading || verifyingCode || !codeSent}
           >
-            {verifyingCode ? "Creating account..." : "Create account"}
+            {verifyingCode ? "Creating account..." : t("createAccount")}
           </Button>
 
           <div className="text-center text-sm">
             <span className="text-gray-600 dark:text-gray-400">
-              Already have an account?{" "}
+              {t("alreadyHaveAccount")}{" "}
             </span>
             <Link href="/auth/login" className="text-primary hover:underline">
-              Log in
+              {t("login")}
             </Link>
           </div>
         </form>

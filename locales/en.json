@@ -5,7 +5,8 @@
         "products": "products",
         "profile": "profile",
         "settings": "settings",
-        "logOut": "Log Out"
+        "logOut": "Log Out",
+        "language": "EN"
     },
     "websiteNavbar": {
         "dashboard": "Dashboard",
@@ -23,22 +24,23 @@
             "description": "Transform your products into engaging live experiences. Connect with customers in real-time, showcase your products, and boost your sales with PayLive's powerful live commerce platform.",
             "button": "Start Selling Live"
         },
+        "copyright": "All rights reserved.",
         "features": {
             "title": "Everything You Need to Succeed",
             "description": "Powerful tools designed to help you create engaging live experiences and grow your business",
             "featureCard": {
                 "1": "Live Streaming",
-                "1Descritpion": "Stream live to showcase your products in real-time. Engage with customers through interactive video experiences.",
+                "1Description": "Stream live to showcase your products in real-time. Engage with customers through interactive video experiences.",
                 "2": "Smart Catalogs",
-                "2Descritpion": "Create beautiful product catalogs that customers can browse and purchase from during your live streams.",
+                "2Description": "Create beautiful product catalogs that customers can browse and purchase from during your live streams.",
                 "3": "Live Chat",
-                "3Descritpion": "Interact with your audience in real-time. Answer questions, build relationships, and drive sales through conversation.",
+                "3Description": "Interact with your audience in real-time. Answer questions, build relationships, and drive sales through conversation.",
                 "4": "Instant Payments",
-                "4Descritpion": "Secure, fast payment processing. Get paid instantly when customers make purchases during your live streams.",
+                "4Description": "Secure, fast payment processing. Get paid instantly when customers make purchases during your live streams.",
                 "5": "Analytics",
-                "5Descritpion": "Track your performance with detailed analytics. Understand your audience and optimize your sales strategy.",
+                "5Description": "Track your performance with detailed analytics. Understand your audience and optimize your sales strategy.",
                 "6": "Mobile First",
-                "6Descritpion": "Optimized for mobile devices. Your customers can watch, chat, and buy seamlessly from any device."
+                "6Description": "Optimized for mobile devices. Your customers can watch, chat, and buy seamlessly from any device."
             }
         },
         "CallToAction": {
@@ -48,9 +50,10 @@
         }
     },
     "Auth": {
-        "description": "Welcome Back! log in into your account.",
+        "loginDescription": "Welcome Back! log in into your account.",
+        "signupDescription": "Create your account to start selling or buying",
         "phone": "Phone Number",
-        "sendCode": "Senc Code",
+        "sendCode": "Send Code",
         "login": "Log in",
         "signUp": "Sign Up",
         "name": "Full Name(or Shop Name)",
@@ -87,7 +90,7 @@
                     "title": "Manage Featured Products",
                     "description": "Select a product to feature in your live sale. The featured product will be prominently displayed to viewers.",
                     "setAsFeatured": "Set as Featured",
-                    "cancel": "Cancel",
+                    "close": "Close",
                     "featured": "Featured"
                 }
             },
@@ -118,12 +121,29 @@
                 "markDelivered": "Mark as Delivered",
                 "item": "Item",
                 "created": "Created"
+            },
+            "noOrdersYet": "No Orders Yet",
+            "noOrdersYetDescription": "Orders from your catalogs will appear here.",
+            "ViewOrderDialog": {
+                "title": "Order Details",
+                "customerInfo": "Customer Information",
+                "orderItems": "Order Items",
+                "orderTimeline": "Order Timeline",
+                "lastUpdated": "Last Updated"
+            },
+            "UpdateOrderDialog": {
+                "title": "Update Order",
+                "orderStatus": "Order Status",
+                "cancel": "Cancel",
+                "updateOrder": "Update Order"
             }
         },
         "Products": {
             "title": "My Products",
             "description": "Manage your products for live sales and auctions",
             "addNew": "Add New Products",
+            "editDialog": "Edit Product",
+            "saveChanges": "Save Changes",
             "ProductDialog": {
                 "productName": "Product Name",
                 "price": "Price",
@@ -154,10 +174,11 @@
             "currentBalance": "Current Balance",
             "thisMonth": "This Month",
             "totalEarnings": "Total Earnings",
+            "totalSales": "Total Sales",
             "details": "Details",
             "quickActions": "Quick Actions",
             "myProducts": "My Products",
-            "myCatalogss": "My Catalogs",
+            "myCatalogs": "My Catalogs",
             "liveSales": "Live Sales",
             "paymentMethods": "Payment Methods",
             "transactionHistory": "Transaction History",
@@ -169,11 +190,12 @@
             "title": "Payment Methods",
             "description": "Manage your payment methods for purchases and sales",
             "addPaymentMethod": "Add Payment Method",
+            "default": "Default",
             "AddDialog": {
                 "title": "Add Payment Method",
                 "paymentType": "Payment Type",
                 "phoneNumber": "Phone Number",
-                "provider": "Provider",
+                "provider": "Network",
                 "cancel": "Cancel",
                 "addMethod": "Add Method",
                 "setDefault": "Set Default"
@@ -186,7 +208,7 @@
             "available": "Available for withdrawal",
             "thisMonth": "This Month",
             "pending": "Pending",
-            "withdraw Funds": "Withdraw Funds",
+            "withdrawFunds": "Withdraw Funds",
             "all": "All",
             "sales": "Sales",
             "withdrawal": "Withdrawal",
@@ -225,6 +247,14 @@
                         "description": "By confirming this withdrawal, you agree to our terms and conditions. This transaction cannot be reversed once processed."
                     }
                 },
+                "4": {
+                    "title": "Withdrawal Successful",
+                    "description": "Your withdrawal has been processed successfully",
+                    "done": "Done",
+                    "recieveSMS": "You'll receive an sms confirmation shortly. You can track the status of your withdrawal in the transaction history.",
+                    "withdrawalID": "Withdrawal ID",
+                    "willBeSent": "will be sent to your account"
+                },
                 "Error": {
                     "title": "Error",
                     "description": "Withdrawal failed. Please try again later."
@@ -236,11 +266,17 @@
             "description": "Manage your product catalogs and share them with customers",
             "back": "Back",
             "createNewButton": "Create New Catalog",
+            "noCatalogTitle": "Aucun catalogue pour l’instant",
+            "noCatalogDescription": "Créez votre premier catalogue pour commencer à partager vos produits avec vos clients",
+            "noCatalogButton": "Créer mon premier catalogue",
+            "editCatalog": "Edit Catalog",
+            "updateCatalog": "Update Catalog",
             "CatalogCard": {
                 "products": "products",
                 "view":"View",
                 "copyLink": "Copy Link",
-                "deactivate": "Deactivate"
+                "deactivate": "Deactivate",
+                "edit": "Edit"
             },
             "CreateCatalogDialog": {
                 "title": "Create New Catalog",
@@ -253,12 +289,19 @@
                 "cancel": "Cancel",
                 "createButton": "Create Dialog"
             },
+            "deleteDialog": {
+                "title": "Are you absolutely sure?",
+                "description": "This action cannot be undone. This will permanently delete the catalog",
+                "cancel": "Cancel",
+                "delete": "Delete"
+            },
             "ViewCatalogDialog": {
                 "dialogTitle": "Catalog Details",
                 "title": "Title",
                 "views": "Views",
                 "description": "Description",
-                "status": "Created",
+                "status": "Status",
+                "created": "Created",
                 "products": "Products",
                 "copyLink": "Copy Link",
                 "viewLive": "View Live"
@@ -287,9 +330,10 @@
         "liveChat": "Live Chat",
         "allProducts": "All Products",
         "buyNow": "Buy Now",
+        "cancel": "Cancel",
         "BuyDialog": {
             "securePayment": "Secure Payment",
-            "description": "Complete your payment for Gel",
+            "description": "Complete your payment for",
             "secure": "Secure",
             "pay": "Pay",
             "footerDescription": "Your payment information is encrypted and secure. We never store your full payment details."
@@ -299,6 +343,8 @@
         "allProducts": "All Products",
         "addToCart": "Add to Cart",
         "showing": "Showing",
+        "of": "of",
+        "instock": "in stock",
         "products": "products",
         "search": "Search products",
         "Cart": {

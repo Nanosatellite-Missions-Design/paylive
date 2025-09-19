@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Bell, Globe, Moon, Sun, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslations } from "@/lib/useTranslations";
+import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 
 export default function SettingsPage() {
   const [notifications, setNotifications] = useState({
@@ -26,6 +29,15 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState("en");
   const [theme, setTheme] = useState("light");
   const { toast } = useToast();
+  const t = useTranslations("Dashboard.Settings");
+  const router = useRouter();
+  const locale = useLocale();
+
+  function changeLanguage(locale: string) {
+    console.log(locale);
+    document.cookie = `NEXT_LOCALE=${locale}; path=/`;
+    router.refresh(); // instead of window.location.reload()
+  }
 
   const handleNotificationChange = (key: any, checked: any) => {
     setNotifications({
@@ -73,10 +85,8 @@ export default function SettingsPage() {
     <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-gray-500">
-            Manage your account settings and preferences
-          </p>
+          <h1 className="text-2xl font-bold">{t("settings")}</h1>
+          <p className="text-gray-500">{t("description")}</p>
         </header>
 
         <div className="space-y-6">
@@ -84,7 +94,7 @@ export default function SettingsPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Bell className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">Notifications</h2>
+                <h2 className="text-xl font-semibold">{t("notifications")}</h2>
               </div>
               <div className="space-y-4">
                 {/* <div className="flex items-center justify-between">
@@ -119,9 +129,9 @@ export default function SettingsPage() {
                 </div> */}
                 <div className="flex items-center justify-between">
                   <Label htmlFor="messages" className="flex-1">
-                    <span className="font-medium">Messages</span>
+                    <span className="font-medium">{t("messages")}</span>
                     <p className="text-sm text-gray-500">
-                      Get notified when you receive a new order
+                      {t("messagesDescription")}
                     </p>
                   </Label>
                   <Switch
@@ -134,9 +144,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <Label htmlFor="promotions" className="flex-1">
-                    <span className="font-medium">Promotions</span>
+                    <span className="font-medium">{t("promotions")}</span>
                     <p className="text-sm text-gray-500">
-                      Get notified about deals and promotional offers
+                      {t("promotionsDescription")}
                     </p>
                   </Label>
                   <Switch
@@ -155,20 +165,26 @@ export default function SettingsPage() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Globe className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-semibold">Language</h2>
+                <h2 className="text-xl font-semibold">{t("language")}</h2>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="language">Select your preferred language</Label>
-                <Select value={language} onValueChange={handleLanguageChange}>
+                <Label htmlFor="language">{t("selectLanguage")}</Label>
+                {/* <Select value={language} onValueChange={handleLanguageChange}>
                   <SelectTrigger id="language">
                     <SelectValue placeholder="Select language" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English</SelectItem>
-                    {/* <SelectItem value="es">Español</SelectItem>
                     <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="de">Deutsch</SelectItem>
-                    <SelectItem value="zh">中文</SelectItem> */}
+                  </SelectContent>
+                </Select> */}
+                <Select defaultValue={locale} onValueChange={changeLanguage}>
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="fr">Français</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -186,7 +202,7 @@ export default function SettingsPage() {
                 <h2 className="text-xl font-semibold">Theme</h2>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="theme">Select your preferred theme</Label>
+                <Label htmlFor="theme">{t("selectTheme")}</Label>
                 <Select value={theme} onValueChange={handleThemeChange}>
                   <SelectTrigger id="theme">
                     <SelectValue placeholder="Select theme" />
@@ -207,7 +223,7 @@ export default function SettingsPage() {
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4 mr-2" />
-            Logout
+            {t("logout")}
           </Button>
         </div>
       </div>

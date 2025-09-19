@@ -12,6 +12,7 @@ import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getADocument } from "@/functions/get-a-document";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function CatalogPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function CatalogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const { addToCart, catalog, products, setProducts, setCatalog } = useCart();
-
+  const t = useTranslations("CatalogPage");
   // Mock data - replace with actual API call
 
   // Filter products based on search and category
@@ -146,10 +147,10 @@ export default function CatalogPage() {
                     <MapPin className="h-4 w-4" />
                     <span>{catalog.creatorPhone}</span>
                   </div>
-                  <div className="flex items-center space-x-1">
+                  {/* <div className="flex items-center space-x-1">
                     <Clock className="h-4 w-4" />
                     <span>Usually responds within 2 hours</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
@@ -179,7 +180,7 @@ export default function CatalogPage() {
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
-                  placeholder="Search products..."
+                  placeholder={`${t("search")}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-12 h-12 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 shadow-sm"
@@ -196,7 +197,7 @@ export default function CatalogPage() {
                     : "hover:bg-gray-50"
                 }`}
               >
-                All Products
+                {t("allProducts")}
               </Button>
               {categories.map((category) => (
                 <Button
@@ -223,7 +224,8 @@ export default function CatalogPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <p className="text-gray-600">
-            Showing {filteredProducts.length} of {products.length} products
+            {t("showing")} {filteredProducts.length} {t("of")} {products.length}{" "}
+            {t("products")}
             {selectedCategory !== "all" && ` in ${selectedCategory}`}
           </p>
         </div>
@@ -298,7 +300,7 @@ export default function CatalogPage() {
                     </span>
                     {product.inStock && (
                       <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
-                        {product.inStock} in stock
+                        {product.inStock} {t("instock")}
                       </span>
                     )}
                   </div>
@@ -317,7 +319,7 @@ export default function CatalogPage() {
                     {product.inStock ? (
                       <>
                         <ShoppingCart className="h-4 w-4 mr-2" />
-                        Add to Cart
+                        {t("addToCart")}
                       </>
                     ) : (
                       "Out of Stock"

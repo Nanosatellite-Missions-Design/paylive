@@ -18,10 +18,11 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProfilePage() {
   const { userInfo, userTransactions } = useAuth();
-
+  const t = useTranslations("Dashboard.Profile");
   const user = {
     name: "Jane Cooper",
     email: "jane@example.com",
@@ -49,7 +50,7 @@ export default function ProfilePage() {
   return (
     <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">My Account</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("title")}</h1>
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
             <img
@@ -64,7 +65,7 @@ export default function ProfilePage() {
           </div>
           <Link href="/dashboard/profile/edit" className="ml-auto">
             <Button variant="outline" size="sm">
-              Edit Profile
+              {t("editProfileButton")}
             </Button>
           </Link>
         </div>
@@ -73,12 +74,16 @@ export default function ProfilePage() {
       {/* Financial Overview - Only for creators */}
       {true && (
         <section className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Financial Overview</h2>
+          <h2 className="text-lg font-semibold mb-3">
+            {t("financialOverview")}
+          </h2>
           <div className="grid grid-cols-2 gap-3">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">Current Balance</h3>
+                  <h3 className="text-sm text-gray-500">
+                    {t("currentBalance")}
+                  </h3>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
                 <p className="text-2xl font-bold text-green-600">
@@ -90,7 +95,7 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">This Month</h3>
+                  <h3 className="text-sm text-gray-500">{t("thisMonth")}</h3>
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
                 <p className="text-2xl font-bold">
@@ -102,7 +107,9 @@ export default function ProfilePage() {
             <Card className="col-span-2">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">Total Earnings</h3>
+                  <h3 className="text-sm text-gray-500">
+                    {t("totalEarnings")}
+                  </h3>
                   <BarChart3 className="h-4 w-4 text-purple-500" />
                 </div>
                 <p className="text-2xl font-bold">
@@ -110,7 +117,7 @@ export default function ProfilePage() {
                 </p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">
-                    Total Sales:{" "}
+                    {t("totalSales")}:{" "}
                     {
                       userTransactions.filter(
                         (transac) => transac.type === "purchase"
@@ -121,7 +128,7 @@ export default function ProfilePage() {
                     href="/dashboard/profile/transactions"
                     className="text-blue-600 flex items-center"
                   >
-                    Details <ChevronRight className="h-3 w-3 ml-1" />
+                    {t("details")} <ChevronRight className="h-3 w-3 ml-1" />
                   </Link>
                 </div>
               </CardContent>
@@ -164,7 +171,7 @@ export default function ProfilePage() {
       )}
 
       <section className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
+        <h2 className="text-lg font-semibold mb-3">{t("quickActions")}</h2>
         <div className="grid grid-cols-2 gap-3">
           {true && (
             <Link href="/dashboard/products">
@@ -173,7 +180,7 @@ export default function ProfilePage() {
                 className="w-full h-auto py-6 flex flex-col"
               >
                 <Package className="h-6 w-6 mb-2" />
-                <span>My Products</span>
+                <span>{t("myProducts")}</span>
               </Button>
             </Link>
           )}
@@ -185,7 +192,7 @@ export default function ProfilePage() {
                 className="w-full h-auto py-6 flex flex-col bg-transparent"
               >
                 <Store className="h-6 w-6 mb-2" />
-                <span>My Catalogs</span>
+                <span>{t("myCatalogs")}</span>
               </Button>
             </Link>
           )}
@@ -197,7 +204,7 @@ export default function ProfilePage() {
                 className="w-full h-auto py-6 flex flex-col"
               >
                 <Video className="h-6 w-6 mb-2" />
-                <span>Live Sales</span>
+                <span>{t("liveSales")}</span>
               </Button>
             </Link>
           )}
@@ -218,14 +225,14 @@ export default function ProfilePage() {
               className="w-full h-auto py-6 flex flex-col"
             >
               <CreditCard className="h-6 w-6 mb-2" />
-              <span>Payment Methods</span>
+              <span>{t("paymentMethods")}</span>
             </Button>
           </Link>
 
           <Link href="/dashboard/profile/transactions" className="col-span-2">
             <Button variant="outline" className="w-full">
               <History className="h-4 w-4 mr-2" />
-              Transaction History
+              {t("paymentMethods")}
             </Button>
           </Link>
         </div>
@@ -233,7 +240,7 @@ export default function ProfilePage() {
 
       <section>
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-semibold">Account Settings</h2>
+          <h2 className="text-lg font-semibold">{t("accountSettings")}</h2>
         </div>
         <Card>
           <CardContent className="p-0">
@@ -243,7 +250,7 @@ export default function ProfilePage() {
             >
               <div className="flex items-center">
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
-                <span>Edit Profile</span>
+                <span>{t("editProfileButton")}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-gray-400" />
             </Link>
@@ -253,7 +260,7 @@ export default function ProfilePage() {
             >
               <div className="flex items-center">
                 <CreditCard className="h-5 w-5 mr-3 text-gray-500" />
-                <span>Payment Methods</span>
+                <span>{t("paymentMethods")}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-gray-400" />
             </Link>
@@ -263,7 +270,7 @@ export default function ProfilePage() {
             >
               <div className="flex items-center">
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
-                <span>App Settings</span>
+                <span>{t("appSettings")}</span>
               </div>
               <ChevronRight className="h-5 w-5 text-gray-400" />
             </Link>
@@ -273,7 +280,7 @@ export default function ProfilePage() {
               variant="outline"
               className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
             >
-              Log Out
+              {t("logOut")}
             </Button>
           </CardFooter>
         </Card>

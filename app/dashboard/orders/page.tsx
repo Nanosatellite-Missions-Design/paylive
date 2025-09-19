@@ -37,6 +37,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { Timestamp } from "firebase/firestore";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { formatDate } from "@/functions/format-date";
+import { useTranslations } from "@/lib/useTranslations";
 
 const statusConfig = {
   pending: {
@@ -69,6 +70,7 @@ export default function OrdersPage() {
   const [updateNotes, setUpdateNotes] = useState("");
   const { toast } = useToast();
   const { userOrders } = useAuth();
+  const t = useTranslations("Dashboard.Orders");
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
@@ -146,11 +148,9 @@ export default function OrdersPage() {
           </Link> */}
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Order Management
+              {t("title")}
             </h1>
-            <p className="text-gray-600 mt-1">
-              Track and manage your customer orders
-            </p>
+            <p className="text-gray-600 mt-1">{t("description")}</p>
           </div>
         </div>
 
@@ -164,7 +164,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm hidden md:block text-yellow-700">
-                    Pending
+                    {t("pending")}
                   </p>
                   <p className="text-2xl font-bold text-yellow-800">
                     {userOrders.filter((o) => o.status === "pending").length}
@@ -182,7 +182,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm hidden md:block text-blue-700">
-                    On the Way
+                    {t("onTheWay")}
                   </p>
                   <p className="text-2xl font-bold text-blue-800">
                     {userOrders.filter((o) => o.status === "on_the_way").length}
@@ -200,7 +200,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm hidden md:block text-green-700">
-                    Delivered
+                    {t("delivered")}
                   </p>
                   <p className="text-2xl font-bold text-green-800">
                     {userOrders.filter((o) => o.status === "delivered").length}
@@ -218,7 +218,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-sm hidden md:block text-purple-700">
-                    Total Orders
+                    {t("total")}
                   </p>
                   <p className="text-2xl font-bold text-purple-800">
                     {userOrders.length}
@@ -235,11 +235,9 @@ export default function OrdersPage() {
             <Card className="p-12 text-center">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                No Orders Yet
+                {t("noOrdersYet")}
               </h3>
-              <p className="text-gray-500">
-                Orders from your catalogs will appear here.
-              </p>
+              <p className="text-gray-500">{t("noOrdersYetDescription")}</p>
             </Card>
           ) : (
             sortedOrders.map((order) => {
@@ -289,14 +287,15 @@ export default function OrdersPage() {
                               XAF{order.total.toFixed(2)}
                             </span>
                             <span className="text-gray-500 ml-1">
-                              ({order.items.length} item
+                              ({order.items.length} {t("OrderCard.item")}
                               {order.items.length !== 1 ? "s" : ""})
                             </span>
                           </div>
                         </div>
 
                         <div className="mt-2 text-xs text-gray-500">
-                          Created: {formatDate(order.createdAt)}
+                          {t("OrderCard.created")}:{" "}
+                          {formatDate(order.createdAt)}
                           {/* {order.deliveryDate && (
                             <span className="ml-4">Delivered: {formatDate(order.deliveryDate)}</span>
                           )} */}
@@ -312,7 +311,7 @@ export default function OrdersPage() {
                           className="gap-2"
                         >
                           <Eye className="h-4 w-4" />
-                          View
+                          {t("OrderCard.view")}
                         </Button>
 
                         {canUpdateStatus(order.status) && (
@@ -323,7 +322,7 @@ export default function OrdersPage() {
                             className="gap-2"
                           >
                             <Edit3 className="h-4 w-4" />
-                            Update
+                            {t("OrderCard.update")}
                           </Button>
                         )}
 
@@ -344,9 +343,9 @@ export default function OrdersPage() {
                             }}
                             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                           >
-                            {order.status === "pending"
-                              ? "Ship Order"
-                              : "Mark Delivered"}
+                            {order.status === t("pending")
+                              ? t("OrderCard.shipOrder")
+                              : t("OrderCard.markDelivered")}
                           </Button>
                         )}
                       </div>
@@ -364,7 +363,7 @@ export default function OrdersPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Order Details - {selectedOrder?.id}
+                {t("ViewOrderDialog.title")} - {selectedOrder?.id}
               </DialogTitle>
             </DialogHeader>
 
@@ -393,7 +392,7 @@ export default function OrdersPage() {
                 {/* Customer Information */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-3">
-                    Customer Information
+                    {t("ViewOrderDialog.customerInfo")}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
@@ -414,7 +413,7 @@ export default function OrdersPage() {
                 {/* Order Items */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">
-                    Order Items
+                    {t("ViewOrderDialog.orderItems")}
                   </h4>
                   <div className="space-y-3">
                     {selectedOrder.items.map((item, index) => (
@@ -446,19 +445,21 @@ export default function OrdersPage() {
                 {/* Timeline */}
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-3">
-                    Order Timeline
+                    {t("ViewOrderDialog.orderTimeline")}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-gray-600">
                       <Clock className="h-4 w-4" />
                       <span>
-                        Created: {formatDate(selectedOrder.createdAt)}
+                        {t("OrderCard.created")}:{" "}
+                        {formatDate(selectedOrder.createdAt)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Edit3 className="h-4 w-4" />
                       <span>
-                        Last Updated: {formatDate(selectedOrder.updatedAt)}
+                        {t("ViewOrderDialog.lastUpdated")}:{" "}
+                        {formatDate(selectedOrder.updatedAt)}
                       </span>
                     </div>
                     {/* {selectedOrder.deliveryDate && (
@@ -490,13 +491,15 @@ export default function OrdersPage() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Edit3 className="h-5 w-5" />
-                Update Order - {selectedOrder?.id}
+                {t("UpdateOrderDialog.title")} - {selectedOrder?.id}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="status">Order Status</Label>
+                <Label htmlFor="status">
+                  {t("UpdateOrderDialog.orderStatus")}
+                </Label>
                 <Select
                   value={updateStatus}
                   onValueChange={(value: Order["status"]) =>
@@ -510,19 +513,19 @@ export default function OrdersPage() {
                     <SelectItem value="pending">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        Pending
+                        {t("pending")}
                       </div>
                     </SelectItem>
                     <SelectItem value="on_the_way">
                       <div className="flex items-center gap-2">
                         <Truck className="h-4 w-4" />
-                        On the Way
+                        {t("onTheWay")}
                       </div>
                     </SelectItem>
                     <SelectItem value="delivered">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
-                        Delivered
+                        {t("delivered")}
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -545,13 +548,13 @@ export default function OrdersPage() {
                   variant="outline"
                   onClick={() => setIsUpdateDialogOpen(false)}
                 >
-                  Cancel
+                  {t("UpdateOrderDialog.cancel")}
                 </Button>
                 <Button
                   onClick={handleStatusUpdate}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  Update Order
+                  {t("UpdateOrderDialog.updateOrder")}
                 </Button>
               </div>
             </div>

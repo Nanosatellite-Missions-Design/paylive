@@ -30,6 +30,7 @@ import {
   Check,
   Edit,
   Info,
+  ChevronLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -50,15 +51,16 @@ import {
 import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document";
 import { deleteADocument } from "@/functions/delete-a-document";
 import { formatDate } from "@/functions/format-date";
+import { useTranslations } from "@/lib/useTranslations";
 
 // Mock data
-const mockProducts = [
-  { id: "1", name: "Wireless Headphones", price: 25000, inStock: true },
-  { id: "2", name: "Smartphone Case", price: 5000, inStock: true },
-  { id: "3", name: "Bluetooth Speaker", price: 15000, inStock: false },
-  { id: "4", name: "Power Bank", price: 8000, inStock: true },
-  { id: "5", name: "USB Cable", price: 2000, inStock: true },
-];
+// const mockProducts = [
+//   { id: "1", name: "Wireless Headphones", price: 25000, inStock: true },
+//   { id: "2", name: "Smartphone Case", price: 5000, inStock: true },
+//   { id: "3", name: "Bluetooth Speaker", price: 15000, inStock: false },
+//   { id: "4", name: "Power Bank", price: 8000, inStock: true },
+//   { id: "5", name: "USB Cable", price: 2000, inStock: true },
+// ];
 
 const mockCatalogs: any = [
   {
@@ -118,6 +120,7 @@ export default function CatalogsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
   const { userInfo, user, userProducts, userCatalogs } = useAuth();
+  const t = useTranslations("Dashboard.Catalogs");
 
   const handleCreateCatalog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -331,17 +334,14 @@ export default function CatalogsPage() {
     <div className="container max-w-4xl mx-auto px-4 py-6 pb-20 md:pb-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/profile">
+        <Link href="/dashboard/profile">
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ChevronLeft className="h-4 w-4 mr-2" />
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">My Catalogs</h1>
-          <p className="text-gray-600">
-            Manage your product catalogs and share them with customers
-          </p>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="text-gray-600">{t("description")}</p>
         </div>
       </div>
 
@@ -356,12 +356,14 @@ export default function CatalogsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Catalog</DialogTitle>
+              <DialogTitle>{t("createNewButton")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateCatalog} className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Catalog Title *</Label>
+                  <Label htmlFor="title">
+                    {t("CreateCatalogDialog.catalogTitle")} *
+                  </Label>
                   <Input
                     id="title"
                     value={newCatalog.title}
@@ -376,7 +378,9 @@ export default function CatalogsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">
+                    {t("CreateCatalogDialog.description")}
+                  </Label>
                   <Textarea
                     id="description"
                     value={newCatalog.description}
@@ -394,10 +398,10 @@ export default function CatalogsPage() {
 
               <div>
                 <Label className="text-base font-medium">
-                  Select Products *
+                  {t("CreateCatalogDialog.selectProducts")} *
                 </Label>
                 <p className="text-sm text-gray-600 mb-3">
-                  Choose products to include in this catalog
+                  {t("CreateCatalogDialog.selectProductsDescription")}
                 </p>
                 <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
                   <div className="space-y-3">
@@ -430,7 +434,9 @@ export default function CatalogsPage() {
                               }
                               className="text-xs"
                             >
-                              {product.inStock ? "In Stock" : "Out of Stock"}
+                              {product.inStock
+                                ? t("CreateCatalogDialog.inStock")
+                                : "Out of Stock"}
                             </Badge>
                           </div>
                         </div>
@@ -439,7 +445,8 @@ export default function CatalogsPage() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  {newCatalog.selectedProducts.length} product(s) selected
+                  {newCatalog.selectedProducts.length}{" "}
+                  {t("CreateCatalogDialog.productsSelected")}
                 </p>
               </div>
 
@@ -451,14 +458,14 @@ export default function CatalogsPage() {
                   onClick={() => setIsCreateDialogOpen(false)}
                   className="flex-1"
                 >
-                  Cancel
+                  {t("CreateCatalogDialog.cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading}
                   className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  Create Catalog
+                  {t("CreateCatalogDialog.createButton")}
                 </Button>
               </div>
             </form>
@@ -470,12 +477,14 @@ export default function CatalogsPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Catalog</DialogTitle>
+            <DialogTitle>{t("editCatalog")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEditCatalog} className="space-y-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-title">Catalog Title *</Label>
+                <Label htmlFor="edit-title">
+                  {t("CreateCatalogDialog.title")} *
+                </Label>
                 <Input
                   id="edit-title"
                   value={editCatalog.title}
@@ -507,9 +516,11 @@ export default function CatalogsPage() {
             </div>
 
             <div>
-              <Label className="text-base font-medium">Select Products *</Label>
+              <Label className="text-base font-medium">
+                {t("CreateCatalogDialog.selectProducts")} *
+              </Label>
               <p className="text-sm text-gray-600 mb-3">
-                Choose products to include in this catalog
+                {t("CreateCatalogDialog.selectProductsDescription")}
               </p>
               <div className="border rounded-lg p-4 max-h-64 overflow-y-auto">
                 <div className="space-y-3">
@@ -542,7 +553,9 @@ export default function CatalogsPage() {
                             variant={product.inStock ? "default" : "secondary"}
                             className="text-xs"
                           >
-                            {product.inStock ? "In Stock" : "Out of Stock"}
+                            {product.inStock
+                              ? t("CreateCatalogDialog.inStock")
+                              : "Out of Stock"}
                           </Badge>
                         </div>
                       </div>
@@ -551,7 +564,8 @@ export default function CatalogsPage() {
                 </div>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                {editCatalog.selectedProducts.length} product(s) selected
+                {editCatalog.selectedProducts.length}{" "}
+                {t("CreateCatalogDialog.productsSelected")}
               </p>
             </div>
 
@@ -563,14 +577,14 @@ export default function CatalogsPage() {
                 onClick={() => setIsEditDialogOpen(false)}
                 className="flex-1"
               >
-                Cancel
+                {t("deleteDialog.cancel")}
               </Button>
               <Button
                 disabled={loading}
                 type="submit"
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               >
-                Update Catalog
+                {t("updateCatalog")}
               </Button>
             </div>
           </form>
@@ -581,24 +595,30 @@ export default function CatalogsPage() {
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Catalog Details</DialogTitle>
+            <DialogTitle>{t("ViewCatalogDialog.dialogTitle")}</DialogTitle>
           </DialogHeader>
           {selectedCatalog && (
             <div className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label className="text-base font-medium">Title</Label>
+                  <Label className="text-base font-medium">
+                    {t("ViewCatalogDialog.title")}
+                  </Label>
                   <p className="text-lg">{selectedCatalog.title}</p>
                 </div>
                 <div>
-                  <Label className="text-base font-medium">Description</Label>
+                  <Label className="text-base font-medium">
+                    {t("ViewCatalogDialog.description")}
+                  </Label>
                   <p className="text-gray-600">
                     {selectedCatalog.description || "No description provided"}
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-base font-medium">Status</Label>
+                    <Label className="text-base font-medium">
+                      {t("ViewCatalogDialog.status")}
+                    </Label>
                     <div className="mt-1">
                       <Badge
                         variant={
@@ -610,21 +630,26 @@ export default function CatalogsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-base font-medium">Views</Label>
+                    <Label className="text-base font-medium">
+                      {t("ViewCatalogDialog.views")}
+                    </Label>
                     <p className="text-lg">{selectedCatalog.views}</p>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-base font-medium">Created</Label>
+                  <Label className="text-base font-medium">
+                    {t("ViewCatalogDialog.created")}
+                  </Label>
                   <p className="text-gray-600">
-                    {new Date(selectedCatalog.createdAt).toLocaleDateString()}
+                    {formatDate(selectedCatalog.createdAt)}
                   </p>
                 </div>
               </div>
 
               <div>
                 <Label className="text-base font-medium">
-                  Products ({selectedCatalog.productCount})
+                  {t("ViewCatalogDialog.products")} (
+                  {selectedCatalog.productCount})
                 </Label>
                 <div className="mt-3 space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4">
                   {selectedCatalog.products.map((product) => (
@@ -642,7 +667,9 @@ export default function CatalogsPage() {
                         variant={product.inStock > 0 ? "default" : "secondary"}
                         className="text-xs"
                       >
-                        {product.inStock > 0 ? "In Stock" : "Out of Stock"}
+                        {product.inStock > 0
+                          ? t("CreateCatalogDialog.inStock")
+                          : "Out of Stock"}
                       </Badge>
                     </div>
                   ))}
@@ -663,14 +690,14 @@ export default function CatalogsPage() {
                   ) : (
                     <>
                       <Copy className="h-4 w-4 mr-2" />
-                      Copy Link
+                      {t("ViewCatalogDialog.copyLink")}
                     </>
                   )}
                 </Button>
                 <Link href={`/catalog/${selectedCatalog.id}`} target="_blank">
                   <Button variant="outline">
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    View Live
+                    {t("ViewCatalogDialog.viewLive")}
                   </Button>
                 </Link>
               </div>
@@ -685,16 +712,17 @@ export default function CatalogsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              catalog {selectedCatalog?.name}.
+              {t("deleteDialog.description")} {selectedCatalog?.name}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>
+              {t("deleteDialog.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction disabled={loading} onClick={handleDeleteProduct}>
-              Continue
+              {t("deleteDialog.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -705,17 +733,16 @@ export default function CatalogsPage() {
         <Card className="text-center py-12">
           <CardContent>
             <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Catalogs Yet</h3>
-            <p className="text-gray-600 mb-4">
-              Create your first catalog to start sharing your products with
-              customers
-            </p>
+            <h3 className="text-lg font-semibold mb-2">
+              {t("noCatalogTitle")}
+            </h3>
+            <p className="text-gray-600 mb-4">{t("noCatalogDescription")}</p>
             <Button
               onClick={() => setIsCreateDialogOpen(true)}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Your First Catalog
+              {t("noCatalogButton")}
             </Button>
           </CardContent>
         </Card>
@@ -748,16 +775,21 @@ export default function CatalogsPage() {
                 <div className="flex items-center justify-between text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <Package className="h-4 w-4" />
-                    <span>{catalog.productCount} products</span>
+                    <span>
+                      {catalog.productCount} {t("CatalogCard.products")}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Eye className="h-4 w-4" />
-                    <span>{catalog.views} views</span>
+                    <span>
+                      {catalog.views} {t("CatalogCard.view")}
+                    </span>
                   </div>
                 </div>
 
                 <div className="text-xs text-gray-500">
-                  Created {formatDate(catalog.createdAt)}
+                  {t("ViewCatalogDialog.created")}{" "}
+                  {formatDate(catalog.createdAt)}
                 </div>
 
                 <div className="flex gap-2">
@@ -768,7 +800,7 @@ export default function CatalogsPage() {
                     className="flex-1"
                   >
                     <Info className="h-3 w-3 mr-1" />
-                    View
+                    {t("CatalogCard.view")}
                   </Button>
                   <Button
                     variant="outline"
@@ -777,7 +809,7 @@ export default function CatalogsPage() {
                     className="flex-1"
                   >
                     <Edit className="h-3 w-3 mr-1" />
-                    Edit
+                    {t("CatalogCard.edit")}
                   </Button>
                 </div>
 
@@ -796,7 +828,7 @@ export default function CatalogsPage() {
                     ) : (
                       <>
                         <Copy className="h-3 w-3 mr-1" />
-                        Copy Link
+                        {t("CatalogCard.copyLink")}
                       </>
                     )}
                   </Button>

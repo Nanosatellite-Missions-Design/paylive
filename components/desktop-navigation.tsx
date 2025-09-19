@@ -16,34 +16,37 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import Image from "next/image";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function DesktopNavigation() {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const t = useTranslations("Dashboard.menu");
+  const g = useTranslations("common");
 
   const navItems = [
     {
-      name: "Live",
+      name: t("live"),
       href: "/dashboard/lives",
       icon: Video,
     },
     {
-      name: "Orders",
+      name: t("orders"),
       href: "/dashboard/orders",
       icon: Receipt,
     },
     {
-      name: "Products",
+      name: t("products"),
       href: "/dashboard/products",
       icon: ShoppingBasket,
     },
     {
-      name: "Profile",
+      name: t("profile"),
       href: "/dashboard/profile",
       icon: User,
     },
     {
-      name: "Settings",
+      name: t("settings"),
       href: "/dashboard/settings",
       icon: Settings,
     },
@@ -81,7 +84,7 @@ export default function DesktopNavigation() {
           onClick={logout}
         >
           <LogOut className="h-5 w-5 mr-3" />
-          Logout
+          {g("logOut")}
         </Button>
       </div>
     </div>

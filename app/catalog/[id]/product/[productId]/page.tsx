@@ -18,6 +18,7 @@ import {
   Shield,
   Truck,
   RotateCcw,
+  ChevronsLeft,
 } from "lucide-react";
 import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getASubDocument } from "@/functions/get-a-document";
@@ -25,6 +26,7 @@ import { PaymentDialog } from "@/components/payment-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProductPage() {
   const params = useParams();
@@ -43,7 +45,7 @@ export default function ProductPage() {
   const [paymentState, setPaymentState] = useState("selecting");
   const { toast } = useToast();
   const [depositId, setDepositId] = useState("");
-
+  const t = useTranslations("CatalogPage.ProductPage");
   // Mock data - replace with actual API call
   useEffect(() => {
     const fetchProduct = async () => {
@@ -222,8 +224,8 @@ export default function ProductPage() {
                 onClick={() => router.push(`/catalog/${catalog?.id}`)}
                 className="hover:bg-blue-50 rounded-xl"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Catalog
+                <ChevronsLeft className="h-4 w-4 mr-2" />
+                {/* Back to Catalog */}
               </Button>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
@@ -248,7 +250,7 @@ export default function ProductPage() {
                 className="rounded-xl hover:bg-blue-50 border-blue-200 relative bg-transparent"
               >
                 <Share2 className="h-4 w-4 mr-2" />
-                Share
+                {t("share")}
                 {showShareSuccess && (
                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded">
                     Copied!
@@ -355,11 +357,11 @@ export default function ProductPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Shield className="h-5 w-5 text-green-500" />
-                <span>Secure Payment</span>
+                <span>{t("securePayment")}</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Truck className="h-5 w-5 text-blue-500" />
-                <span>Fast Shipping</span>
+                <span>{t("fastShipping")}</span>
               </div>
               {/* <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <RotateCcw className="h-5 w-5 text-purple-500" />
@@ -373,7 +375,7 @@ export default function ProductPage() {
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Quantity
+                        {t("quantity")}
                       </label>
                       <div className="flex items-center space-x-4">
                         <Button
@@ -421,7 +423,7 @@ export default function ProductPage() {
                         onClick={handleBuyNow}
                         className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                       >
-                        Buy Now
+                        {t("buyNow")}
                       </Button>
 
                       <Button
@@ -429,7 +431,7 @@ export default function ProductPage() {
                         className="w-full h-14 text-lg font-semibold bg-white text-gray-900 border border-gray-300 rounded-xl shadow hover:shadow-md transition-all duration-200 transform hover:scale-105"
                       >
                         <ShoppingCart className="h-5 w-5 mr-3" />
-                        Add to Cart
+                        {t("addToCart")}
                       </Button>
                     </div>
                   </div>
@@ -441,7 +443,7 @@ export default function ProductPage() {
             <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50">
               <CardContent className="p-8">
                 <h3 className="font-bold text-xl mb-6 text-gray-900">
-                  Seller Information
+                  {t("sellerInformation")}
                 </h3>
                 <div className="flex items-start space-x-4 mb-6">
                   <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
@@ -477,12 +479,6 @@ export default function ProductPage() {
                   <div className="bg-blue-50 p-3 rounded-xl">
                     <p className="font-semibold text-blue-900">Response Time</p>
                     <p className="text-blue-700">Usually within 2 hours</p>
-                  </div>
-                  <div className="bg-green-50 p-3 rounded-xl">
-                    <p className="font-semibold text-green-900">
-                      Satisfaction Rate
-                    </p>
-                    <p className="text-green-700">98% positive feedback</p>
                   </div>
                 </div>
               </CardContent>

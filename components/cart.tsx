@@ -35,6 +35,7 @@ import { toast } from "@/hooks/use-toast";
 import Loader from "@/components/loader";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { increment } from "firebase/firestore";
+import { useTranslations } from "@/lib/useTranslations";
 interface FloatingCartProps {
   catalogId: string;
 }
@@ -61,6 +62,7 @@ export default function FloatingCart() {
   });
   const [depositId, setDepositId] = useState("");
   const [loading, setLoading] = useState(false);
+  const t = useTranslations("CatalogPage.Cart");
 
   useEffect(() => {
     const savedDepositId = localStorage.getItem("depositId");
@@ -292,7 +294,7 @@ export default function FloatingCart() {
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-2xl font-bold text-gray-900">
-                    Checkout
+                    [t("checkout")]
                   </DialogTitle>
                   <Button
                     variant="ghost"
@@ -308,14 +310,18 @@ export default function FloatingCart() {
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Order Summary */}
                 <div className="bg-white p-4 rounded-xl border-2 border-gray-100">
-                  <h3 className="font-semibold text-lg mb-3">Order Summary</h3>
+                  <h3 className="font-semibold text-lg mb-3">
+                    {t("orderSummary")}
+                  </h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span>Items ({cartItemCount}):</span>
+                      <span>
+                        {t("items")} ({cartItemCount}):
+                      </span>
                       <span>XAF{getCartTotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold border-t pt-2">
-                      <span>Total:</span>
+                      <span>{t("total")}:</span>
                       <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                         XAF{getCartTotal().toFixed(2)}
                       </span>
@@ -326,7 +332,7 @@ export default function FloatingCart() {
                 {/* Customer Information Form */}
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg">
-                    Customer Information
+                    {t("customerInformation")}
                   </h3>
 
                   <div>
@@ -334,7 +340,7 @@ export default function FloatingCart() {
                       htmlFor="checkout-name"
                       className="text-sm font-medium text-gray-700 mb-2 block"
                     >
-                      Full Name *
+                      {t("fullName")} *
                     </Label>
                     <Input
                       id="checkout-name"
@@ -357,7 +363,7 @@ export default function FloatingCart() {
                       className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
                     >
                       <Phone className="h-4 w-4" />
-                      <span>Phone Number *</span>
+                      <span>{t("phoneNumber")} *</span>
                     </Label>
                     <Input
                       id="checkout-phone"
@@ -381,7 +387,7 @@ export default function FloatingCart() {
                       className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
                     >
                       <MapPin className="h-4 w-4" />
-                      <span>Delivery Address *</span>
+                      <span>{t("deliveryAddress")} *</span>
                     </Label>
                     <Textarea
                       id="checkout-address"
@@ -404,7 +410,7 @@ export default function FloatingCart() {
                       className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
                     >
                       <MessageSquare className="h-4 w-4" />
-                      <span>Order Notes (Optional)</span>
+                      <span>{t("orderNote")}</span>
                     </Label>
                     <Textarea
                       id="checkout-notes"
@@ -436,18 +442,17 @@ export default function FloatingCart() {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
-                      Submitting Order...
+                      {t("submittingOrder")}...
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5 mr-3" />
-                      Submit Order - XAF{getCartTotal().toFixed(2)}
+                      {t("submitOrder")} - XAF{getCartTotal().toFixed(2)}
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-gray-600 text-center mt-3">
-                  The seller will contact you to confirm and arrange payment &
-                  delivery.
+                  {t("footer")}
                 </p>
               </div>
             </div>
@@ -456,7 +461,7 @@ export default function FloatingCart() {
             <div className="flex flex-col h-full">
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <DialogTitle className="text-2xl font-bold text-gray-900">
-                  Shopping Cart ({cartItemCount}{" "}
+                  {t("title")} ({cartItemCount}{" "}
                   {cartItemCount === 1 ? "item" : "items"})
                 </DialogTitle>
                 {cart && (
@@ -552,7 +557,7 @@ export default function FloatingCart() {
               {cart && cart.items.length > 0 && (
                 <div className="p-6 bg-gray-50 border-t space-y-4">
                   <div className="flex justify-between items-center text-xl font-bold">
-                    <span className="text-gray-900">Total:</span>
+                    <span className="text-gray-900">{t("title")}:</span>
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                       XAF{getCartTotal().toFixed(2)}
                     </span>
@@ -563,13 +568,13 @@ export default function FloatingCart() {
                       onClick={() => clearCart()}
                       className="flex-1 h-12 rounded-xl border-2 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
                     >
-                      Clear Cart
+                      {t("clearCart")}
                     </Button>
                     <Button
                       onClick={() => setShowCheckout(true)}
                       className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                     >
-                      Checkout
+                      {t("checkout")}
                     </Button>
                   </div>
                 </div>

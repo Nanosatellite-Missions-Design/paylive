@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import LandingNavbar from "@/components/landing-navbar";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function LandingPage() {
+  const t = useTranslations("HomePage");
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <LandingNavbar />
@@ -25,21 +27,19 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20 text-center">
         <div className="max-w-4xl mx-auto">
           <Badge className="mb-6 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border-blue-200">
-            🚀 The Future of Live Commerce
+            🚀 {t("banner.badge")}
           </Badge>
 
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Sell Live,
+            {t("banner.title1")},
             <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               {" "}
-              Earn More
+              {t("banner.title2")}
             </span>
           </h1>
 
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Transform your products into engaging live experiences. Connect with
-            customers in real-time, showcase your products, and boost your sales
-            with PayLive's powerful live commerce platform.
+            {t("banner.description")}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -49,10 +49,10 @@ export default function LandingPage() {
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-3"
               >
                 <Play className="mr-2 h-5 w-5" />
-                Start Selling Live
+                {t("banner.button")}
               </Button>
             </Link>
-            <Link href="/catalog/demo">
+            {/* <Link href="/catalog/demo">
               <Button
                 variant="outline"
                 size="lg"
@@ -61,7 +61,7 @@ export default function LandingPage() {
                 View Demo Catalog
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </Link>
+            </Link> */}
           </div>
 
           {/* Stats */}
@@ -86,11 +86,10 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Everything You Need to Succeed
+            {t("features.title")}
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Powerful tools designed to help you create engaging live experiences
-            and grow your business
+            {t("features.description")}
           </p>
         </div>
 
@@ -102,11 +101,10 @@ export default function LandingPage() {
                 <Video className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Live Streaming
+                {t("features.featureCard.1")}
               </h3>
               <p className="text-gray-600">
-                Stream live to showcase your products in real-time. Engage with
-                customers through interactive video experiences.
+                {t("features.featureCard.1Description")}
               </p>
             </CardContent>
           </Card>
@@ -118,11 +116,10 @@ export default function LandingPage() {
                 <ShoppingCart className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Smart Catalogs
+                {t("features.featureCard.2")}
               </h3>
               <p className="text-gray-600">
-                Create beautiful product catalogs that customers can browse and
-                purchase from during your live streams.
+                {t("features.featureCard.2Description")}
               </p>
             </CardContent>
           </Card>
@@ -134,11 +131,10 @@ export default function LandingPage() {
                 <Users className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Live Chat
+                {t("features.featureCard.3")}
               </h3>
               <p className="text-gray-600">
-                Interact with your audience in real-time. Answer questions,
-                build relationships, and drive sales through conversation.
+                {t("features.featureCard.3Description")}
               </p>
             </CardContent>
           </Card>
@@ -150,11 +146,10 @@ export default function LandingPage() {
                 <Zap className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Instant Payments
+                {t("features.featureCard.4")}
               </h3>
               <p className="text-gray-600">
-                Secure, fast payment processing. Get paid instantly when
-                customers make purchases during your live streams.
+                {t("features.featureCard.4Description")}
               </p>
             </CardContent>
           </Card>
@@ -166,11 +161,10 @@ export default function LandingPage() {
                 <Star className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Analytics
+                {t("features.featureCard.5")}
               </h3>
               <p className="text-gray-600">
-                Track your performance with detailed analytics. Understand your
-                audience and optimize your sales strategy.
+                {t("features.featureCard.5Description")}
               </p>
             </CardContent>
           </Card>
@@ -182,11 +176,10 @@ export default function LandingPage() {
                 <CheckCircle className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Mobile First
+                {t("features.featureCard.6")}
               </h3>
               <p className="text-gray-600">
-                Optimized for mobile devices. Your customers can watch, chat,
-                and buy seamlessly from any device.
+                {t("features.featureCard.6Description")}
               </p>
             </CardContent>
           </Card>
@@ -196,12 +189,9 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-12 text-center text-white">
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Transform Your Business?
-          </h2>
+          <h2 className="text-4xl font-bold mb-4">{t("CallToAction.title")}</h2>
           <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-            Join thousands of sellers who are already using PayLive to grow
-            their business through live commerce.
+            {t("CallToAction.description")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/signup">
@@ -210,7 +200,7 @@ export default function LandingPage() {
                 variant="secondary"
                 className="text-lg px-8 py-3 bg-white text-blue-600 hover:bg-gray-100"
               >
-                Get Started Free
+                {t("CallToAction.button")}
               </Button>
             </Link>
             {/* <Link href="/contact">
@@ -307,7 +297,7 @@ export default function LandingPage() {
           </div> */}
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 PayLive. All rights reserved.</p>
+            <p>&copy; 2024 PayLive. {t("copyright")}</p>
           </div>
         </div>
       </footer>

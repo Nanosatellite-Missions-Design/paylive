@@ -1,14 +1,20 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
+import { useState, useRef, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   ChevronLeft,
   QrCode,
@@ -19,48 +25,53 @@ import {
   Maximize,
   Minimize,
   PictureInPicture,
-} from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
-import QRCodeScanner from "@/components/qr-code-scanner"
-import { getADocument, getASubDocument } from "@/functions/get-a-document"
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import QRCodeScanner from "@/components/qr-code-scanner";
+import { getADocument, getASubDocument } from "@/functions/get-a-document";
 import { useAuth } from "@/contexts/auth-context";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
-import { addToSubCollection, setToSubCollection } from "@/functions/add-to-a-sub-collection"
+import {
+  addToSubCollection,
+  setToSubCollection,
+} from "@/functions/add-to-a-sub-collection";
 import { formatDistanceToNow } from "date-fns";
-import { PaymentDialog } from "@/components/payment-dialog"
-import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection"
-import { updateDocument } from "@/functions/update-doc-in-collection"
-import { increment } from "firebase/firestore"
+import { PaymentDialog } from "@/components/payment-dialog";
+import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection";
+import { updateDocument } from "@/functions/update-doc-in-collection";
+import { increment } from "firebase/firestore";
+import { useTranslations } from "@/lib/useTranslations";
 
 export default function LiveSaleDetailPage() {
-  const { id } = useParams()
-  const router = useRouter()
-  const { lives, userInfo, userTransactions } = useAuth()
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isPiP, setIsPiP] = useState(false)
-  const [showQRScanner, setShowQRScanner] = useState(false)
-  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false)
-  const [chatMessages, setChatMessages] = useState<any[]>([])
-  const [newMessage, setNewMessage] = useState("")
-  const chatEndRef = useRef(null)
-  const videoRef = useRef(null)
-  const { toast } = useToast()
-  const [liveSale, setLiveSale] = useState<any>({})
-  const [liveProducts, setLiveProducts] = useState<any[]>([])
-  const [featuredProduct, setFeaturedProduct] = useState<any>(null)
-  const [productToBuy, setProductToBuy] = useState<any>({})
-  const [depositId, setDepositId] = useState("")
-  const [paymentState, setPaymentState] = useState("selecting")
+  const { id } = useParams();
+  const router = useRouter();
+  const { lives, userInfo, userTransactions } = useAuth();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPiP, setIsPiP] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const chatEndRef = useRef(null);
+  const videoRef = useRef(null);
+  const { toast } = useToast();
+  const [liveSale, setLiveSale] = useState<any>({});
+  const [liveProducts, setLiveProducts] = useState<any[]>([]);
+  const [featuredProduct, setFeaturedProduct] = useState<any>(null);
+  const [productToBuy, setProductToBuy] = useState<any>({});
+  const [depositId, setDepositId] = useState("");
+  const [paymentState, setPaymentState] = useState("selecting");
+  const t = useTranslations("LivePage");
 
   useEffect(() => {
-      const unsubscribeLiveSale = getADocument(id as string, "lives", (data) => {
-          setLiveSale(data);
-        });
-    
-        return () => {
-          if (unsubscribeLiveSale) unsubscribeLiveSale();
-      };
-  }, [id])
+    const unsubscribeLiveSale = getADocument(id as string, "lives", (data) => {
+      setLiveSale(data);
+    });
+
+    return () => {
+      if (unsubscribeLiveSale) unsubscribeLiveSale();
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!liveSale?.products || !Array.isArray(liveSale?.products)) return;
@@ -101,7 +112,9 @@ export default function LiveSaleDetailPage() {
     let intervalId: NodeJS.Timeout;
 
     if (depositId) {
-      const transaction = userTransactions.find((transaction: any) => transaction.id === depositId)
+      const transaction = userTransactions.find(
+        (transaction: any) => transaction.id === depositId
+      );
       intervalId = setInterval(async () => {
         try {
           const response = await fetch(
@@ -112,11 +125,30 @@ export default function LiveSaleDetailPage() {
           const status = data[0]?.status || data.status; // Handle both array and object
 
           if (status === "COMPLETED") {
-            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "completed"})
-            await addToSubCollection({...transaction, status: "completed", type: "income"}, "users", transaction.sellerId, "transactions")
-            await updateDocument("users", transaction.sellerId, {balance: increment(transaction.amount)})
+            await updateSubcollectionDocument(
+              "users",
+              userInfo.uid,
+              "transactions",
+              depositId,
+              { status: "completed" }
+            );
+            await addToSubCollection(
+              { ...transaction, status: "completed", type: "income" },
+              "users",
+              transaction.sellerId,
+              "transactions"
+            );
+            await updateDocument("users", transaction.sellerId, {
+              balance: increment(transaction.amount),
+            });
           } else if (status === "FAILED") {
-            await updateSubcollectionDocument("users", userInfo.uid, "transactions", depositId, {status: "failed"})
+            await updateSubcollectionDocument(
+              "users",
+              userInfo.uid,
+              "transactions",
+              depositId,
+              { status: "failed" }
+            );
           }
         } catch (error) {
           console.error("Payment verification failed:", error);
@@ -126,15 +158,15 @@ export default function LiveSaleDetailPage() {
     }
 
     return () => clearInterval(intervalId);
-  }, [
-    depositId,
-  ]);
+  }, [depositId]);
 
   useEffect(() => {
-    const currentFeaturedProduct = liveProducts.find((product: any) => product.id === liveSale?.currentFeaturedProduct)
+    const currentFeaturedProduct = liveProducts.find(
+      (product: any) => product.id === liveSale?.currentFeaturedProduct
+    );
 
-    setFeaturedProduct(currentFeaturedProduct)
-  }, [liveProducts])
+    setFeaturedProduct(currentFeaturedProduct);
+  }, [liveProducts]);
 
   useEffect(() => {
     const unsubscribeLiveChat =
@@ -148,44 +180,44 @@ export default function LiveSaleDetailPage() {
     return () => {
       unsubscribeLiveChat();
     };
-  }, [liveSale])
-
+  }, [liveSale]);
 
   const handleBuyNow = (product: any) => {
-    setProductToBuy(product)
-    setShowSelectPaymentNumber(true)
-  }
-
-
+    setProductToBuy(product);
+    setShowSelectPaymentNumber(true);
+  };
 
   const handleOnPay = async (paymentMethod: string) => {
-    let number = {} as any
-    if(paymentMethod !== "other"){
-      number = userInfo?.paymentMethods.find((method: any) => method.number === paymentMethod)
+    let number = {} as any;
+    if (paymentMethod !== "other") {
+      number = userInfo?.paymentMethods.find(
+        (method: any) => method.number === paymentMethod
+      );
     }
     const bodyWithNumber = JSON.stringify({
       amount: productToBuy.price,
       phoneNumber: number.number,
       provider: number.netword,
       currentUrl: "",
-      product: productToBuy.name
-    })
+      product: productToBuy.name,
+    });
     const bodyWithoutNumber = JSON.stringify({
       amount: productToBuy.price,
-      currentUrl: "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
-      product: productToBuy.name
-    })
+      currentUrl:
+        "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
+      product: productToBuy.name,
+    });
     try {
       const res = await fetch("/api/pawapay/deposits", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: paymentMethod === "other" ? bodyWithoutNumber : bodyWithNumber
+        body: paymentMethod === "other" ? bodyWithoutNumber : bodyWithNumber,
       });
 
       const data = await res.json();
-      setDepositId(data.depositId)
+      setDepositId(data.depositId);
       const newTransaction = {
         type: "purchase",
         buyerId: userInfo.uid,
@@ -196,9 +228,15 @@ export default function LiveSaleDetailPage() {
         amount: productToBuy.price,
         paymentMethod: number.network,
         status: "pending",
-        liveId: id // if part of a live
-      }
-      await setToSubCollection(data.depositId, newTransaction, "users", liveSale.creatorId, "transactions")
+        liveId: id, // if part of a live
+      };
+      await setToSubCollection(
+        data.depositId,
+        newTransaction,
+        "users",
+        liveSale.creatorId,
+        "transactions"
+      );
       if (!res.ok) throw new Error(data.error || "Unknown error");
       if (paymentMethod === "other" && data?.redirectUrl) {
         window.location.href = data.redirectUrl; // ✅ works for external links
@@ -219,73 +257,80 @@ export default function LiveSaleDetailPage() {
         description: (error as Error).message,
       });
     }
-
-  }
+  };
 
   const handleAddToWishlist = () => {
     toast({
       title: "Added to wishlist",
       description: `${liveSale?.featuredProduct.name} has been added to your wishlist.`,
-    })
-  }
+    });
+  };
 
   const handleCancelPaymentDialog = () => {
-    setPaymentState("selecting")
-    setShowSelectPaymentNumber(false)
-  }
+    setPaymentState("selecting");
+    setShowSelectPaymentNumber(false);
+  };
 
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen)
-    setIsPiP(false)
-  }
+    setIsFullscreen(!isFullscreen);
+    setIsPiP(false);
+  };
 
   const togglePictureInPicture = async () => {
     try {
       if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture()
-        setIsPiP(false)
+        await document.exitPictureInPicture();
+        setIsPiP(false);
       } else if (videoRef.current) {
         // await videoRef.current.requestPictureInPicture()
-        setIsPiP(true)
+        setIsPiP(true);
       }
     } catch (error) {
-      console.error("PiP error:", error)
+      console.error("PiP error:", error);
       toast({
         title: "Picture-in-Picture error",
         description: "Your browser may not support this feature.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleSendMessage = async (e: any) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!newMessage.trim()) return
+    if (!newMessage.trim()) return;
 
     const newMessageDatas = {
       userId: userInfo.uid,
       userName: userInfo.name,
       message: newMessage,
-    }
+    };
 
-    await addToSubCollection(newMessageDatas, "lives", liveSale.id, "chatMessages")
-    
-  }
+    await addToSubCollection(
+      newMessageDatas,
+      "lives",
+      liveSale.id,
+      "chatMessages"
+    );
+  };
 
   const handleQRScan = (data: any) => {
     toast({
       title: "QR Code Scanned",
       description: `Product ID: ${data}`,
-    })
+    });
 
-    setShowQRScanner(false)
-  }
+    setShowQRScanner(false);
+  };
 
   return (
     <div>
       <div
-        className={`${isFullscreen ? "fixed inset-0 z-50 bg-black" : "container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6"}`}
+        className={`${
+          isFullscreen
+            ? "fixed inset-0 z-50 bg-black"
+            : "container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6"
+        }`}
       >
         {!isFullscreen && (
           <header className="mb-4">
@@ -301,22 +346,30 @@ export default function LiveSaleDetailPage() {
               <Badge className="bg-red-500">LIVE</Badge>
             </div>
             <div className="flex items-center justify-between text-sm text-gray-500">
-              <p>by {liveSale?.creatorName}</p>
+              <p>
+                {t("by")} {liveSale?.creatorName}
+              </p>
               <div className="flex items-center">
                 <Users className="h-4 w-4 mr-1" />
-                <span>{liveSale?.viewers} watching</span>
+                <span>
+                  {liveSale?.viewers} {t("watching")}
+                </span>
               </div>
             </div>
           </header>
         )}
 
         <div className={`relative mb-4 ${isFullscreen ? "h-full" : ""}`}>
-          <div className={`relative ${isFullscreen ? "h-full" : "aspect-video"}`}>
+          <div
+            className={`relative ${isFullscreen ? "h-full" : "aspect-video"}`}
+          >
             <video
               ref={videoRef}
               src="/placeholder.mp4"
               poster="/placeholder.svg?height=400&width=800"
-              className={`w-full h-full object-cover ${isFullscreen ? "object-contain" : ""}`}
+              className={`w-full h-full object-cover ${
+                isFullscreen ? "object-contain" : ""
+              }`}
               controls={false}
               autoPlay
               muted
@@ -329,7 +382,11 @@ export default function LiveSaleDetailPage() {
                 className="bg-black/50 hover:bg-black/70 text-white"
                 onClick={toggleFullscreen}
               >
-                {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                {isFullscreen ? (
+                  <Minimize className="h-4 w-4" />
+                ) : (
+                  <Maximize className="h-4 w-4" />
+                )}
               </Button>
               <Button
                 variant="secondary"
@@ -341,7 +398,11 @@ export default function LiveSaleDetailPage() {
               </Button>
               <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
                 <DialogTrigger asChild>
-                  <Button variant="secondary" size="sm" className="bg-black/50 hover:bg-black/70 text-white">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-black/50 hover:bg-black/70 text-white"
+                  >
                     <QrCode className="h-4 w-4 mr-2" />
                     Scan
                   </Button>
@@ -350,7 +411,10 @@ export default function LiveSaleDetailPage() {
                   <DialogHeader>
                     <DialogTitle>Scan Product QR Code</DialogTitle>
                   </DialogHeader>
-                  <QRCodeScanner onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />
+                  <QRCodeScanner
+                    onScan={handleQRScan}
+                    onClose={() => setShowQRScanner(false)}
+                  />
                 </DialogContent>
               </Dialog>
             </div>
@@ -362,13 +426,13 @@ export default function LiveSaleDetailPage() {
             <Tabs defaultValue="product">
               <TabsList className="w-full mb-4">
                 <TabsTrigger value="product" className="flex-1">
-                  Featured Product
+                  {t("featuredProduct")}
                 </TabsTrigger>
                 <TabsTrigger value="chat" className="flex-1">
-                  Live Chat
+                  {t("liveChat")}
                 </TabsTrigger>
                 <TabsTrigger value="products" className="flex-1">
-                  All Products
+                  {t("allProducts")}
                 </TabsTrigger>
               </TabsList>
 
@@ -385,15 +449,28 @@ export default function LiveSaleDetailPage() {
                           />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium">{featuredProduct.name}</h3>
-                          <p className="text-sm text-gray-500 mb-2">{featuredProduct.description}</p>
-                          <p className="font-bold text-lg">XAF{featuredProduct.price}</p>
+                          <h3 className="font-medium">
+                            {featuredProduct.name}
+                          </h3>
+                          <p className="text-sm text-gray-500 mb-2">
+                            {featuredProduct.description}
+                          </p>
+                          <p className="font-bold text-lg">
+                            XAF{featuredProduct.price}
+                          </p>
                           <div className="flex gap-2 mt-2">
-                            <Button size="sm" onClick={() => handleBuyNow(featuredProduct)}>
+                            <Button
+                              size="sm"
+                              onClick={() => handleBuyNow(featuredProduct)}
+                            >
                               <ShoppingCart className="h-4 w-4 mr-2" />
-                              Buy Now
+                              {t("buyNow")}
                             </Button>
-                            <Button size="sm" variant="outline" onClick={handleAddToWishlist}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleAddToWishlist}
+                            >
                               <Heart className="h-4 w-4 mr-2" />
                               Wishlist
                             </Button>
@@ -413,11 +490,15 @@ export default function LiveSaleDetailPage() {
                         <div key={message.id} className="mb-3">
                           <div className="flex items-start">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
-                              <span className="text-xs font-medium text-primary">{message.userName?.charAt(0)}</span>
+                              <span className="text-xs font-medium text-primary">
+                                {message.userName?.charAt(0)}
+                              </span>
                             </div>
                             <div className="flex-1">
                               <div className="flex items-center">
-                                <p className="font-medium text-sm">{message.userName}</p>
+                                <p className="font-medium text-sm">
+                                  {message.userName}
+                                </p>
                                 <span className="text-xs text-gray-500 ml-2">
                                   {formatDistanceToNow(
                                     message.createdAt?.toDate
@@ -460,9 +541,17 @@ export default function LiveSaleDetailPage() {
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                      <p className="text-xs text-primary font-medium">XAF{product.price.toFixed(2)}</p>
-                      <Button size="sm" variant="outline" className="mt-2 w-full text-xs">
+                      <h3 className="text-sm font-medium truncate">
+                        {product.name}
+                      </h3>
+                      <p className="text-xs text-primary font-medium">
+                        XAF{product.price.toFixed(2)}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 w-full text-xs"
+                      >
                         <ShoppingCart className="h-3 w-3 mr-1" />
                         Buy
                       </Button>
@@ -474,7 +563,15 @@ export default function LiveSaleDetailPage() {
           </>
         )}
       </div>
-      <PaymentDialog open={showSelectPaymentNumber} handleCancel={handleCancelPaymentDialog} paymentState={paymentState} onOpenChange={setShowSelectPaymentNumber} amount={productToBuy.price} product={productToBuy.name} onPaymentComplete={handleOnPay}/>
+      <PaymentDialog
+        open={showSelectPaymentNumber}
+        handleCancel={handleCancelPaymentDialog}
+        paymentState={paymentState}
+        onOpenChange={setShowSelectPaymentNumber}
+        amount={productToBuy.price}
+        product={productToBuy.name}
+        onPaymentComplete={handleOnPay}
+      />
     </div>
-  )
+  );
 }

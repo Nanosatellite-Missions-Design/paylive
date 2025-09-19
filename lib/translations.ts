@@ -1,21 +1,52 @@
 // lib/translations.ts
 import en from "@/locales/en.json"; // adjust path
 
-// "a.b.c" keys for any nested object
-type NestedKeyOf<T> = T extends object
+// helper to join dot paths
+type Dot<P extends string, K extends string> = P extends "" ? K : `${P}.${K}`;
+
+// Full leaf paths from the root, e.g. "Dashboard.Lives.title"
+type FullKeys<T, P extends string = ""> = T extends object
   ? {
       [K in keyof T & string]: T[K] extends object
-        ? `${K}.${NestedKeyOf<T[K]>}`
+        ? FullKeys<T[K], Dot<P, K>>
+        : Dot<P, K>;
+    }[keyof T & string]
+  : never;
+
+// Relative keys inside a node, e.g. for Dashboard => "Lives.title" | "Orders.title"
+// for Dashboard.Lives => "title" | "LiveCard.products" etc.
+type RelativeKeys<T> = T extends object
+  ? {
+      [K in keyof T & string]: T[K] extends object
+        ? K | `${K}.${RelativeKeys<T[K]>}`
         : K;
     }[keyof T & string]
   : never;
 
+// All object-node paths (namespaces) as dotted strings, e.g. "Dashboard" | "Dashboard.Lives"
+type ObjectPaths<T, P extends string = ""> = T extends object
+  ? {
+      [K in keyof T & string]: T[K] extends object
+        ? Dot<P, K> | ObjectPaths<T[K], Dot<P, K>>
+        : never;
+    }[keyof T & string]
+  : never;
+
+// Lookup type: get the type at a dotted path "A.B.C"
+type Lookup<T, P extends string> = P extends `${infer K}.${infer R}`
+  ? K extends keyof T
+    ? Lookup<T[K], R>
+    : never
+  : P extends keyof T
+  ? T[P]
+  : never;
+
 export type Translations = typeof en;
 
-// All keys WITH top-level namespace prefix, e.g. "home.hero.slogan"
-export type TranslationKeys = NestedKeyOf<Translations>;
+// all full keys (for useTranslations() with no namespace)
+export type TranslationKeys = FullKeys<Translations>;
 
-// Map each namespace to its INNER keys (WITHOUT the "home." prefix)
+// map every object-path namespace to the union of its relative inner keys
 export type NamespaceKeyMap = {
-  [N in keyof Translations & string]: NestedKeyOf<Translations[N]>;
+  [P in ObjectPaths<Translations>]: RelativeKeys<Lookup<Translations, P>>;
 };
