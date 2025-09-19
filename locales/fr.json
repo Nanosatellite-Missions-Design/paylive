@@ -1,1 +1,331 @@
-{}
+{  
+    "common": {
+        "live": "Ventes en direct",
+        "orders": "Commandes",
+        "products": "Produits",
+        "profile": "Profil",
+        "settings": "Paramètres",
+        "logOut": "Déconnexion"
+    },
+    "websiteNavbar": {
+        "dashboard": "Tableau de bord",
+        "language": "FR",
+        "login": "Connexion"
+    },
+    "websiteFooter": {
+        "copyright": "Tous droits réservés."
+    },
+    "HomePage": {
+        "banner": {
+            "badge": "L’avenir du Live Commerce",
+            "title1": "Vendez en direct",
+            "title2": "Gagnez plus",
+            "description": "Transformez vos produits en expériences interactives en direct. Connectez-vous avec vos clients en temps réel, présentez vos produits et boostez vos ventes avec la puissante plateforme de live commerce de PayLive.",
+            "button": "Commencer à vendre en direct"
+        },
+        "features": {
+            "title": "Tout ce dont vous avez besoin pour réussir",
+            "description": "Des outils puissants conçus pour vous aider à créer des expériences interactives et développer votre entreprise",
+            "featureCard": {
+                "1": "Diffusion en direct",
+                "1Descritpion": "Diffusez vos produits en direct et en temps réel. Interagissez avec vos clients à travers des vidéos interactives.",
+                "2": "Catalogues intelligents",
+                "2Descritpion": "Créez de magnifiques catalogues produits que les clients peuvent consulter et acheter pendant vos diffusions.",
+                "3": "Chat en direct",
+                "3Descritpion": "Interagissez avec votre audience en temps réel. Répondez aux questions, créez des relations et stimulez vos ventes par la conversation.",
+                "4": "Paiements instantanés",
+                "4Descritpion": "Traitement des paiements sécurisé et rapide. Recevez vos paiements instantanément lors des achats en direct.",
+                "5": "Analytique",
+                "5Descritpion": "Suivez vos performances avec des analyses détaillées. Comprenez votre audience et optimisez votre stratégie de vente.",
+                "6": "Mobile First",
+                "6Descritpion": "Optimisé pour les appareils mobiles. Vos clients peuvent regarder, discuter et acheter facilement depuis n’importe quel appareil."
+            }
+        },
+        "CallToAction": {
+            "title": "Prêt à transformer votre entreprise ?",
+            "description": "Rejoignez des milliers de vendeurs qui utilisent déjà PayLive pour développer leur activité grâce au live commerce.",
+            "button": "Commencer gratuitement"
+        }
+    },
+    "Auth": {
+        "description": "Bon retour ! Connectez-vous à votre compte.",
+        "phone": "Numéro de téléphone",
+        "sendCode": "Envoyer le code",
+        "login": "Connexion",
+        "signUp": "Inscription",
+        "name": "Nom complet (ou nom de la boutique)",
+        "createAccount": "Créer un compte",
+        "verificationCode": "Code de vérification",
+        "noAccountYet": "Vous n’avez pas encore de compte ?",
+        "alreadyHaveAccount": "Vous avez déjà un compte ?"
+    },
+    "Dashboard": {
+        "menu": {
+            "live": "Ventes en direct",
+            "orders": "Commandes",
+            "products": "Produits",
+            "profile": "Profil",
+            "settings": "Paramètres"
+        },
+        "Lives": {
+            "title": "Mes ventes en direct",
+            "description": "Gérez vos ventes et vos produits en direct",
+            "create": "Créer",
+            "all": "Tout",
+            "liveNow": "En direct",
+            "scheduled": "Planifié",
+            "ended": "Terminé",
+            "LiveCard": {
+                "products": "Produits",
+                "startLive": "Démarrer une vente en direct",
+                "liveNow": "En direct",
+                "watching": "regarde(nt)",
+                "endLive": "Terminer la vente en direct",
+                "viewLive": "Voir le direct",
+                "manageProducts": "Gérer les produits",
+                "manageProductsDialog": {
+                    "title": "Gérer les produits mis en avant",
+                    "description": "Sélectionnez un produit à mettre en avant dans votre vente en direct. Le produit mis en avant sera affiché en priorité aux spectateurs.",
+                    "setAsFeatured": "Définir comme mis en avant",
+                    "cancel": "Annuler",
+                    "featured": "Mis en avant"
+                }
+            },
+            "CreateLiveDialog": {
+                "createLiveSale": "Créer une vente en direct",
+                "title": "Titre",
+                "description": "Description",
+                "date": "Date",
+                "time": "Heure",
+                "selectProducts": "Sélectionner des produits",
+                "selectMultiple": "Vous pouvez sélectionner plusieurs produits pendant la vente en direct",
+                "thumbnail": "Image miniature",
+                "cancel": "Annuler",
+                "createButton": "Créer une vente en direct"
+            }
+        },
+        "Orders": {
+            "title": "Gestion des commandes",
+            "description": "Suivez et gérez les commandes de vos clients",
+            "pending": "En attente",
+            "onTheWay": "En cours de livraison",
+            "delivered": "Livré",
+            "total": "Total des commandes",
+            "OrderCard": {
+                "view": "Voir",
+                "update": "Mettre à jour",
+                "shipOrder": "Expédier la commande",
+                "markDelivered": "Marquer comme livré",
+                "item": "Article",
+                "created": "Créé"
+            }
+        },
+        "Products": {
+            "title": "Mes produits",
+            "description": "Gérez vos produits pour les ventes en direct et les enchères",
+            "addNew": "Ajouter de nouveaux produits",
+            "ProductDialog": {
+                "productName": "Nom du produit",
+                "price": "Prix",
+                "quantity": "Quantité",
+                "description": "Description",
+                "category": "Catégorie",
+                "productImages": "Images du produit",
+                "cancel": "Annuler",
+                "add": "Ajouter le produit",
+                "status": "Statut"
+            },
+            "DeleteDialog": {
+                "title": "Êtes-vous absolument sûr ?",
+                "description": "Cette action est irréversible. Cela supprimera définitivement le produit.",
+                "cancel": "Annuler",
+                "delete": "Supprimer"
+            },
+            "QRDialog": {
+                "title": "Code QR du produit",
+                "description": "Scannez pour voir les détails du produit",
+                "button": "Imprimer le code QR"
+            }
+        },
+        "Profile": {
+            "title": "Mon compte",
+            "editProfileButton": "Modifier le profil",
+            "financialOverview": "Aperçu financier",
+            "currentBalance": "Solde actuel",
+            "thisMonth": "Ce mois-ci",
+            "totalEarnings": "Revenus totaux",
+            "details": "Détails",
+            "quickActions": "Actions rapides",
+            "myProducts": "Mes produits",
+            "myCatalogss": "Mes catalogues",
+            "liveSales": "Ventes en direct",
+            "paymentMethods": "Moyens de paiement",
+            "transactionHistory": "Historique des transactions",
+            "accountSettings": "Paramètres du compte",
+            "appSettings": "Paramètres de l’application",
+            "logOut": "Déconnexion"
+        },
+        "PaymentMethods": {
+            "title": "Moyens de paiement",
+            "description": "Gérez vos moyens de paiement pour vos achats et ventes",
+            "addPaymentMethod": "Ajouter un moyen de paiement",
+            "AddDialog": {
+                "title": "Ajouter un moyen de paiement",
+                "paymentType": "Type de paiement",
+                "phoneNumber": "Numéro de téléphone",
+                "provider": "Fournisseur",
+                "cancel": "Annuler",
+                "addMethod": "Ajouter",
+                "setDefault": "Définir par défaut"
+            }
+        },
+        "Transactions": {
+            "title": "Transactions",
+            "descritption": "Consultez votre historique et gérez votre solde",
+            "currentBalance": "Solde actuel",
+            "available": "Disponible pour retrait",
+            "thisMonth": "Ce mois-ci",
+            "pending": "En attente",
+            "withdraw Funds": "Retirer des fonds",
+            "all": "Tout",
+            "sales": "Ventes",
+            "withdrawal": "Retrait",
+            "newOrder": "Nouvelle commande",
+            "purchasedProduct": "Produit acheté",
+            "WithdrawDialog": {
+                "continue": "Continuer",
+                "back": "Retour",
+                "confirm": "Confirmer le retrait",
+                "1": {
+                    "title": "Retirer des fonds",
+                    "description": "Retirez votre solde disponible vers votre moyen de paiement préféré",
+                    "availableBalance": "Solde disponible",
+                    "withdrawalAmount": "Montant du retrait",
+                    "processingFee": "Frais de traitement",
+                    "youReceive": "Vous recevrez"
+                },
+                "2": {
+                    "title": "Sélectionner un moyen de paiement",
+                    "description": "Choisissez comment vous souhaitez recevoir votre retrait",
+                    "withdrawalAmount": "Montant du retrait",
+                    "phone": "Numéro de téléphone du compte",
+                    "phonePlaceholder": "Entrez votre numéro de compte"
+                },
+                "3": {
+                    "title": "Confirmer le retrait",
+                    "description": "Veuillez vérifier les détails de votre retrait avant de confirmer",
+                    "amount": "Montant",
+                    "fee": "Frais",
+                    "youReceive": "Vous recevrez",
+                    "method": "Méthode",
+                    "estimatedArrival": "Arrivée estimée",
+                    "phone": "Numéro de téléphone",
+                    "Notice": {
+                        "title": "Important",
+                        "description": "En confirmant ce retrait, vous acceptez nos termes et conditions. Cette transaction est irréversible une fois traitée."
+                    }
+                },
+                "Error": {
+                    "title": "Erreur",
+                    "description": "Échec du retrait. Veuillez réessayer plus tard."
+                }
+            }
+        },
+        "Catalogs": {
+            "title": "Mes catalogues",
+            "description": "Gérez vos catalogues produits et partagez-les avec vos clients",
+            "back": "Retour",
+            "createNewButton": "Créer un nouveau catalogue",
+            "CatalogCard": {
+                "products": "Produits",
+                "view":"Voir",
+                "copyLink": "Copier le lien",
+                "deactivate": "Désactiver"
+            },
+            "CreateCatalogDialog": {
+                "title": "Créer un nouveau catalogue",
+                "catalogTitle": "Titre du catalogue",
+                "description": "Description",
+                "selectProducts": "Sélectionner des produits",
+                "selectProductsDescription": "Choisissez les produits à inclure dans ce catalogue",
+                "inStock": "En stock",
+                "productsSelected": "produit(s) sélectionné(s)",
+                "cancel": "Annuler",
+                "createButton": "Créer"
+            },
+            "ViewCatalogDialog": {
+                "dialogTitle": "Détails du catalogue",
+                "title": "Titre",
+                "views": "Vues",
+                "description": "Description",
+                "status": "Créé",
+                "products": "Produits",
+                "copyLink": "Copier le lien",
+                "viewLive": "Voir en direct"
+            }
+        },
+        "Settings": {
+            "settings": "Paramètres",
+            "description": "Gérez les paramètres et préférences de votre compte",
+            "notifications": "Notifications",
+            "messages": "Messages",
+            "messagesDescription": "Recevez une notification lors d’une nouvelle commande",
+            "promotions": "Promotions",
+            "promotionsDescription": "Recevez des notifications sur les offres et promotions",
+            "language": "Langue",
+            "selectLanguage": "Sélectionnez votre langue préférée",
+            "theme": "Thème",
+            "selectTheme": "Sélectionnez votre thème préféré",
+            "logout": "Déconnexion"
+        }
+    },
+    "LivePage": {
+        "liveNow": "En direct",
+        "by": "par",
+        "watching": "regarde(nt)",
+        "featuredProduct": "Produit vedette",
+        "liveChat": "Chat en direct",
+        "allProducts": "Tous les produits",
+        "buyNow": "Acheter maintenant",
+        "BuyDialog": {
+            "securePayment": "Paiement sécurisé",
+            "description": "Complétez votre paiement pour Gel",
+            "secure": "Sécurisé",
+            "pay": "Payer",
+            "footerDescription": "Vos informations de paiement sont cryptées et sécurisées. Nous ne stockons jamais vos coordonnées complètes."
+        }
+    },
+    "CatalogPage": {
+        "allProducts": "Tous les produits",
+        "addToCart": "Ajouter au panier",
+        "showing": "Affichage",
+        "products": "Produits",
+        "search": "Rechercher un produit",
+        "Cart": {
+            "title": "Panier",
+            "item": "article",
+            "items": "articles",
+            "total": "Total",
+            "clearCart": "Vider le panier",
+            "checkout": "Passer à la caisse",
+            "orderSummary":  "Résumé de la commande",
+            "customerInformation": "Informations du client",
+            "fullName": "Nom complet",
+            "phoneNumber": "Numéro de téléphone",
+            "deliveryAddress": "Adresse de livraison",
+            "orderNote": "Notes de commande (optionnel)",
+            "submitOrder": "Valider la commande",
+            "submittingOrder": "Envoi de la commande",
+            "footer": "Le vendeur vous contactera pour confirmer et organiser le paiement et la livraison."
+        },
+        "ProductPage": {
+            "share": "Partager",
+            "securePayment": "Paiement sécurisé",
+            "fastShipping": "Livraison rapide",
+            "quantity": "Quantité",
+            "buyNow": "Acheter maintenant",
+            "addToCart": "Ajouter au panier",
+            "sellerInformation": "Informations sur le vendeur"
+        }
+    }
+}

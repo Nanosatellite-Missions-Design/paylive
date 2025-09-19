@@ -1,31 +1,50 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CreditCard, Smartphone, Plus, ChevronLeft, Trash2, Check } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  CreditCard,
+  Smartphone,
+  Plus,
+  ChevronLeft,
+  Trash2,
+  Check,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore"
-import { updateDocument } from "@/functions/update-doc-in-collection"
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { updateDocument } from "@/functions/update-doc-in-collection";
 
 export default function PaymentMethodsPage() {
-  const { userInfo } = useAuth()
+  const { userInfo } = useAuth();
 
-  const [isAddingMethod, setIsAddingMethod] = useState(false)
-  const [newMethodType, setNewMethodType] = useState("mobile")
-  const [newNumber, setNewNumber] = useState("")
-  const [newNetwork, setNewNetwork] = useState("Orange")
-  const { toast } = useToast()
+  const [isAddingMethod, setIsAddingMethod] = useState(false);
+  const [newMethodType, setNewMethodType] = useState("mobile");
+  const [newNumber, setNewNumber] = useState("");
+  const [newNetwork, setNewNetwork] = useState("Orange");
+  const { toast } = useToast();
 
   const handleSetDefault = async (methodToSet: any) => {
-    console.log(methodToSet)
+    console.log(methodToSet);
     const updatedMethods = userInfo.paymentMethods.map((method: any) => ({
       ...method,
       isDefault:
@@ -44,20 +63,23 @@ export default function PaymentMethodsPage() {
     });
   };
 
-
   const handleDelete = async (id: any) => {
-    const toRemove = userInfo.paymentMethods.find((method: any) => method.id === id)
+    const toRemove = userInfo.paymentMethods.find(
+      (method: any) => method.id === id
+    );
 
-    await updateDocument("users", userInfo.uid, {paymentMethods: arrayRemove(toRemove)})
+    await updateDocument("users", userInfo.uid, {
+      paymentMethods: arrayRemove(toRemove),
+    });
 
     toast({
       title: "Payment method removed",
       description: "Your payment method has been removed successfully.",
-    })
-  }
+    });
+  };
 
   const handleAddMethod = async (e: any) => {
-    e.preventDefault()
+    e.preventDefault();
 
     // In a real app, you would validate and process the form data
     const newMethod = {
@@ -65,30 +87,34 @@ export default function PaymentMethodsPage() {
       number: newNumber,
       network: newNetwork,
       isDefault: false,
-    }
+    };
 
-    await updateDocument("users", userInfo.uid, {paymentMethods: arrayUnion(newMethod)})
-    setIsAddingMethod(false)
+    await updateDocument("users", userInfo.uid, {
+      paymentMethods: arrayUnion(newMethod),
+    });
+    setIsAddingMethod(false);
 
     toast({
       title: "Payment method added",
       description: "Your new payment method has been added successfully.",
-    })
-  }
+    });
+  };
 
   return (
     <div>
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <Link href="/profile" className="mr-2">
+            <Link href="/dashboard/profile" className="mr-2">
               <Button variant="ghost" size="icon">
                 <ChevronLeft className="h-5 w-5" />
               </Button>
             </Link>
             <h1 className="text-2xl font-bold">Payment Methods</h1>
           </div>
-          <p className="text-gray-500">Manage your payment methods for purchases and sales</p>
+          <p className="text-gray-500">
+            Manage your payment methods for purchases and sales
+          </p>
         </header>
 
         <div className="space-y-4 mb-6">
@@ -114,7 +140,12 @@ export default function PaymentMethodsPage() {
                         Default
                       </span>
                     ) : (
-                      <Button variant="ghost" size="sm" onClick={() => handleSetDefault(method)} className="text-xs">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSetDefault(method)}
+                        className="text-xs"
+                      >
                         Set default
                       </Button>
                     )}
@@ -155,14 +186,20 @@ export default function PaymentMethodsPage() {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="mobile" id="mobile" />
-                    <Label htmlFor="mobile" className="flex items-center cursor-pointer">
+                    <Label
+                      htmlFor="mobile"
+                      className="flex items-center cursor-pointer"
+                    >
                       <Smartphone className="h-4 w-4 mr-2" />
                       Mobile Money
                     </Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card" className="flex items-center cursor-pointer">
+                    <Label
+                      htmlFor="card"
+                      className="flex items-center cursor-pointer"
+                    >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Credit Card
                     </Label>
@@ -195,7 +232,11 @@ export default function PaymentMethodsPage() {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input id="phoneNumber" placeholder="697882533" onChange={(e) => setNewNumber(e.target.value)}/>
+                    <Input
+                      id="phoneNumber"
+                      placeholder="697882533"
+                      onChange={(e) => setNewNumber(e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="provider">Provider</Label>
@@ -213,7 +254,11 @@ export default function PaymentMethodsPage() {
               )}
 
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" type="button" onClick={() => setIsAddingMethod(false)}>
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setIsAddingMethod(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit">Add Method</Button>
@@ -223,5 +268,5 @@ export default function PaymentMethodsPage() {
         </Dialog>
       </div>
     </div>
-  )
+  );
 }

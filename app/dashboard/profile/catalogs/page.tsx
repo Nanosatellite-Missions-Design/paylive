@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteSubCollectionDocument } from "@/functions/delete-a-sub-document";
 import { deleteADocument } from "@/functions/delete-a-document";
+import { formatDate } from "@/functions/format-date";
 
 // Mock data
 const mockProducts = [
@@ -756,7 +757,7 @@ export default function CatalogsPage() {
                 </div>
 
                 <div className="text-xs text-gray-500">
-                  Created {new Date(catalog.createdAt).toLocaleDateString()}
+                  Created {formatDate(catalog.createdAt)}
                 </div>
 
                 <div className="flex gap-2">

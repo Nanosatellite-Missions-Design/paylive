@@ -330,7 +330,7 @@ export default function ProductsPage() {
                 disabled={loading}
                 onClick={handleDeleteProduct}
               >
-                Continue
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

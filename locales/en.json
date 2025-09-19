@@ -66,6 +66,266 @@
             "products": "products",
             "profile": "profile",
             "settings": "settings"
+        },
+        "Lives": {
+            "title": "My Lives Sales",
+            "description": "Manage your live sales and products",
+            "create": "Create",
+            "all": "All",
+            "liveNow": "Live Now",
+            "scheduled": "scheduled",
+            "ended": "Ended",
+            "LiveCard": {
+                "products": "products",
+                "startLive": "Start Live Sale",
+                "liveNow": "Live Now",
+                "watching": "watching",
+                "endLive": "End Live Sale",
+                "viewLive": "View Live",
+                "manageProducts": "Manage Products",
+                "manageProductsDialog": {
+                    "title": "Manage Featured Products",
+                    "description": "Select a product to feature in your live sale. The featured product will be prominently displayed to viewers.",
+                    "setAsFeatured": "Set as Featured",
+                    "cancel": "Cancel",
+                    "featured": "Featured"
+                }
+            },
+            "CreateLiveDialog": {
+                "createLiveSale": "Create Live Sale",
+                "title": "Title",
+                "description": "Description",
+                "date": "Date",
+                "time": "Time",
+                "selectProducts": "Select Products",
+                "selectMultiple": "You can select multiple products during the live sale",
+                "thumbnail": "Thumbnail Image",
+                "cancel": "Cancel",
+                "createButton": "Create Live Sale"
+            }
+        },
+        "Orders": {
+            "title": "Orders Management",
+            "description": "Track and manage your customer orders",
+            "pending": "Pending",
+            "onTheWay": "On the Way",
+            "delivered": "Delivered",
+            "total": "Total Orders",
+            "OrderCard": {
+                "view": "View",
+                "update": "Update",
+                "shipOrder": "Ship Order",
+                "markDelivered": "Mark as Delivered",
+                "item": "Item",
+                "created": "Created"
+            }
+        },
+        "Products": {
+            "title": "My Products",
+            "description": "Manage your products for live sales and auctions",
+            "addNew": "Add New Products",
+            "ProductDialog": {
+                "productName": "Product Name",
+                "price": "Price",
+                "quantity": "Quantity",
+                "description": "Description",
+                "category": "Category",
+                "productImages": "Product Images",
+                "cancel": "Cancel",
+                "add": "Add Product",
+                "status": "Status"
+            },
+            "DeleteDialog": {
+                "title": "Are you absolutely sure?",
+                "description": "This action cannot be undone. This will permanently delete the product",
+                "cancel": "Cancel",
+                "delete": "Delete"
+            },
+            "QRDialog": {
+                "title": "Product QR Code",
+                "description": "Scan to view product details",
+                "button": "Print QR Code"
+            }
+        },
+        "Profile": {
+            "title": "My Account",
+            "editProfileButton": "Edit Profile",
+            "financialOverview": "Financial Overview",
+            "currentBalance": "Current Balance",
+            "thisMonth": "This Month",
+            "totalEarnings": "Total Earnings",
+            "details": "Details",
+            "quickActions": "Quick Actions",
+            "myProducts": "My Products",
+            "myCatalogss": "My Catalogs",
+            "liveSales": "Live Sales",
+            "paymentMethods": "Payment Methods",
+            "transactionHistory": "Transaction History",
+            "accountSettings": "Account Settings",
+            "appSettings": "App Settings",
+            "logOut": "Log Out"
+        },
+        "PaymentMethods": {
+            "title": "Payment Methods",
+            "description": "Manage your payment methods for purchases and sales",
+            "addPaymentMethod": "Add Payment Method",
+            "AddDialog": {
+                "title": "Add Payment Method",
+                "paymentType": "Payment Type",
+                "phoneNumber": "Phone Number",
+                "provider": "Provider",
+                "cancel": "Cancel",
+                "addMethod": "Add Method",
+                "setDefault": "Set Default"
+            }
+        },
+        "Transactions": {
+            "title": "Transactions",
+            "descritption": "View your transaction history and manage your balance",
+            "currentBalance": "CurrentBalance",
+            "available": "Available for withdrawal",
+            "thisMonth": "This Month",
+            "pending": "Pending",
+            "withdraw Funds": "Withdraw Funds",
+            "all": "All",
+            "sales": "Sales",
+            "withdrawal": "Withdrawal",
+            "newOrder": "New Order",
+            "purchasedProduct": "Purchase Product",
+            "WithdrawDialog": {
+                "continue": "Continue",
+                "back": "Back",
+                "confirm": "Confirm Withdrawal",
+                "1": {
+                    "title": "Withdraw Funds",
+                    "description": "Withdraw your available balance to your preferred payment method",
+                    "availableBalance": "Available Balance",
+                    "withdrawalAmount": "Withdrawal Amount",
+                    "processingFee": "Processing Fee",
+                    "youReceive": "You'll Receive"
+                },
+                "2": {
+                    "title": "Select Payment Method",
+                    "description": "Choose how you'd like to receive your withdrawal",
+                    "withdrawalAmount": "Withdrawal Amount",
+                    "phone": "Account Phone Number",
+                    "phonePlaceholder": "Enter your account Number"
+                },
+                "3": {
+                    "title": "Confirm Withdrawal",
+                    "description": "Please review your withdrawal details before confirming",
+                    "amount": "Amount",
+                    "fee": "Fee",
+                    "youReceive": "You'll Receive",
+                    "method": "Method",
+                    "estimatedArrival": "Estimated Arrival",
+                    "phone": "Phone Number",
+                    "Notice": {
+                        "title": "Important",
+                        "description": "By confirming this withdrawal, you agree to our terms and conditions. This transaction cannot be reversed once processed."
+                    }
+                },
+                "Error": {
+                    "title": "Error",
+                    "description": "Withdrawal failed. Please try again later."
+                }
+            }
+        },
+        "Catalogs": {
+            "title": "My Catalogs",
+            "description": "Manage your product catalogs and share them with customers",
+            "back": "Back",
+            "createNewButton": "Create New Catalog",
+            "CatalogCard": {
+                "products": "products",
+                "view":"View",
+                "copyLink": "Copy Link",
+                "deactivate": "Deactivate"
+            },
+            "CreateCatalogDialog": {
+                "title": "Create New Catalog",
+                "catalogTitle": "Catalog Title",
+                "description": "Description",
+                "selectProducts": "Select Products",
+                "selectProductsDescription": "Choose products to include in this catalog",
+                "inStock": "In Stock",
+                "productsSelected": "product(s) selected",
+                "cancel": "Cancel",
+                "createButton": "Create Dialog"
+            },
+            "ViewCatalogDialog": {
+                "dialogTitle": "Catalog Details",
+                "title": "Title",
+                "views": "Views",
+                "description": "Description",
+                "status": "Created",
+                "products": "Products",
+                "copyLink": "Copy Link",
+                "viewLive": "View Live"
+            }
+        },
+        "Settings": {
+            "settings": "settings",
+            "description": "Manage your account settings and preferences",
+            "notifications": "Notifications",
+            "messages": "Messages",
+            "messagesDescription": "Get notified when you receive a new order",
+            "promotions": "Promptions",
+            "promotionsDescription": "Get notified about deals and promotional offers",
+            "language": "Language",
+            "selectLanguage": "Select your preferred language",
+            "theme": "Theme",
+            "selectTheme": "Select your preferred theme",
+            "logout": "Logout"
+        }
+    },
+    "LivePage": {
+        "liveNow": "Live Now",
+        "by": "by",
+        "watching": "watching",
+        "featuredProduct": "Featured Product",
+        "liveChat": "Live Chat",
+        "allProducts": "All Products",
+        "buyNow": "Buy Now",
+        "BuyDialog": {
+            "securePayment": "Secure Payment",
+            "description": "Complete your payment for Gel",
+            "secure": "Secure",
+            "pay": "Pay",
+            "footerDescription": "Your payment information is encrypted and secure. We never store your full payment details."
+        }
+    },
+    "CatalogPage": {
+        "allProducts": "All Products",
+        "addToCart": "Add to Cart",
+        "showing": "Showing",
+        "products": "products",
+        "search": "Search products",
+        "Cart": {
+            "title": "Shopping Cart",
+            "item": "item",
+            "items": "Items",
+            "total": "Total",
+            "clearCart": "Clear Cart",
+            "checkout": "Checkout",
+            "orderSummary":  "Order Summary",
+            "customerInformation": "Customer Information",
+            "fullName": "Full Name",
+            "phoneNumber": "Phone Number",
+            "deliveryAddress": "Delivery Address",
+            "orderNote": "Order Notes (Optional)",
+            "submitOrder": "Submit Order",
+            "submittingOrder": "Submitting Order",
+            "footer": "The seller will contact you to confirm and arrange payment & delivery."
+        },
+        "ProductPage": {
+            "share": "Share",
+            "securePayment": "Secure Payment",
+            "fastShipping": "Fast Shipping",
+            "quantity": "Quantity",
+            "buyNow": "Buy Now",
+            "addToCart": "Add to Cart",
+            "sellerInformation": "Seller Information"
         }
     }
 }
