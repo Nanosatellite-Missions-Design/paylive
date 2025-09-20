@@ -54,6 +54,7 @@ export default function FloatingCart() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
+
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
