@@ -67,6 +67,7 @@ export default function FloatingCart() {
 
   useEffect(() => {
     const savedDepositId = localStorage.getItem("depositId");
+
     if (savedDepositId) {
       setDepositId(savedDepositId);
     }
