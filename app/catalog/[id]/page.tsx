@@ -13,23 +13,41 @@ import { getADocument } from "@/functions/get-a-document";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
+import { useAuth } from "@/contexts/auth-context"; // ← AJOUTEZ CET IMPORT
 
 export default function CatalogPage() {
   const params = useParams();
   const router = useRouter();
   const catalogId = params.id as string;
-  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>(
-    []
-  );
+  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const { addToCart, catalog, products, setProducts, setCatalog } = useCart();
+  const { userProducts } = useAuth(); // ← AJOUTEZ CETTE LIGNE
   const t = useTranslations("CatalogPage");
-  // Mock data - replace with actual API call
 
-  // Filter products based on search and category
+const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
+    if (!userProducts || userProducts.length === 0) return catalogProducts;
+    
+    return catalogProducts.map(catalogProduct => {
+      const updatedProduct = userProducts.find(up => up.id === catalogProduct.id);
+      return updatedProduct ? { ...catalogProduct, price: updatedProduct.price } : catalogProduct;
+    });
+  };
+
+  // MODIFICATION: Ajouter cet useEffect pour mettre à jour les prix
+  useEffect(() => {
+    if (products && products.length > 0 && userProducts && userProducts.length > 0) {
+      const updatedProducts = getProductsWithUpdatedPrices(products);
+      if (JSON.stringify(updatedProducts) !== JSON.stringify(products)) {
+        setProducts(updatedProducts);
+      }
+    }
+  }, [products, userProducts, setProducts]);
+
+ 
   useEffect(() => {
     if (!catalog) return;
 
@@ -50,7 +68,7 @@ export default function CatalogPage() {
     }
 
     setFilteredProducts(filtered);
-  }, [catalog, searchQuery, selectedCategory]);
+  }, [catalog, searchQuery, selectedCategory,products]);
 
   const categories =
     products.reduce((cats, product) => {
@@ -136,38 +154,15 @@ export default function CatalogPage() {
                   <p className="text-lg text-gray-700 font-medium">
                     {catalog.creatorName}
                   </p>
-                  {/* <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm text-gray-600">4.8 (124 reviews)</span>
-                  </div> */}
                 </div>
-                {/* <p className="text-gray-600 leading-relaxed max-w-2xl">{catalog.phone}</p> */}
                 <div className="flex items-center space-x-6 mt-4 text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-4 w-4" />
                     <span>{catalog.creatorPhone}</span>
                   </div>
-                  {/* <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4" />
-                    <span>Usually responds within 2 hours</span>
-                  </div> */}
                 </div>
               </div>
             </div>
-            {/* <div className="flex-shrink-0">
-              <Button
-                onClick={() => router.push(`/catalog/${catalogId}/cart`)}
-                className="relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-              >
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                View Cart
-                {2 > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-500 animate-pulse">
-                    2
-                  </Badge>
-                )}
-              </Button>
-            </div> */}
           </div>
         </div>
       </div>
@@ -296,7 +291,7 @@ export default function CatalogPage() {
                   </p>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      XAF{product.price}
+                      XAF{product.price} {/* ← MAINTENANT AVEC PRIX À JOUR ! */}
                     </span>
                     {product.inStock && (
                       <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">

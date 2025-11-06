@@ -153,7 +153,7 @@ export default function CatalogsPage() {
       productCount: newCatalog.selectedProducts.length,
       createdAt: new Date(),
       views: 0,
-      products: newCatalog.selectedProducts,
+      products: newCatalog.selectedProducts.map(product => product.id),
     };
 
     try {
@@ -177,6 +177,17 @@ export default function CatalogsPage() {
       setLoading(false);
     }
   };
+
+  const getUpdatedCatalogProducts = (catalog: Catalog) => {
+  return catalog.products.map(productId => {
+    // Si c'est déjà un ID string, trouver le produit actuel
+    if (typeof productId === 'string') {
+      return userProducts.find(p => p.id === productId);
+    }
+    // Si c'est un objet produit avec ID, trouver le produit actuel
+    return userProducts.find(p => p.id === productId.id);
+  }).filter(Boolean); // Filtrer les produits non trouvés
+};
 
   const handleEditCatalog = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -652,7 +663,7 @@ export default function CatalogsPage() {
                   {selectedCatalog.productCount})
                 </Label>
                 <div className="mt-3 space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4">
-                  {selectedCatalog.products.map((product) => (
+                  {getUpdatedCatalogProducts(selectedCatalog).map((product) => (
                     <div
                       key={product.id}
                       className="flex items-center justify-between"
@@ -776,7 +787,7 @@ export default function CatalogsPage() {
                   <div className="flex items-center gap-1">
                     <Package className="h-4 w-4" />
                     <span>
-                      {catalog.productCount} {t("CatalogCard.products")}
+                      {getUpdatedCatalogProducts(catalog).length} {t("CatalogCard.products")}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
