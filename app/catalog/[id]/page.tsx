@@ -19,7 +19,9 @@ export default function CatalogPage() {
   const params = useParams();
   const router = useRouter();
   const catalogId = params.id as string;
-  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<CatalogProduct[]>(
+    []
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -28,18 +30,27 @@ export default function CatalogPage() {
   const { userProducts } = useAuth(); // ← AJOUTEZ CETTE LIGNE
   const t = useTranslations("CatalogPage");
 
-const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
+  const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     if (!userProducts || userProducts.length === 0) return catalogProducts;
-    
-    return catalogProducts.map(catalogProduct => {
-      const updatedProduct = userProducts.find(up => up.id === catalogProduct.id);
-      return updatedProduct ? { ...catalogProduct, price: updatedProduct.price } : catalogProduct;
+
+    return catalogProducts.map((catalogProduct) => {
+      const updatedProduct = userProducts.find(
+        (up) => up.id === catalogProduct.id
+      );
+      return updatedProduct
+        ? { ...catalogProduct, price: updatedProduct.price }
+        : catalogProduct;
     });
   };
 
-  // MODIFICATION: Ajouter cet useEffect pour mettre à jour les prix
+  // useEffect pour mettre à jour les prix
   useEffect(() => {
-    if (products && products.length > 0 && userProducts && userProducts.length > 0) {
+    if (
+      products &&
+      products.length > 0 &&
+      userProducts &&
+      userProducts.length > 0
+    ) {
       const updatedProducts = getProductsWithUpdatedPrices(products);
       if (JSON.stringify(updatedProducts) !== JSON.stringify(products)) {
         setProducts(updatedProducts);
@@ -47,7 +58,6 @@ const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     }
   }, [products, userProducts, setProducts]);
 
- 
   useEffect(() => {
     if (!catalog) return;
 
@@ -68,7 +78,7 @@ const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     }
 
     setFilteredProducts(filtered);
-  }, [catalog, searchQuery, selectedCategory,products]);
+  }, [catalog, searchQuery, selectedCategory, products]);
 
   const categories =
     products.reduce((cats, product) => {
