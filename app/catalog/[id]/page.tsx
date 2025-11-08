@@ -43,7 +43,7 @@ export default function CatalogPage() {
     });
   };
 
-  // useEffect pour mettre à jour les prix
+  // MODIFICATION: Ajouter cet useEffect pour mettre à jour les prix
   useEffect(() => {
     if (
       products &&

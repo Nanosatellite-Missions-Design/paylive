@@ -153,7 +153,7 @@ export default function CatalogsPage() {
       productCount: newCatalog.selectedProducts.length,
       createdAt: new Date(),
       views: 0,
-      products: newCatalog.selectedProducts.map(product => product.id),
+      products: newCatalog.selectedProducts,
     };
 
     try {
