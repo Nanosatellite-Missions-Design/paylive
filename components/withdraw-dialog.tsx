@@ -37,6 +37,12 @@ import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { increment } from "firebase/firestore";
 import { useTranslations } from "@/lib/useTranslations";
+import {
+  getCountryByCode,
+  getProvidersByCountry,
+  PAWAPAY_COUNTRIES,
+} from "@/lib/countries";
+import { toast } from "@/hooks/use-toast";
 
 interface WithdrawDialogProps {
   currentBalance: number;
@@ -67,15 +73,29 @@ export default function WithdrawDialog({
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
   const { user } = useAuth();
   const t = useTranslations("Dashboard.Transactions");
+  // new states
+  const [selectedCountry, setSelectedCountry] = useState("CMR"); // Valeur par défaut (e.g., Cameroun)
+  const [currency, setCurrency] = useState("XAF");
   // Constants
   const minWithdraw = 1;
   const maxWithdraw = currentBalance;
-  const withdrawalFee = 0.1 * Number(amount) ?? 0;
+  const withdrawalFee = 0.1 * Number(amount);
   const netAmount = Math.max(
     0,
     Number.parseFloat(amount || "0") - 0.1 * Number(amount)
   );
   const estimatedDays = "24 hours";
+
+  // Fonction d'aide pour obtenir la Devise (à affiner selon les pays supportés)
+  const getCurrencyByCountry = (countryCode: string) => {
+    // Logique simplifiée. À étendre pour tous les pays Pawapay
+    if (["CMR", "GAB", "CAF", "COG", "TCD", "GNQ"].includes(countryCode)) {
+      return "XAF"; // Franc CFA (Afrique Centrale)
+    }
+    if (["GHA"].includes(countryCode)) return "GHS"; // Ghana Cedi
+    // ... ajoutez d'autres pays et devises
+    return "XAF"; // Devise par défaut
+  };
 
   const resetForm = () => {
     setAmount("");
@@ -126,50 +146,223 @@ export default function WithdrawDialog({
   const handleConfirmWithdrawal = async () => {
     setIsLoading(true);
     setError(null);
-    if (!user) return;
 
-    const body = JSON.stringify({
-      amount: Math.floor(netAmount),
-      phoneNumber: accountDetails,
-      provider: method,
+    if (!user) {
+      setError("Utilisateur non connecté");
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ VALIDATIONS COMPLÈTES
+    const validationErrors = [];
+
+    if (!amount || Number.parseFloat(amount) <= 0) {
+      validationErrors.push("Le montant est requis");
+    }
+
+    if (!selectedCountry) {
+      validationErrors.push("Le pays est requis");
+    }
+
+    if (!method) {
+      validationErrors.push("Le fournisseur est requis");
+    }
+
+    if (!accountDetails || accountDetails.length < 8) {
+      validationErrors.push("Le numéro de téléphone est invalide");
+    }
+
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(", "));
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ RÉCUPÉRATION DES DONNÉES PAYS
+    const country = PAWAPAY_COUNTRIES.find((c) => c.code === selectedCountry);
+    if (!country) {
+      setError("Pays non supporté par PawaPay");
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ VÉRIFICATION QUE LE PROVIDER EST DISPONIBLE DANS LE PAYS
+    const countryProvider = country.providers.find((p) => p.id === method);
+    if (!countryProvider) {
+      setError(
+        `Le fournisseur ${method} n'est pas disponible en ${country.name}`
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    // ✅ CALCUL DES MONTANTS
+    const withdrawAmount = Number.parseFloat(amount);
+    const withdrawalFee = 0.1 * withdrawAmount;
+    const netAmount = Math.max(0, withdrawAmount - withdrawalFee);
+
+    // ✅ FORMATAGE DU NUMÉRO DE TÉLÉPHONE
+    let cleanPhoneNumber = accountDetails.replace(/[^\d]/g, "");
+
+    // Supprimer le préfixe '0' si présent
+    if (cleanPhoneNumber.startsWith("0")) {
+      cleanPhoneNumber = cleanPhoneNumber.substring(1);
+    }
+
+    // Ajouter l'indicatif pays SANS le '+'
+    const dialCode = country.dialCode.replace("+", "");
+    const fullPhoneNumber = dialCode + cleanPhoneNumber;
+
+    // ✅ RÉCUPÉRATION DE LA DEVISE
+    const currency = getCurrencyByCountry(selectedCountry);
+
+    // ✅ PRÉPARATION DU PAYLOAD POUR PAWAPAY
+    const payload = {
+      amount: Math.floor(netAmount), // Montant net après frais
+      phoneNumber: fullPhoneNumber,
+      provider: method, // Utilise directement l'ID du provider PawaPay
       customerId: user.uid,
-    });
+      countryCode: selectedCountry,
+      currency: currency,
+    };
+
+    console.log("📤 Données de retrait:", payload);
 
     try {
+      // ✅ APPEL API PAWAPAY
       const res = await fetch("/api/pawapay/withdrawals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
-      console.log(data);
-      if (!res.ok) throw new Error(data.error || "Unknown error");
+      console.log("📥 Réponse PawaPay:", data);
 
-      const newTransaction = {
-        amount: netAmount,
-        fees: Number(amount) - netAmount,
-        paymentMethod: method,
-        status: "completed",
+      if (!res.ok) {
+        throw new Error(
+          data.error || data.details || "Erreur inconnue de PawaPay"
+        );
+      }
+
+      // ✅ VÉRIFICATION DE LA RÉPONSE PAWAPAY
+      if (!data.payoutId) {
+        throw new Error("ID de retrait manquant dans la réponse");
+      }
+
+      // ✅ PRÉPARATION DE LA TRANSACTION POUR FIRESTORE
+      const transactionData = {
+        // Informations de base
         type: "withdrawal",
-        phoneNumber: accountDetails,
+        status: "pending", // En attente de confirmation PawaPay
+        timestamp: new Date().toISOString(),
+
+        // Informations montant
+        amount: netAmount,
+        fees: withdrawalFee,
+        totalAmount: withdrawAmount,
+        currency: currency,
+
+        // Informations bénéficiaire
+        paymentMethod: method,
+        providerName: countryProvider.name,
+        phoneNumber: fullPhoneNumber,
+        formattedPhoneNumber: country.dialCode + " " + accountDetails,
+
+        // Informations géographiques
+        country: {
+          code: selectedCountry,
+          name: country.name,
+          dialCode: country.dialCode,
+        },
+
+        // Références
+        payoutId: data.payoutId, // ID de retrait PawaPay
+        userUid: user.uid,
+
+        // Métadonnées
+        estimatedArrival: "24 hours",
+        processingFeeRate: "10%",
       };
 
-      await addToSubCollection(
-        newTransaction,
-        "users",
-        user.uid,
-        "transactions"
-      );
+      console.log("💾 Enregistrement transaction:", transactionData);
 
-      await updateDocument("users", user.uid, {
-        balance: increment(-Number(amount)),
-      });
+      // ✅ ENREGISTREMENT DANS FIRESTORE
+      try {
+        // Ajouter à la sous-collection transactions
+        await addToSubCollection(
+          transactionData,
+          "users",
+          user.uid,
+          "transactions"
+        );
 
+        // Mettre à jour le solde utilisateur
+        await updateDocument("users", user.uid, {
+          balance: increment(-withdrawAmount),
+          lastWithdrawal: new Date().toISOString(),
+          totalWithdrawn: increment(withdrawAmount),
+        });
+
+        console.log("✅ Transaction enregistrée avec succès");
+      } catch (firebaseError) {
+        console.error("❌ Erreur Firebase:", firebaseError);
+        // Ne pas bloquer le processus pour une erreur Firebase
+        // Mais logger l'erreur pour debugging
+      }
+
+      // ✅ SUCCÈS - PASSAGE À L'ÉTAT SUCCESS
       setStep("success");
+      setWithdrawalId(data.payoutId);
+
+      // ✅ TOAST DE SUCCÈS (si disponible)
+      if (toast) {
+        toast({
+          title: "Retrait initié avec succès",
+          description: `Votre retrait de ${netAmount} ${currency} a été envoyé à ${country.dialCode} ${accountDetails}`,
+        });
+      }
     } catch (error) {
-      console.error("Withdrawal failed:", error);
-      setError(t("WithdrawDialog.Error.description"));
+      console.error("❌ Erreur lors du retrait:", error);
+
+      // ✅ GESTION D'ERREUR DÉTAILLÉE
+      const errorMessage = (error as Error).message;
+
+      // Messages d'erreur personnalisés selon le type d'erreur
+      if (
+        errorMessage.includes("insufficient funds") ||
+        errorMessage.includes("solde")
+      ) {
+        setError("Fonds insuffisants pour effectuer ce retrait");
+      } else if (
+        errorMessage.includes("phone") ||
+        errorMessage.includes("numéro")
+      ) {
+        setError("Numéro de téléphone invalide");
+      } else if (
+        errorMessage.includes("provider") ||
+        errorMessage.includes("fournisseur")
+      ) {
+        setError("Fournisseur mobile non disponible");
+      } else if (
+        errorMessage.includes("country") ||
+        errorMessage.includes("pays")
+      ) {
+        setError("Pays non supporté");
+      } else {
+        setError(`Erreur lors du retrait: ${errorMessage}`);
+      }
+
+      // ✅ TOAST D'ERREUR (si disponible)
+      if (toast) {
+        toast({
+          title: "Erreur de retrait",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -310,6 +503,35 @@ export default function WithdrawDialog({
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* AJOUT DE LA SÉLECTION DU PAYS ET DE LA DEVISE (similaire au dépôt) */}
+              <div className="space-y-2">
+                <Label htmlFor="country">
+                  Pays de Retrait (Devise:{" "}
+                  {getCurrencyByCountry(selectedCountry)})
+                </Label>
+                <select
+                  id="country"
+                  value={selectedCountry}
+                  onChange={(e) => {
+                    const newCountryCode = e.target.value;
+                    setSelectedCountry(newCountryCode);
+                    const countryData = getCountryByCode(newCountryCode);
+                    setCurrency(getCurrencyByCountry(newCountryCode)); // Optionnel : si votre getCurrencyByCountry est plus simple, sinon utilisez countryData.currency
+                    // Réinitialiser la méthode si elle n'est pas disponible dans le nouveau pays
+                    setMethod(
+                      (countryData?.providers[0]
+                        ?.id as WithdrawRequest["method"]) || "orange"
+                    ); // Choisir le premier fournisseur disponible
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                >
+                  {PAWAPAY_COUNTRIES.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.name} ({getCurrencyByCountry(country.code)})
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">
                   {t("WithdrawDialog.2.withdrawalAmount")}
@@ -319,7 +541,7 @@ export default function WithdrawDialog({
                 </span>
               </div>
 
-              <RadioGroup
+              {/* <RadioGroup
                 value={method}
                 onValueChange={(value: WithdrawRequest["method"]) =>
                   setMethod(value)
@@ -352,6 +574,35 @@ export default function WithdrawDialog({
                     </div>
                   </Label>
                 </div>
+              </RadioGroup> */}
+              <RadioGroup
+                value={method}
+                onValueChange={(value: WithdrawRequest["method"]) =>
+                  setMethod(value)
+                }
+              >
+                {getProvidersByCountry(selectedCountry).map((provider) => (
+                  <div
+                    key={provider.id}
+                    className="flex items-center space-x-2 border rounded-md p-3"
+                  >
+                    <RadioGroupItem value={provider.id} id={provider.id} />
+                    <Label
+                      htmlFor={provider.id}
+                      className="flex-1 flex items-center cursor-pointer"
+                    >
+                      <Phone className="h-4 w-4 mr-2" />{" "}
+                      {/* Utilisez l'icône générique ou un mappage plus avancé */}
+                      <div>
+                        <div>{provider.name}</div>
+                        <div className="text-xs text-gray-500">
+                          5 Minutes
+                        </div>{" "}
+                        {/* Estimation */}
+                      </div>
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
 
               <div className="pt-2">{getMethodDetails()}</div>

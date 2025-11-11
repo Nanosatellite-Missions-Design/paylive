@@ -32,6 +32,31 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslations } from "@/lib/useTranslations";
+//
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  CountryProvider,
+  getCountryByCode,
+  PAWAPAY_COUNTRIES,
+  getAllCountries,
+} from "@/lib/countries";
+import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
+import { updateDocument } from "@/functions/update-doc-in-collection";
+import { getCurrencyByCountry } from "@/lib/currencies";
 
 interface PaymentMethod {
   id: string;
@@ -107,6 +132,30 @@ export function PaymentDialog({
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
+
+  // new states
+  // Assurez-vous d'importer useState de React
+  const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
+    "pawapay"
+  );
+  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
+    undefined
+  );
+  const [mobileProvider, setMobileProvider] = useState<string | undefined>(
+    undefined
+  );
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [currency, setCurrency] = useState("XAF");
+  const [transactionSuccess, setTransactionSuccess] = useState(false);
+  const [transactionId, setTransactionId] = useState("");
+  const [currentPaymentState, setCurrentPaymentState] = useState(paymentState);
+
+  // Pour déterminer les fournisseurs disponibles
+  const currentCountry = PAWAPAY_COUNTRIES.find(
+    (c) => c.code === selectedCountry
+  );
+  const availableProviders = currentCountry?.providers || [];
+
   const t = useTranslations("LivePage");
 
   const handleAddPaymentMethod = () => {
@@ -115,32 +164,124 @@ export function PaymentDialog({
   };
 
   const handlePayment = async () => {
-    if (!selectedPaymentMethod) return;
+    // 1. Validation de base
+    if (!selectedCountry || !mobileProvider || !phoneNumber) {
+      alert("Veuillez remplir tous les champs requis");
+      return;
+    }
 
-    setIsProcessing(true);
-    onPaymentComplete?.(selectedPaymentMethod);
-    setIsProcessing(false);
+    // 2. ✅ CORRECTION CRITIQUE : Nettoyage COMPLET du numéro
+    let cleanPhoneNumber = phoneNumber.replace(/[^\d]/g, ""); // Supprime TOUT sauf les chiffres
+
+    // 3. Supprimer le préfixe '0' si présent (ex: "0682374552" → "682374552")
+    if (cleanPhoneNumber.startsWith("0")) {
+      cleanPhoneNumber = cleanPhoneNumber.substring(1);
+    }
+
+    // 4. Ajouter l'indicatif pays SANS le '+'
+    const country = PAWAPAY_COUNTRIES.find((c) => c.code === selectedCountry);
+    if (!country) {
+      alert("Pays non supporté");
+      return;
+    }
+
+    const countryCodeDigits = country.dialCode.replace("+", "");
+    const finalPhoneNumber = countryCodeDigits + cleanPhoneNumber;
+
+    // 3. Préparer les données de la transaction
+    const paymentData = {
+      amount: amount,
+      countryCode: selectedCountry,
+      mobileProviderId: mobileProvider,
+      phoneNumber: finalPhoneNumber,
+      currency: getCurrencyByCountry(selectedCountry), // <<-- NOUVEAU
+    };
+
+    try {
+      // 4. Appeler votre API Backend
+      setIsProcessing(true);
+      setCurrentPaymentState("pending");
+      const response = await fetch("/api/pawapay/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentData),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("❌ Erreur API:", result);
+        setCurrentPaymentState("failed"); // ✅ État failed
+        alert(`Erreur de paiement: ${result.error || "Erreur inconnue"}`);
+        return;
+      }
+
+      // 7. ✅ SUCCÈS - Mettre à jour l'état
+      console.log("✅ Réponse API réussie:", result);
+      setCurrentPaymentState("success"); // ✅ État success
+      setTransactionId(result.depositId);
+      setTransactionSuccess(true);
+
+      if (userInfo && userInfo.uid) {
+        try {
+          // Créer l'objet transaction
+          const transactionRecord = {
+            amount: parseInt(paymentData.amount),
+            currency: paymentData.currency,
+            depositId: result.depositId, // ID de la transaction Pawapay
+            status: result.status || "ACCEPTED",
+            phoneNumber: finalPhoneNumber,
+            provider: mobileProvider,
+            country: selectedCountry,
+            product: product, // Le produit acheté
+            user: {
+              uid: userInfo.uid,
+              name: userInfo.name || "Unknown",
+              phone: userInfo.phone || "Unknown",
+            },
+            timestamp: new Date().toISOString(),
+            type: "deposit", // Type de transaction
+          };
+
+          console.log(
+            "📝 Enregistrement transaction Firebase:",
+            transactionRecord
+          );
+          await addToSubCollection(
+            transactionRecord,
+            "users",
+            userInfo.uid,
+            "transactions"
+          );
+          console.log("✅ Transaction enregistrée dans Firebase");
+          await updateDocument("users", userInfo.uid, {
+            lastTransaction: new Date().toISOString(),
+            // Vous pouvez aussi mettre à jour le solde ici si nécessaire
+          });
+        } catch (firebaseError) {
+          console.error("❌ Erreur Firebase:", firebaseError);
+          // Ne pas bloquer le processus pour une erreur Firebase
+        }
+      }
+      if (onPaymentComplete) {
+        onPaymentComplete(result.depositId);
+      }
+    } catch (error) {
+      console.error("❌ Erreur lors du paiement:", error);
+      setCurrentPaymentState("failed"); // ✅ État failed en cas d'erreur
+      alert("Erreur lors de la communication avec le service de paiement");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+  const handleCountryChange = (newCountryCode: string) => {
+    // Mettre à jour le pays
+    setSelectedCountry(newCountryCode);
 
-  //   const formatAmount = (amount: number) => {
-  //     return new Intl.NumberFormat("en-US", {
-  //       style: "currency",
-  //       currency: "USD",
-  //     }).format(amount)
-  //   }
+    // Réinitialiser le fournisseur car il peut ne pas exister dans le nouveau pays
+    setMobileProvider(undefined);
 
-  //   const getPaymentMethodIcon = (type: string) => {
-  //     switch (type) {
-  //       case "card":
-  //         return <CreditCard className="h-5 w-5 text-blue-600" />
-  //       case "bank":
-  //         return <Building2 className="h-5 w-5 text-green-600" />
-  //       case "digital":
-  //         return <Smartphone className="h-5 w-5 text-purple-600" />
-  //       default:
-  //         return <CreditCard className="h-5 w-5" />
-  //     }
-  //   }
+    setPhoneNumber("");
+  };
 
   // Pending State
   if (paymentState === "pending") {
@@ -334,9 +475,9 @@ export function PaymentDialog({
 
           {/* Payment Methods */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Payment Methods</h3>
-              <Button
+            <div className="flex items-center ml-10 ">
+              {/* <h3 className="text-lg font-semibold">Payment Methods</h3> */}
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleAddPaymentMethod}
@@ -344,7 +485,145 @@ export function PaymentDialog({
               >
                 <Plus className="h-4 w-4" />
                 Add New
-              </Button>
+              </Button> */}
+              <Tabs
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as "pawapay")}
+              >
+                <TabsList className="grid w-full ">
+                  <TabsTrigger
+                    value="pawapay"
+                    className="gap-2"
+                    disabled={isProcessing}
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    Mobile Money
+                  </TabsTrigger>
+                  {/* <TabsTrigger
+                    value="paypal"
+                    className="gap-2"
+                    disabled={isProcessing}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    PayPal
+                  </TabsTrigger> */}
+                  {/* Vous pouvez ignorer l'onglet PayPal, mais la structure Tabs est nécessaire pour l'extensibilité */}
+                </TabsList>
+
+                {/* Le contenu du paiement Mobile Money */}
+                <TabsContent value="pawapay" className="space-y-4 mt-4">
+                  {/* 1. Country Selection */}
+                  <div className="space-y-2 w-full">
+                    <Label>Country *</Label>
+                    <Select
+                      value={selectedCountry}
+                      onValueChange={handleCountryChange}
+                      disabled={isProcessing}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select your country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* CORRECTION 2: Afficher la liste des PAWAPAY_COUNTRIES */}
+                        {PAWAPAY_COUNTRIES.map((country: CountryProvider) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            <div className="flex items-center gap-2">
+                              {/* Assurez-vous que l'image du drapeau est disponible si vous l'utilisez */}
+                              {/* <img src={country.flag} alt={`${country.name} flag`} className="w-6 h-4 object-cover rounded" /> */}
+                              <span className="flex-1">
+                                {country.dialCode} {country.name}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Les sections suivantes s'affichent uniquement si un pays est sélectionné */}
+                  {selectedCountry && (
+                    <>
+                      {/* 2. Mobile Provider RadioGroup */}
+                      <div className="space-y-2">
+                        <Label>Mobile Provider *</Label>
+                        <RadioGroup
+                          value={mobileProvider}
+                          onValueChange={setMobileProvider}
+                          disabled={isProcessing}
+                        >
+                          {/* CORRECTION 3: Afficher chaque fournisseur */}
+                          {availableProviders.map((provider) => (
+                            <div
+                              key={provider.id}
+                              className="flex items-center space-x-2 p-3 border rounded-lg"
+                            >
+                              <RadioGroupItem
+                                value={provider.id}
+                                id={provider.id}
+                                disabled={isProcessing}
+                              />
+                              <Label
+                                htmlFor={provider.id}
+                                className="flex-1 cursor-pointer font-normal"
+                              >
+                                {provider.name}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </div>
+
+                      {/* 3. Phone Number Input */}
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number *</Label>
+                        <div className="flex gap-2">
+                          {/* Afficher le dialCode: currentCountry?.dialCode */}
+                          <div className="flex items-center px-3 border rounded-md bg-muted text-muted-foreground min-w-[80px] justify-center">
+                            {/* Récupère le dialCode du pays sélectionné */}
+                            {currentCountry?.dialCode}
+                          </div>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="6XX XXX XXX"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            className="flex-1"
+                            disabled={isProcessing}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          You will receive a prompt on your phone to confirm the
+                          payment
+                        </p>
+                      </div>
+
+                      {/* 4. Payment Button */}
+                      <Button
+                        size="lg"
+                        className="w-full"
+                        onClick={handlePayment}
+                        // Condition du bouton: Pays, Fournisseur, Numéro, et Termes doivent être validés si vous ajoutez la validation des termes.
+                        disabled={
+                          isProcessing ||
+                          !selectedCountry ||
+                          !mobileProvider ||
+                          phoneNumber.length < 5
+                        }
+                      >
+                        {isProcessing ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                            Processing Payment...
+                          </div>
+                        ) : (
+                          `Pay ${amount} with Mobile Money`
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
 
             <RadioGroup
@@ -389,7 +668,7 @@ export function PaymentDialog({
                   </Label>
                 </div>
               ))}
-              <div key={"other"} className="relative">
+              {/* <div key={"other"} className="relative">
                 <Label
                   htmlFor={"other"}
                   className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent transition-colors"
@@ -413,7 +692,7 @@ export function PaymentDialog({
                     <Check className="h-5 w-5 text-green-600" />
                   )}
                 </Label>
-              </div>
+              </div> */}
             </RadioGroup>
           </div>
 
@@ -432,7 +711,7 @@ export function PaymentDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-3">
-          <Button
+          {/* <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isProcessing}
@@ -453,7 +732,7 @@ export function PaymentDialog({
             ) : (
               `${t("BuyDialog.pay")} ${amount}`
             )}
-          </Button>
+          </Button> */}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -2,10 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowLeft,
@@ -19,6 +16,7 @@ import {
   Truck,
   RotateCcw,
   ChevronsLeft,
+  Loader2,
 } from "lucide-react";
 import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getASubDocument } from "@/functions/get-a-document";
@@ -27,6 +25,32 @@ import { useToast } from "@/hooks/use-toast";
 import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  CountryProvider,
+  getCountryByCode,
+  PAWAPAY_COUNTRIES,
+  getAllCountries,
+} from "@/lib/countries";
 
 export default function ProductPage() {
   const params = useParams();
@@ -45,6 +69,25 @@ export default function ProductPage() {
   const [paymentState, setPaymentState] = useState("selecting");
   const { toast } = useToast();
   const [depositId, setDepositId] = useState("");
+
+  // new states
+  // Assurez-vous d'importer useState de React
+  const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
+    "pawapay"
+  );
+  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
+    undefined
+  );
+  const [mobileProvider, setMobileProvider] = useState<string | undefined>(
+    undefined
+  );
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+
+  // Pour déterminer les fournisseurs disponibles
+  const currentCountry = PAWAPAY_COUNTRIES.find(
+    (c) => c.code === selectedCountry
+  );
+  const availableProviders = currentCountry?.providers || [];
   const t = useTranslations("CatalogPage.ProductPage");
   // Mock data - replace with actual API call
   useEffect(() => {

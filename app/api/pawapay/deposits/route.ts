@@ -1,51 +1,86 @@
+import { useAuth } from '@/contexts/auth-context';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
-export async function POST(req: NextRequest) {
-  try {
-    const { amount, currentUrl, product } = await req.json();
-    console.log({amount, currentUrl, product})
 
-    if (!amount) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+export async function POST(req: NextRequest) {
+
+  try {
+    const { amount, currency,countryCode, mobileProviderId, phoneNumber } = await req.json();
+        const YOUR_EXISTING_BACKEND_DEPOSIT_URL = "https://bookhub-backend-production-64db.up.railway.app/api/deposits";
+
+    console.log("📦 Données reçues du frontend:", { 
+      amount, 
+      countryCode, 
+      mobileProviderId, 
+      phoneNumber ,
+      currency
+    });
+
+    // Validation des champs requis
+    if (!amount || !countryCode || !mobileProviderId || !phoneNumber) {
+      return NextResponse.json({ 
+        error: "Champs de paiement manquants" 
+      }, { status: 400 });
     }
 
     const newDepositId = uuidv4();
 
+    // ✅ STRUCTURE EXACTE selon documentation Pawapay
     const payload = {
         depositId: newDepositId,
-        returnUrl: currentUrl,
-        customerMessage: `Achat payLive ${product}`.slice(0, 22),
-        amountDetails: {
-            amount: String(amount),
-            currency: "XAF"
-        },
-        country: "CMR",
-        language: "FR",
-        reason: `Achat ${product}`
-    }
+        amount: String(amount), // ✅ "amount" à la racine (pas dans amountDetails)
+        currency: currency,        // ✅ "currency" à la racine
+        payer: {
+            type: "MMO",
+            accountDetails: {
+                phoneNumber: phoneNumber.replace('+', ''), // ✅ Sans le "+"
+                provider: mobileProviderId.toUpperCase().replace('-', '_')
+            }
+        }
+    };
 
-    const response = await fetch("https://api.pawapay.io/v2/paymentpage", {
+    console.log("🔄 Payload Pawapay CORRECT:", JSON.stringify(payload, null, 2));
+
+    const response = await fetch(YOUR_EXISTING_BACKEND_DEPOSIT_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjgxOSIsIm1hdiI6IjEiLCJleHAiOjIwNjIwNzc0NzgsImlhdCI6MTc0NjU0NDY3OCwicG0iOiJEQUYsUEFGIiwianRpIjoiMzkwMjA4Y2UtOTFhYy00Njg3LTlhMDItNmQxYjdlMDAwZWZkIn0.HCamwQRaGe3UkJD3RH5qVxs7pWaiqVfp6PtXNoy4aMST2nsvWkja0KpOX8eucxrZljU5BCaqdqgm7rvVjNMQSw`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PAWAPAY_API_KEY}`,
+        'X-Project':"paylive",
       },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-
-      return NextResponse.json({ error: 'PawaPay request failed', details: errorText }, { status: 500 });
+      console.error('❌ Erreur Pawapay:', {
+        status: response.status,
+        statusText: response.statusText,
+        details: errorText
+      });
+      
+      return NextResponse.json({ 
+        error: 'Erreur lors de la requête Pawapay', 
+        details: errorText 
+      }, { status: 500 });
     }
 
     const data = await response.json();
+    // console.log("✅ Réponse Pawapay réussie:", data);
 
-    return NextResponse.json({ ...data, depositId: newDepositId });
+    return NextResponse.json({ 
+      success: true,
+      depositId: newDepositId,
+      data: data 
+    });
+
   } catch (error) {
-    console.error('Server error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: (error as Error).message }, { status: 500 });
+    console.error('❌ Erreur serveur:', error);
+    return NextResponse.json({ 
+      error: 'Erreur interne du serveur', 
+      details: (error as Error).message 
+    }, { status: 500 });
   }
 }
 
@@ -58,25 +93,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing depositId in query' }, { status: 400 });
     }
 
-    const response = await fetch(`https://api.pawapay.io/deposits/${depositId}`, {
+    const response = await fetch(`https://bookhub-backend-production-64db.up.railway.app/api/deposits/${depositId}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer eyJraWQiOiIxIiwiYWxnIjoiRVMyNTYifQ.eyJ0dCI6IkFBVCIsInN1YiI6IjgxOSIsIm1hdiI6IjEiLCJleHAiOjIwNjIwNzc0NzgsImlhdCI6MTc0NjU0NDY3OCwicG0iOiJEQUYsUEFGIiwianRpIjoiMzkwMjA4Y2UtOTFhYy00Njg3LTlhMDItNmQxYjdlMDAwZWZkIn0.HCamwQRaGe3UkJD3RH5qVxs7pWaiqVfp6PtXNoy4aMST2nsvWkja0KpOX8eucxrZljU5BCaqdqgm7rvVjNMQSw`,
-        Accept: 'application/json',
+        'Authorization': `Bearer ${process.env.PAWAPAY_API_KEY}`,
+        'Accept': 'application/json',
       },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      // console.error('PawaPay GET error:', errorText);
-      return NextResponse.json({ error: 'Failed to fetch deposit status', details: errorText }, { status: 500 });
+      console.error('Erreur GET Pawapay:', errorText);
+      return NextResponse.json({ 
+        error: 'Failed to fetch deposit status', 
+        details: errorText 
+      }, { status: 500 });
     }
 
     const data = await response.json();
-
     return NextResponse.json(data);
+
   } catch (error) {
     console.error('GET error:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal Server Error', 
+      details: (error as Error).message 
+    }, { status: 500 });
   }
 }
