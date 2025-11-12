@@ -104,7 +104,7 @@ export default function WithdrawDialog({
   const withdrawalFee = PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE * Number(amount);
   const netAmount = Math.max(
     0,
-    Number.parseFloat(amount || "0") - 0.1 * Number(amount)
+    Number.parseFloat(amount || "0") - 0.01 * Number(amount)
   );
   const estimatedDays = "24 hours";
   const showLimitInfo = currentBalance > PAWAPAY_MAX_WITHDRAWAL;
@@ -335,7 +335,7 @@ export default function WithdrawDialog({
         userUid: user.uid,
 
         // Métadonnées
-        estimatedArrival: "5 min",
+        // estimatedArrival: "5 min",
         processingFeeRate: "1%",
 
         // ✅ AJOUTER LA DATE DE CRÉATION POUR FIRESTORE
@@ -478,7 +478,7 @@ export default function WithdrawDialog({
                   {t("WithdrawDialog.1.availableBalance")}
                 </span>
                 <span className="text-lg font-semibold">
-                  {currency} {currentBalance.toLocaleString()}
+                  {currentBalance.toLocaleString()} {currency}
                 </span>
               </div>
 
@@ -502,8 +502,13 @@ export default function WithdrawDialog({
                   />
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>Min: XAF{minWithdraw}</span>
-                  <span>Max: XAF{maxWithdraw}</span>
+                  <span>
+                    Min: {minWithdraw}
+                    {currency}
+                  </span>
+                  <span>
+                    Max: {maxWithdraw} {currency}
+                  </span>
                 </div>
               </div>
 
@@ -512,7 +517,8 @@ export default function WithdrawDialog({
                   <div className="flex justify-between text-sm">
                     <span>{t("WithdrawDialog.1.withdrawalAmount")}</span>
                     <span>
-                      {currency} {Number.parseFloat(amount).toLocaleString()}
+                      {Number.parseFloat(amount).toLocaleString()}
+                      {currency}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
@@ -523,16 +529,11 @@ export default function WithdrawDialog({
                   <div className="flex justify-between font-medium">
                     <span>{t("WithdrawDialog.1.youReceive")}</span>
                     <span>
-                      -{currency} {withdrawalFee.toFixed(2)}
+                      -{netAmount.toFixed(2)}
+                      {currency}
                     </span>
                   </div>
                   <hr />
-                  <div className="flex justify-between font-medium text-green-600">
-                    <span>Vous recevez</span>
-                    <span>
-                      {currency} {netAmount.toFixed(2)}
-                    </span>
-                  </div>
                   {/* ✅ INFORMATION SUR LES FRAIS */}
                   <div className="flex items-start gap-2 mt-2 p-2 bg-yellow-50 rounded">
                     <Shield className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
@@ -616,7 +617,8 @@ export default function WithdrawDialog({
                   {t("WithdrawDialog.2.withdrawalAmount")}
                 </span>
                 <span className="text-lg font-semibold">
-                  XAF{Number.parseFloat(amount)}
+                  {Number.parseFloat(amount)}
+                  {currency}
                 </span>
               </div>
 
@@ -675,8 +677,8 @@ export default function WithdrawDialog({
                       <div>
                         <div>{provider.name}</div>
                         <div className="text-xs text-gray-500">
-                          5 Minutes
-                        </div>{" "}
+                          {/* 5 Minutes */}
+                        </div>
                         {/* Estimation */}
                       </div>
                     </Label>
@@ -724,18 +726,25 @@ export default function WithdrawDialog({
                     {t("WithdrawDialog.3.amount")}
                   </span>
                   <span className="font-medium">
-                    XAF{Number.parseFloat(amount)}
+                    {Number.parseFloat(amount)}
+                    {currency}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Fee</span>
-                  <span className="text-gray-600">-XAF{withdrawalFee}</span>
+                  <span className="text-gray-600">
+                    -{withdrawalFee}
+                    {currency}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.youReceive")}
                   </span>
-                  <span className="font-bold">XAF{netAmount}</span>
+                  <span className="font-bold">
+                    {netAmount}
+                    {currency}
+                  </span>
                 </div>
                 <hr />
                 <div className="flex justify-between">
@@ -744,12 +753,12 @@ export default function WithdrawDialog({
                   </span>
                   <span className="font-medium capitalize">{method}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.estimatedArrival")}
                   </span>
                   <span>{estimatedDays}</span>
-                </div>
+                </div> */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.phone")}
@@ -811,7 +820,10 @@ export default function WithdrawDialog({
               </div>
 
               <div>
-                <p className="text-xl font-semibold">XAF{netAmount}</p>
+                <p className="text-xl font-semibold">
+                  {netAmount}
+                  {currency}
+                </p>
                 <p className="text-sm text-gray-500">
                   {/* {will be sent to your {method} account} */}
                   {t("WithdrawDialog.4.willBeSent")}

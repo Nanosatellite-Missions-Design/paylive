@@ -133,8 +133,7 @@ export function PaymentDialog({
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 
-  // new states
-  // Assurez-vous d'importer useState de React
+  // États pour le formulaire Mobile Money
   const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
     "pawapay"
   );
@@ -146,9 +145,11 @@ export function PaymentDialog({
   );
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [currency, setCurrency] = useState("XAF");
-  const [transactionSuccess, setTransactionSuccess] = useState(false);
-  const [transactionId, setTransactionId] = useState("");
-  const [currentPaymentState, setCurrentPaymentState] = useState(paymentState);
+
+  // SUPPRESSION des états problématiques qui créent des conflits
+  // const [transactionSuccess, setTransactionSuccess] = useState(false);
+  // const [transactionId, setTransactionId] = useState("");
+  // const [currentPaymentState, setCurrentPaymentState] = useState(paymentState);
 
   // Pour déterminer les fournisseurs disponibles
   const currentCountry = PAWAPAY_COUNTRIES.find(
@@ -162,6 +163,14 @@ export function PaymentDialog({
     onOpenChange(false);
     router.push("/dashboard/settings/payment-methods");
   };
+
+  // Effet pour synchroniser la devise quand le pays change
+  useEffect(() => {
+    if (selectedCountry) {
+      const newCurrency = getCurrencyByCountry(selectedCountry);
+      setCurrency(newCurrency);
+    }
+  }, [selectedCountry]);
 
   const handlePayment = async () => {
     // 1. Validation de base
@@ -188,19 +197,24 @@ export function PaymentDialog({
     const countryCodeDigits = country.dialCode.replace("+", "");
     const finalPhoneNumber = countryCodeDigits + cleanPhoneNumber;
 
-    // 3. Préparer les données de la transaction
+    // 5. Préparer les données de la transaction
     const paymentData = {
       amount: amount,
       countryCode: selectedCountry,
       mobileProviderId: mobileProvider,
       phoneNumber: finalPhoneNumber,
-      currency: getCurrencyByCountry(selectedCountry), // <<-- NOUVEAU
+      currency: currency,
     };
 
     try {
-      // 4. Appeler votre API Backend
+      // 6. Appeler votre API Backend
       setIsProcessing(true);
-      setCurrentPaymentState("pending");
+
+      // ✅ CORRECTION : Notifier le parent que le paiement est en cours
+      if (onPaymentComplete) {
+        onPaymentComplete("pending");
+      }
+
       const response = await fetch("/api/pawapay/deposits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,16 +224,16 @@ export function PaymentDialog({
 
       if (!response.ok) {
         console.error("❌ Erreur API:", result);
-        setCurrentPaymentState("failed"); // ✅ État failed
+        // ✅ CORRECTION : Notifier le parent de l'échec
+        if (onPaymentComplete) {
+          onPaymentComplete("failed");
+        }
         alert(`Erreur de paiement: ${result.error || "Erreur inconnue"}`);
         return;
       }
 
-      // 7. ✅ SUCCÈS - Mettre à jour l'état
+      // 7. ✅ SUCCÈS - Mettre à jour Firebase et notifier le parent
       console.log("✅ Réponse API réussie:", result);
-      setCurrentPaymentState("success"); // ✅ État success
-      setTransactionId(result.depositId);
-      setTransactionSuccess(true);
 
       if (userInfo && userInfo.uid) {
         try {
@@ -246,6 +260,8 @@ export function PaymentDialog({
             "📝 Enregistrement transaction Firebase:",
             transactionRecord
           );
+
+          // ✅ CORRECTION : Attendre que Firebase soit mis à jour avant de notifier le parent
           await addToSubCollection(
             transactionRecord,
             "users",
@@ -253,26 +269,41 @@ export function PaymentDialog({
             "transactions"
           );
           console.log("✅ Transaction enregistrée dans Firebase");
+
           await updateDocument("users", userInfo.uid, {
             lastTransaction: new Date().toISOString(),
             // Vous pouvez aussi mettre à jour le solde ici si nécessaire
           });
+
+          // ✅ CORRECTION CRITIQUE : Notifier le parent du succès APRÈS la mise à jour Firebase
+          if (onPaymentComplete) {
+            onPaymentComplete(result.depositId);
+          }
         } catch (firebaseError) {
           console.error("❌ Erreur Firebase:", firebaseError);
-          // Ne pas bloquer le processus pour une erreur Firebase
+          // Notifier le parent de l'échec en cas d'erreur Firebase
+          if (onPaymentComplete) {
+            onPaymentComplete("failed");
+          }
         }
-      }
-      if (onPaymentComplete) {
-        onPaymentComplete(result.depositId);
+      } else {
+        // Si pas d'userInfo, notifier quand même le succès
+        if (onPaymentComplete) {
+          onPaymentComplete(result.depositId);
+        }
       }
     } catch (error) {
       console.error("❌ Erreur lors du paiement:", error);
-      setCurrentPaymentState("failed"); // ✅ État failed en cas d'erreur
+      // ✅ CORRECTION : Notifier le parent de l'échec
+      if (onPaymentComplete) {
+        onPaymentComplete("failed");
+      }
       alert("Erreur lors de la communication avec le service de paiement");
     } finally {
       setIsProcessing(false);
     }
   };
+
   const handleCountryChange = (newCountryCode: string) => {
     // Mettre à jour le pays
     setSelectedCountry(newCountryCode);
@@ -282,6 +313,8 @@ export function PaymentDialog({
 
     setPhoneNumber("");
   };
+
+  // ✅ CORRECTION : Utiliser directement paymentState du parent sans état local
 
   // Pending State
   if (paymentState === "pending") {
@@ -357,16 +390,10 @@ export function PaymentDialog({
               </p>
               <div className="bg-green-50 p-3 rounded-lg">
                 <p className="text-sm text-green-700">
-                  <strong>Transaction ID:</strong> TXN-
-                  {Date.now().toString().slice(-8)}
+                  <strong>Product:</strong> {product}
                 </p>
                 <p className="text-sm text-green-700">
-                  <strong>Payment Method:</strong>{" "}
-                  {
-                    mockPaymentMethods.find(
-                      (m) => m.id === selectedPaymentMethod
-                    )?.name
-                  }
+                  <strong>Payment Method:</strong> Mobile Money
                 </p>
               </div>
             </div>
@@ -430,13 +457,27 @@ export function PaymentDialog({
             >
               Cancel
             </Button>
-            <Button className="w-full sm:w-auto">Try Again</Button>
+            <Button
+              onClick={() => {
+                // Réinitialiser le formulaire pour réessayer
+                setSelectedCountry(undefined);
+                setMobileProvider(undefined);
+                setPhoneNumber("");
+                if (onPaymentComplete) {
+                  onPaymentComplete("idle");
+                }
+              }}
+              className="w-full sm:w-auto"
+            >
+              Try Again
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
   }
 
+  // Default State - Formulaire de paiement
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -490,26 +531,6 @@ export function PaymentDialog({
                 value={paymentMethod}
                 onValueChange={(value) => setPaymentMethod(value as "pawapay")}
               >
-                <TabsList className="grid w-full ">
-                  <TabsTrigger
-                    value="pawapay"
-                    className="gap-2"
-                    disabled={isProcessing}
-                  >
-                    <Smartphone className="h-4 w-4" />
-                    Mobile Money
-                  </TabsTrigger>
-                  {/* <TabsTrigger
-                    value="paypal"
-                    className="gap-2"
-                    disabled={isProcessing}
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    PayPal
-                  </TabsTrigger> */}
-                  {/* Vous pouvez ignorer l'onglet PayPal, mais la structure Tabs est nécessaire pour l'extensibilité */}
-                </TabsList>
-
                 {/* Le contenu du paiement Mobile Money */}
                 <TabsContent value="pawapay" className="space-y-4 mt-4">
                   {/* 1. Country Selection */}

@@ -70,8 +70,13 @@ export default function ProductPage() {
   const { toast } = useToast();
   const [depositId, setDepositId] = useState("");
 
-  // new states
-  // Assurez-vous d'importer useState de React
+  // ✅ CORRECTION : États pour gérer correctement le flux de paiement
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [lastTransactionStatus, setLastTransactionStatus] = useState<
+    string | null
+  >(null);
+
+  // new states - conservés pour référence mais maintenant gérés dans PaymentDialog
   const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
     "pawapay"
   );
@@ -89,6 +94,7 @@ export default function ProductPage() {
   );
   const availableProviders = currentCountry?.providers || [];
   const t = useTranslations("CatalogPage.ProductPage");
+
   // Mock data - replace with actual API call
   useEffect(() => {
     const fetchProduct = async () => {
@@ -111,11 +117,27 @@ export default function ProductPage() {
     };
 
     fetchProduct();
-  }, [catalog?.creatorId]);
+  }, [catalog?.creatorId, productId]);
+
+  // ✅ CORRECTION : Effet pour réinitialiser l'état de paiement quand le dialogue se ferme
+  useEffect(() => {
+    if (!showSelectPaymentNumber) {
+      // Réinitialiser l'état après un délai pour permettre les animations
+      const timer = setTimeout(() => {
+        setPaymentState("selecting");
+        setIsPaymentProcessing(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [showSelectPaymentNumber]);
 
   const handleAddToCart = () => {
     if (product) {
       addToCart(product, quantity);
+      toast({
+        title: "Produit ajouté au panier",
+        description: `${product.name} a été ajouté à votre panier.`,
+      });
     }
   };
 
@@ -145,72 +167,105 @@ export default function ProductPage() {
   };
 
   const handleBuyNow = () => {
-    setProductToBuy(product);
+    if (!product) return;
+
+    setProductToBuy({
+      ...product,
+      totalPrice: (product.price * quantity).toString(),
+    });
     setShowSelectPaymentNumber(true);
+    setPaymentState("selecting"); // ✅ CORRECTION : Réinitialiser l'état à chaque ouverture
+    setIsPaymentProcessing(false);
   };
 
-  const handleOnPay = async (paymentMethod: string) => {
-    if (product && product.creatorId) return;
-    const bodyWithoutNumber = JSON.stringify({
-      amount: 1,
-      currentUrl:
-        "https://cautious-carnival-jj4px75jqq5w3qpj-3000.app.github.dev/live/1uL8tk9Y6SZh0jPhIG04",
-      product: productToBuy.name,
-    });
-    try {
-      const res = await fetch("/api/pawapay/deposits", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: bodyWithoutNumber,
-      });
+  // ✅ CORRECTION COMPLÈTE : Nouvelle gestion du callback de paiement
+  const handlePaymentComplete = (result: string) => {
+    console.log("🔄 Parent: handlePaymentComplete appelé avec:", result);
 
-      const data = await res.json();
-      setDepositId(data.depositId);
-      const newTransaction = {
-        type: "purchase",
-        buyerId: "userInfo.uid",
-        sellerId: productToBuy.creatorId,
-        productId: productToBuy.id,
-        productName: productToBuy.name,
-        counterpartyId: productToBuy.creatorId,
-        amount: productToBuy.price,
-        paymentMethod: "mobile money",
-        status: "pending",
-      };
-      await setToSubCollection(
-        data.depositId,
-        newTransaction,
-        "users",
-        productToBuy.creatorId,
-        "transactions"
-      );
-      if (!res.ok) throw new Error(data.error || "Unknown error");
-      if (paymentMethod === "other" && data?.redirectUrl) {
-        window.location.href = data.redirectUrl; // ✅ works for external links
-      }
-      // setDepositId(data.depositId);
-      // await updateDocument("deliveries", deliveryId, {
-      //   transactionId: data.depositId,
-      // });
-      // console.log(data.depositId)
+    if (result === "pending") {
+      setPaymentState("pending");
+      setIsPaymentProcessing(true);
       toast({
-        title: "Payment initiated",
-        description: "Please complete the payment on your mobile device.",
+        title: "Paiement en cours",
+        description: "Veuillez confirmer le paiement sur votre téléphone.",
       });
-    } catch (error) {
+    } else if (result === "failed") {
+      setPaymentState("failed");
+      setIsPaymentProcessing(false);
       toast({
         variant: "destructive",
-        title: "Payment failed",
-        description: (error as Error).message,
+        title: "Paiement échoué",
+        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
       });
+    } else {
+      // C'est un depositId - transaction réussie
+      setPaymentState("success");
+      setDepositId(result);
+      setIsPaymentProcessing(false);
+
+      // ✅ CORRECTION : Enregistrer la transaction dans Firebase du côté vendeur
+      if (product && product.creatorId) {
+        const newTransaction = {
+          type: "purchase",
+          buyerId: "userInfo.uid", // À remplacer par l'ID réel de l'utilisateur connecté
+          sellerId: product.creatorId,
+          productId: product.id,
+          productName: product.name,
+          counterpartyId: product.creatorId,
+          amount: product.price * quantity,
+          quantity: quantity,
+          paymentMethod: "mobile_money",
+          status: "completed",
+          depositId: result,
+          timestamp: new Date().toISOString(),
+        };
+
+        setToSubCollection(
+          result, // Utiliser le depositId comme ID de document
+          newTransaction,
+          "users",
+          product.creatorId,
+          "transactions"
+        )
+          .then(() => {
+            console.log("✅ Transaction enregistrée chez le vendeur");
+          })
+          .catch((error) => {
+            console.error("❌ Erreur enregistrement vendeur:", error);
+          });
+      }
+
+      toast({
+        title: "Paiement réussi !",
+        description: `Votre achat de ${product?.name} a été confirmé.`,
+      });
+
+      // ✅ CORRECTION : Fermer automatiquement après un délai en cas de succès
+      setTimeout(() => {
+        setShowSelectPaymentNumber(false);
+        // Optionnel : Rediriger ou recharger les données
+      }, 3000);
     }
   };
 
   const handleCancelPaymentDialog = () => {
-    setPaymentState("selecting");
+    console.log("❌ Parent: Annulation du paiement");
     setShowSelectPaymentNumber(false);
+    setPaymentState("selecting");
+    setIsPaymentProcessing(false);
+
+    if (isPaymentProcessing) {
+      toast({
+        title: "Paiement annulé",
+        description: "Le processus de paiement a été interrompu.",
+      });
+    }
+  };
+
+  // ✅ CORRECTION : Fonction pour réessayer le paiement
+  const handleRetryPayment = () => {
+    setPaymentState("selecting");
+    setIsPaymentProcessing(false);
   };
 
   if (isLoading) {
@@ -343,7 +398,7 @@ export default function ProductPage() {
             </div>
             {Array.isArray(product?.images) && product.images.length > 1 && (
               <div className="flex space-x-3 overflow-x-auto pb-2">
-                {product?.images?.map((image, index) => (
+                {product.images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -464,14 +519,23 @@ export default function ProductPage() {
                     <div className="flex space-x-4">
                       <Button
                         onClick={handleBuyNow}
-                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                        disabled={isPaymentProcessing}
+                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {t("buyNow")}
+                        {isPaymentProcessing ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Processing...
+                          </div>
+                        ) : (
+                          t("buyNow")
+                        )}
                       </Button>
 
                       <Button
                         onClick={handleAddToCart}
-                        className="w-full h-14 text-lg font-semibold bg-white text-gray-900 border border-gray-300 rounded-xl shadow hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                        disabled={isPaymentProcessing}
+                        className="w-full h-14 text-lg font-semibold bg-white text-gray-900 border border-gray-300 rounded-xl shadow hover:shadow-md transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <ShoppingCart className="h-5 w-5 mr-3" />
                         {t("addToCart")}
@@ -529,15 +593,18 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
+
+      {/* ✅ CORRECTION : PaymentDialog avec la bonne gestion des états */}
       <PaymentDialog
         open={showSelectPaymentNumber}
-        handleCancel={handleCancelPaymentDialog}
-        paymentState={paymentState}
         onOpenChange={setShowSelectPaymentNumber}
-        amount={productToBuy.price}
-        product={productToBuy.name}
-        onPaymentComplete={handleOnPay}
+        amount={productToBuy.totalPrice || productToBuy.price || "0"}
+        product={productToBuy.name || ""}
+        onPaymentComplete={handlePaymentComplete}
+        paymentState={paymentState}
+        handleCancel={handleCancelPaymentDialog}
       />
+
       <style jsx>{`
         .animation-delay-150 {
           animation-delay: 150ms;
