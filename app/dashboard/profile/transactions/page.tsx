@@ -49,7 +49,9 @@ export default function TransactionsPage() {
   const t = useTranslations("Dashboard.Transactions");
 
   // ✅ UTILISER LES DONNÉES RÉELLES - Supprimer les mocks
-  const isCreator = userInfo?.isCreator || false;
+  const isCreator = userInfo?.role === "user" || false;
+  // const isCreator = userInfo?.role === "creator" || false;
+
   const currentBalance = userInfo?.balance || 0;
 
   // ✅ CORRECTION : Formater les transactions depuis Firebase
