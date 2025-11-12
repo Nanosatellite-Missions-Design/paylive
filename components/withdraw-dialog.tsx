@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-
+import { v4 as uuidv4 } from "uuid";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,9 +227,9 @@ export default function WithdrawDialog({
       return;
     }
 
-    // ✅ CALCUL DES MONTANTS
+    // ✅ CALCUL DES MONTANTS CORRIGÉ
     const withdrawAmount = Number.parseFloat(amount);
-    const withdrawalFee = 0.1 * withdrawAmount;
+    const withdrawalFee = withdrawAmount * PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE; // ✅ 1%
     const netAmount = Math.max(0, withdrawAmount - withdrawalFee);
 
     // ✅ FORMATAGE DU NUMÉRO DE TÉLÉPHONE
@@ -247,34 +247,55 @@ export default function WithdrawDialog({
     // ✅ RÉCUPÉRATION DE LA DEVISE
     const currency = getCurrencyByCountry(selectedCountry);
 
-    // ✅ PRÉPARATION DU PAYLOAD POUR PAWAPAY
+    // ✅ PRÉPARATION DU PAYLOAD POUR PAWAPAY (STRUCTURE EXACTE)
+    const payoutId = uuidv4(); // Vous devrez importer uuidv4
     const payload = {
-      amount: Math.floor(netAmount), // Montant net après frais
-      phoneNumber: fullPhoneNumber,
-      provider: method, // Utilise directement l'ID du provider PawaPay
-      customerId: user.uid,
-      countryCode: selectedCountry,
+      payoutId: payoutId,
+      amount: String(Math.floor(netAmount)), // ✅ String et montant NET
       currency: currency,
+      recipient: {
+        type: "MMO",
+        accountDetails: {
+          phoneNumber: fullPhoneNumber, // ✅ Déjà formaté sans '+'
+          provider: method, // ✅ ID du provider PawaPay
+        },
+      },
     };
 
-    console.log("📤 Données de retrait:", payload);
+    console.log("📤 Payload pour PawaPay:", JSON.stringify(payload, null, 2));
 
     try {
-      // ✅ APPEL API PAWAPAY
+      // ✅ APPEL API PAWAPAY VIA VOTRE SERVEUR EXPRESS
       const res = await fetch("/api/pawapay/withdrawals", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          amount: Math.floor(netAmount),
+          phoneNumber: fullPhoneNumber,
+          provider: method,
+          customerId: user.uid,
+          countryCode: selectedCountry,
+          currency: currency,
+        }),
       });
 
       const data = await res.json();
-      console.log("📥 Réponse PawaPay:", data);
+      console.log("📥 Réponse complète:", data);
 
       if (!res.ok) {
+        // ✅ MEILLEUR LOGGING DE L'ERREUR
+        console.error("❌ Erreur détaillée:", {
+          status: res.status,
+          statusText: res.statusText,
+          data: data,
+        });
+
         throw new Error(
-          data.error || data.details || "Erreur inconnue de PawaPay"
+          data.error ||
+            data.details ||
+            `Erreur HTTP ${res.status}: ${res.statusText}`
         );
       }
 
@@ -287,7 +308,7 @@ export default function WithdrawDialog({
       const transactionData = {
         // Informations de base
         type: "withdrawal",
-        status: "pending", // En attente de confirmation PawaPay
+        status: data.status || "pending", // ✅ Utiliser le status de PawaPay
         timestamp: new Date().toISOString(),
 
         // Informations montant
@@ -310,12 +331,15 @@ export default function WithdrawDialog({
         },
 
         // Références
-        payoutId: data.payoutId, // ID de retrait PawaPay
-        userUid: userInfo.uid,
+        payoutId: data.payoutId,
+        userUid: user.uid,
 
         // Métadonnées
-        estimatedArrival: "5 minc",
+        estimatedArrival: "5 min",
         processingFeeRate: "1%",
+
+        // ✅ AJOUTER LA DATE DE CRÉATION POUR FIRESTORE
+        createdAt: new Date().toISOString(),
       };
 
       console.log("💾 Enregistrement transaction:", transactionData);
@@ -326,33 +350,28 @@ export default function WithdrawDialog({
         await addToSubCollection(
           transactionData,
           "users",
-          userInfo.uid,
+          user.uid, // ✅ Utiliser user.uid, pas userInfo.uid
           "transactions"
         );
 
-        // Mettre à jour le solde utilisateur
-        // await updateDocument("users", user.uid, {
-        //   balance: increment(-withdrawAmount),
-        //   lastWithdrawal: new Date().toISOString(),
-        //   totalWithdrawn: increment(withdrawAmount),
-        // });
-        await updateDocument("users", userInfo.uid, {
-          balance: increment(parseInt(amount)), // ✅ INC RÉMENTER LE SOLDE
-          lastTransaction: new Date().toISOString(),
+        // ✅ CORRECTION : DÉCRÉMENTER LE SOLDE POUR UN RETRAIT
+        await updateDocument("users", user.uid, {
+          balance: increment(-withdrawAmount), // ✅ DÉCRÉMENTER
+          lastWithdrawal: new Date().toISOString(),
+          totalWithdrawn: increment(withdrawAmount),
         });
 
-        console.log("✅ Transaction enregistrée avec succès");
+        console.log("✅ Transaction et solde mis à jour avec succès");
       } catch (firebaseError) {
         console.error("❌ Erreur Firebase:", firebaseError);
         // Ne pas bloquer le processus pour une erreur Firebase
-        // Mais logger l'erreur pour debugging
       }
 
       // ✅ SUCCÈS - PASSAGE À L'ÉTAT SUCCESS
       setStep("success");
       setWithdrawalId(data.payoutId);
 
-      // ✅ TOAST DE SUCCÈS (si disponible)
+      // ✅ TOAST DE SUCCÈS
       if (toast) {
         toast({
           title: "Retrait initié avec succès",
@@ -360,12 +379,13 @@ export default function WithdrawDialog({
         });
       }
     } catch (error) {
-      console.error("❌ Erreur lors du retrait:", error);
+      console.error("❌ Erreur complète lors du retrait:", error);
 
       // ✅ GESTION D'ERREUR DÉTAILLÉE
       const errorMessage = (error as Error).message;
+      console.error("📋 Détails de l'erreur:", errorMessage);
 
-      // Messages d'erreur personnalisés selon le type d'erreur
+      // Messages d'erreur personnalisés
       if (
         errorMessage.includes("insufficient funds") ||
         errorMessage.includes("solde")
@@ -386,11 +406,15 @@ export default function WithdrawDialog({
         errorMessage.includes("pays")
       ) {
         setError("Pays non supporté");
+      } else if (errorMessage.includes("INVALID_PARAMETER")) {
+        setError("Paramètres de retrait invalides");
+      } else if (errorMessage.includes("MISSING_PARAMETER")) {
+        setError("Paramètres manquants pour le retrait");
       } else {
         setError(`Erreur lors du retrait: ${errorMessage}`);
       }
 
-      // ✅ TOAST D'ERREUR (si disponible)
+      // ✅ TOAST D'ERREUR
       if (toast) {
         toast({
           title: "Erreur de retrait",
