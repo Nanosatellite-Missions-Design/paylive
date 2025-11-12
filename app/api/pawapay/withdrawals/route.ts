@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
-        const   YOUR_EXISTING_BACKEND_URL  = "https://bookhub-backend-production-64db.up.railway.app/api/";
+        const   YOUR_EXISTING_BACKEND_URL  = "https://bookhub-backend-production-64db.up.railway.app/api";
 const PAWAPAY_BASE_URL = "https://api.sandbox.pawapay.io/v2";
 
 const  PAWAPAY_API_BASE= 'https://api.pawapay.io/payouts';
