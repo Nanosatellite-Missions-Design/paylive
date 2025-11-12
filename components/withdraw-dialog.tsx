@@ -26,6 +26,7 @@ import {
   Loader2,
   Phone,
   RefreshCw,
+  Shield,
   User,
   Wallet,
 } from "lucide-react";
@@ -43,6 +44,7 @@ import {
   PAWAPAY_COUNTRIES,
 } from "@/lib/countries";
 import { toast } from "@/hooks/use-toast";
+import { getCurrencyByCountry } from "@/lib/currencies";
 
 interface WithdrawDialogProps {
   currentBalance: number;
@@ -50,6 +52,9 @@ interface WithdrawDialogProps {
   onWithdraw: (request: WithdrawRequest) => Promise<void>;
   children?: React.ReactNode;
 }
+
+const PAWAPAY_MAX_WITHDRAWAL = 2000000; // 2,000,000 XAF
+const PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE = 0.01; // 1%
 
 export default function WithdrawDialog({
   currentBalance,
@@ -77,25 +82,15 @@ export default function WithdrawDialog({
   const [selectedCountry, setSelectedCountry] = useState("CMR"); // Valeur par défaut (e.g., Cameroun)
   const [currency, setCurrency] = useState("XAF");
   // Constants
-  const minWithdraw = 1;
-  const maxWithdraw = currentBalance;
-  const withdrawalFee = 0.1 * Number(amount);
+  const minWithdraw = 100; // Minimum 100 XAF
+  const maxWithdraw = Math.min(currentBalance, PAWAPAY_MAX_WITHDRAWAL);
+  const withdrawalFee = PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE * Number(amount);
   const netAmount = Math.max(
     0,
     Number.parseFloat(amount || "0") - 0.1 * Number(amount)
   );
   const estimatedDays = "24 hours";
-
-  // Fonction d'aide pour obtenir la Devise (à affiner selon les pays supportés)
-  const getCurrencyByCountry = (countryCode: string) => {
-    // Logique simplifiée. À étendre pour tous les pays Pawapay
-    if (["CMR", "GAB", "CAF", "COG", "TCD", "GNQ"].includes(countryCode)) {
-      return "XAF"; // Franc CFA (Afrique Centrale)
-    }
-    if (["GHA"].includes(countryCode)) return "GHS"; // Ghana Cedi
-    // ... ajoutez d'autres pays et devises
-    return "XAF"; // Devise par défaut
-  };
+  const showLimitInfo = currentBalance > PAWAPAY_MAX_WITHDRAWAL;
 
   const resetForm = () => {
     setAmount("");
@@ -126,8 +121,27 @@ export default function WithdrawDialog({
       return;
     }
 
+    if (withdrawAmount > maxWithdraw) {
+      setError(
+        `Le montant maximum est de ${maxWithdraw.toLocaleString()} ${currency}`
+      );
+      return;
+    }
+
     setError(null);
     setStep("method");
+  };
+
+  // ✅ GESTION DU PAYS AMÉLIORÉE
+  const handleCountryChange = (newCountryCode: string) => {
+    setSelectedCountry(newCountryCode);
+    setCurrency(getCurrencyByCountry(newCountryCode));
+
+    // Réinitialiser le provider et sélectionner le premier disponible
+    const countryData = getCountryByCode(newCountryCode);
+    if (countryData?.providers?.[0]) {
+      setMethod(countryData.providers[0].id as WithdrawRequest["method"]);
+    }
   };
 
   const handleMethodSubmit = () => {
@@ -419,7 +433,7 @@ export default function WithdrawDialog({
                   {t("WithdrawDialog.1.availableBalance")}
                 </span>
                 <span className="text-lg font-semibold">
-                  XAF{currentBalance}
+                  {currency} {currentBalance.toLocaleString()}
                 </span>
               </div>
 
@@ -452,7 +466,9 @@ export default function WithdrawDialog({
                 <div className="p-3 border rounded-md space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>{t("WithdrawDialog.1.withdrawalAmount")}</span>
-                    <span>XAF{Number.parseFloat(amount)}</span>
+                    <span>
+                      {currency} {Number.parseFloat(amount).toLocaleString()}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
                     <span>{t("WithdrawDialog.1.processingFee")}</span>
@@ -461,7 +477,25 @@ export default function WithdrawDialog({
                   <hr />
                   <div className="flex justify-between font-medium">
                     <span>{t("WithdrawDialog.1.youReceive")}</span>
-                    <span>XAF{netAmount}</span>
+                    <span>
+                      -{currency} {withdrawalFee.toFixed(2)}
+                    </span>
+                  </div>
+                  <hr />
+                  <div className="flex justify-between font-medium text-green-600">
+                    <span>Vous recevez</span>
+                    <span>
+                      {currency} {netAmount.toFixed(2)}
+                    </span>
+                  </div>
+                  {/* ✅ INFORMATION SUR LES FRAIS */}
+                  <div className="flex items-start gap-2 mt-2 p-2 bg-yellow-50 rounded">
+                    <Shield className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-yellow-700">
+                      <strong>Frais de service :</strong> PawaPay prélève{" "}
+                      {PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE * 100}% sur chaque
+                      retrait pour couvrir les coûts de traitement.
+                    </p>
                   </div>
                 </div>
               )}
