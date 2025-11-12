@@ -26,22 +26,13 @@ export default function ProfilePage() {
 
   const isCreator = userInfo?.role === "user" || false;
 
-  // Mock financial data
-  // const financialStats = {
-  //   currentBalance: 1247.83,
-  //   monthlyEarnings: 892.5,
-  //   totalEarnings: 15420.75,
-  //   pendingPayouts: 156.2,
-  //   totalSales: 89,
-  //   totalPurchases: 23,
-  // };
   const calculateStats = () => {
     if (!userTransactions || userTransactions.length === 0) {
       return {
         totalSales: 0,
         totalEarnings: 0,
         monthlyEarnings: 0,
-        currentBalance: userInfo?.balance || 0,
+        currentBalance: 0,
       };
     }
 
@@ -49,14 +40,26 @@ export default function ProfilePage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
+    // ✅ CALCUL DU SOLDE RÉEL depuis toutes les transactions
+    const currentBalance = userTransactions.reduce((balance, transaction) => {
+      if (transaction.type === "deposit" || transaction.type === "sale") {
+        return balance + (transaction.amount || 0);
+      } else if (
+        transaction.type === "withdrawal" ||
+        transaction.type === "purchase"
+      ) {
+        return balance - (transaction.amount || 0);
+      }
+      return balance;
+    }, 0);
+
+    // ✅ CALCUL DES GAINS MENSUELS
     const monthlyTransactions = userTransactions.filter((transaction) => {
       if (!transaction.createdAt) return false;
-
       const transactionDate =
         transaction.createdAt instanceof Date
           ? transaction.createdAt
           : new Date(transaction.createdAt);
-
       return (
         transactionDate.getMonth() === currentMonth &&
         transactionDate.getFullYear() === currentYear
@@ -67,10 +70,12 @@ export default function ProfilePage() {
       .filter((t) => t.type === "deposit" || t.type === "sale")
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+    // ✅ CALCUL DES GAINS TOTAUX
     const totalEarnings = userTransactions
       .filter((t) => t.type === "deposit" || t.type === "sale")
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
+    // ✅ CALCUL DES VENTES
     const totalSales = userTransactions.filter(
       (t) => t.type === "purchase"
     ).length;
@@ -79,7 +84,7 @@ export default function ProfilePage() {
       totalSales,
       totalEarnings,
       monthlyEarnings,
-      currentBalance: userInfo?.balance || 0,
+      currentBalance, // ✅ SOLDE CALCULÉ
     };
   };
 

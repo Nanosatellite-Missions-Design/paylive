@@ -57,7 +57,6 @@ const PAWAPAY_MAX_WITHDRAWAL = 2000000; // 2,000,000 XAF
 const PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE = 0.01; // 1%
 
 export default function WithdrawDialog({
-  currentBalance,
   pendingWithdrawals = 0,
   onWithdraw,
   children,
@@ -76,12 +75,30 @@ export default function WithdrawDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
-  const { user, userInfo } = useAuth();
+  const { user, userInfo, userTransactions } = useAuth();
   const t = useTranslations("Dashboard.Transactions");
   // new states
   const [selectedCountry, setSelectedCountry] = useState("CMR"); // Valeur par défaut (e.g., Cameroun)
   const [currency, setCurrency] = useState("XAF");
+
+  const calculateCurrentBalance = () => {
+    if (!userTransactions || userTransactions.length === 0) return 0;
+
+    return userTransactions.reduce((balance, transaction) => {
+      if (transaction.type === "deposit" || transaction.type === "sale") {
+        return balance + (transaction.amount || 0);
+      } else if (
+        transaction.type === "withdrawal" ||
+        transaction.type === "purchase"
+      ) {
+        return balance - (transaction.amount || 0);
+      }
+      return balance;
+    }, 0);
+  };
   // Constants
+  const currentBalance = calculateCurrentBalance();
+
   const minWithdraw = 100; // Minimum 100 XAF
   const maxWithdraw = Math.min(currentBalance, PAWAPAY_MAX_WITHDRAWAL);
   const withdrawalFee = PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE * Number(amount);
