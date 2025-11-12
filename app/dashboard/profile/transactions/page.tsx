@@ -52,7 +52,19 @@ export default function TransactionsPage() {
   const isCreator = userInfo?.role === "user" || false;
   // const isCreator = userInfo?.role === "creator" || false;
 
-  const currentBalance = userInfo?.balance || 0;
+  // const currentBalance = userInfo?.balance || 0;
+  const currentBalance =
+    userTransactions?.reduce((balance, transaction) => {
+      if (transaction.type === "deposit" || transaction.type === "sale") {
+        return balance + (transaction.amount || 0);
+      } else if (
+        transaction.type === "withdrawal" ||
+        transaction.type === "purchase"
+      ) {
+        return balance - (transaction.amount || 0);
+      }
+      return balance;
+    }, 0) || 0;
 
   // ✅ CORRECTION : Formater les transactions depuis Firebase
   const formatTransactionDate = (transaction: RealTransaction) => {
