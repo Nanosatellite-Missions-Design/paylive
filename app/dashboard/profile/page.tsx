@@ -23,29 +23,69 @@ import { useTranslations } from "@/lib/useTranslations";
 export default function ProfilePage() {
   const { userInfo, userTransactions } = useAuth();
   const t = useTranslations("Dashboard.Profile");
-  const user = {
-    name: "Jane Cooper",
-    email: "jane@example.com",
-    phone: "+1 (555) 123-4567",
-    bio: "Content creator specializing in fashion and lifestyle products.",
-    isCreator: true,
-    avatar: "/placeholder.svg?height=100&width=100",
-    joinedDate: "March 2023",
-    location: "New York, NY",
-    website: "https://janecooper.com",
-  };
+
+  const isCreator = userInfo?.role === "user" || false;
 
   // Mock financial data
-  const financialStats = {
-    currentBalance: 1247.83,
-    monthlyEarnings: 892.5,
-    totalEarnings: 15420.75,
-    pendingPayouts: 156.2,
-    totalSales: 89,
-    totalPurchases: 23,
+  // const financialStats = {
+  //   currentBalance: 1247.83,
+  //   monthlyEarnings: 892.5,
+  //   totalEarnings: 15420.75,
+  //   pendingPayouts: 156.2,
+  //   totalSales: 89,
+  //   totalPurchases: 23,
+  // };
+  const calculateStats = () => {
+    if (!userTransactions || userTransactions.length === 0) {
+      return {
+        totalSales: 0,
+        totalEarnings: 0,
+        monthlyEarnings: 0,
+        currentBalance: userInfo?.balance || 0,
+      };
+    }
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyTransactions = userTransactions.filter((transaction) => {
+      if (!transaction.createdAt) return false;
+
+      const transactionDate =
+        transaction.createdAt instanceof Date
+          ? transaction.createdAt
+          : new Date(transaction.createdAt);
+
+      return (
+        transactionDate.getMonth() === currentMonth &&
+        transactionDate.getFullYear() === currentYear
+      );
+    });
+
+    const monthlyEarnings = monthlyTransactions
+      .filter((t) => t.type === "deposit" || t.type === "sale")
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    const totalEarnings = userTransactions
+      .filter((t) => t.type === "deposit" || t.type === "sale")
+      .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    const totalSales = userTransactions.filter(
+      (t) => t.type === "purchase"
+    ).length;
+
+    return {
+      totalSales,
+      totalEarnings,
+      monthlyEarnings,
+      currentBalance: userInfo?.balance || 0,
+    };
   };
 
-  if (!user) return null;
+  const stats = calculateStats();
+
+  if (!userInfo) return null;
 
   return (
     <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
@@ -54,7 +94,7 @@ export default function ProfilePage() {
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
             <img
-              src={user.avatar || "/placeholder-user.jpg"}
+              src={userInfo.photoURL || "/placeholder-user.jpg"}
               alt={userInfo?.name}
               className="w-full h-full object-cover"
             />
@@ -71,8 +111,8 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* Financial Overview - Only for creators */}
-      {true && (
+      {/* ✅ AFFICHAGE FINANCIER AVEC DONNÉES RÉELLES */}
+      {isCreator && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">
             {t("financialOverview")}
@@ -87,8 +127,9 @@ export default function ProfilePage() {
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
                 <p className="text-2xl font-bold text-green-600">
-                  XAF{userInfo?.balance ?? 0}
+                  XAF{stats.currentBalance.toLocaleString()}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Solde actuel</p>
               </CardContent>
             </Card>
 
@@ -99,8 +140,9 @@ export default function ProfilePage() {
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
                 <p className="text-2xl font-bold">
-                  XAF{userInfo?.balance ?? 0}
+                  XAF{stats.monthlyEarnings.toLocaleString()}
                 </p>
+                <p className="text-xs text-gray-500 mt-1">Gains ce mois</p>
               </CardContent>
             </Card>
 
@@ -113,16 +155,11 @@ export default function ProfilePage() {
                   <BarChart3 className="h-4 w-4 text-purple-500" />
                 </div>
                 <p className="text-2xl font-bold">
-                  XAF{userInfo?.balance ?? 0}
+                  XAF{stats.totalEarnings.toLocaleString()}
                 </p>
                 <div className="flex justify-between mt-2 text-sm">
                   <span className="text-gray-500">
-                    {t("totalSales")}:{" "}
-                    {
-                      userTransactions.filter(
-                        (transac) => transac.type === "purchase"
-                      ).length
-                    }
+                    {t("totalSales")}: {stats.totalSales}
                   </span>
                   <Link
                     href="/dashboard/profile/transactions"
@@ -137,31 +174,29 @@ export default function ProfilePage() {
         </section>
       )}
 
-      {/* Activity Summary - For non-creators */}
-      {!true && (
+      {/* ✅ ACTIVITÉ POUR NON-CRÉATEURS */}
+      {!isCreator && (
         <section className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Activity Summary</h2>
+          <h2 className="text-lg font-semibold mb-3">Résumé de l'activité</h2>
           <Card>
             <CardContent className="p-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm text-gray-500 mb-1">
-                    Total Purchases
-                  </h3>
-                  <p className="text-xl font-bold">
-                    {financialStats.totalPurchases}
-                  </p>
+                  <h3 className="text-sm text-gray-500 mb-1">Total Achats</h3>
+                  <p className="text-xl font-bold">{stats.totalSales}</p>
                 </div>
                 <div>
-                  <h3 className="text-sm text-gray-500 mb-1">Last Purchase</h3>
-                  <p className="text-xl font-bold">Apr 15, 2023</p>
+                  <h3 className="text-sm text-gray-500 mb-1">Solde Actuel</h3>
+                  <p className="text-xl font-bold">
+                    XAF{stats.currentBalance.toLocaleString()}
+                  </p>
                 </div>
               </div>
               <div className="mt-3">
-                <Link href="/profile/transactions">
+                <Link href="/dashboard/profile/transactions">
                   <Button variant="outline" size="sm" className="w-full">
                     <History className="h-4 w-4 mr-2" />
-                    Transaction History
+                    Historique des transactions
                   </Button>
                 </Link>
               </div>
@@ -170,54 +205,43 @@ export default function ProfilePage() {
         </section>
       )}
 
+      {/* ✅ ACTIONS RAPIDES */}
       <section className="mb-6">
         <h2 className="text-lg font-semibold mb-3">{t("quickActions")}</h2>
         <div className="grid grid-cols-2 gap-3">
-          {true && (
-            <Link href="/dashboard/products">
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6 flex flex-col"
-              >
-                <Package className="h-6 w-6 mb-2" />
-                <span>{t("myProducts")}</span>
-              </Button>
-            </Link>
-          )}
+          {isCreator && (
+            <>
+              <Link href="/dashboard/products">
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-6 flex flex-col"
+                >
+                  <Package className="h-6 w-6 mb-2" />
+                  <span>{t("myProducts")}</span>
+                </Button>
+              </Link>
 
-          {true && (
-            <Link href="/dashboard/profile/catalogs">
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6 flex flex-col bg-transparent"
-              >
-                <Store className="h-6 w-6 mb-2" />
-                <span>{t("myCatalogs")}</span>
-              </Button>
-            </Link>
-          )}
+              <Link href="/dashboard/profile/catalogs">
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-6 flex flex-col bg-transparent"
+                >
+                  <Store className="h-6 w-6 mb-2" />
+                  <span>{t("myCatalogs")}</span>
+                </Button>
+              </Link>
 
-          {true && (
-            <Link href="/dashboard/lives">
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6 flex flex-col"
-              >
-                <Video className="h-6 w-6 mb-2" />
-                <span>{t("liveSales")}</span>
-              </Button>
-            </Link>
+              <Link href="/dashboard/lives">
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-6 flex flex-col"
+                >
+                  <Video className="h-6 w-6 mb-2" />
+                  <span>{t("liveSales")}</span>
+                </Button>
+              </Link>
+            </>
           )}
-
-          {/* <Link href="/dashboard/auctions">
-            <Button
-              variant="outline"
-              className="w-full h-auto py-6 flex flex-col"
-            >
-              <Gavel className="h-6 w-6 mb-2" />
-              <span>My Auctions</span>
-            </Button>
-          </Link> */}
 
           <Link href="/dashboard/profile/payment-methods">
             <Button
@@ -232,12 +256,13 @@ export default function ProfilePage() {
           <Link href="/dashboard/profile/transactions" className="col-span-2">
             <Button variant="outline" className="w-full">
               <History className="h-4 w-4 mr-2" />
-              {t("paymentMethods")}
+              Historique des transactions
             </Button>
           </Link>
         </div>
       </section>
 
+      {/* ✅ PARAMÈTRES DU COMPTE */}
       <section>
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold">{t("accountSettings")}</h2>
@@ -279,6 +304,10 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={() => {
+                // Ajoutez votre logique de déconnexion ici
+                console.log("Déconnexion");
+              }}
             >
               {t("logOut")}
             </Button>

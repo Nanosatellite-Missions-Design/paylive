@@ -76,7 +76,7 @@ export default function WithdrawDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, userInfo } = useAuth();
   const t = useTranslations("Dashboard.Transactions");
   // new states
   const [selectedCountry, setSelectedCountry] = useState("CMR"); // Valeur par défaut (e.g., Cameroun)
@@ -294,11 +294,11 @@ export default function WithdrawDialog({
 
         // Références
         payoutId: data.payoutId, // ID de retrait PawaPay
-        userUid: user.uid,
+        userUid: userInfo.uid,
 
         // Métadonnées
-        estimatedArrival: "24 hours",
-        processingFeeRate: "10%",
+        estimatedArrival: "5 minc",
+        processingFeeRate: "1%",
       };
 
       console.log("💾 Enregistrement transaction:", transactionData);
@@ -309,15 +309,19 @@ export default function WithdrawDialog({
         await addToSubCollection(
           transactionData,
           "users",
-          user.uid,
+          userInfo.uid,
           "transactions"
         );
 
         // Mettre à jour le solde utilisateur
-        await updateDocument("users", user.uid, {
-          balance: increment(-withdrawAmount),
-          lastWithdrawal: new Date().toISOString(),
-          totalWithdrawn: increment(withdrawAmount),
+        // await updateDocument("users", user.uid, {
+        //   balance: increment(-withdrawAmount),
+        //   lastWithdrawal: new Date().toISOString(),
+        //   totalWithdrawn: increment(withdrawAmount),
+        // });
+        await updateDocument("users", userInfo.uid, {
+          balance: increment(parseInt(amount)), // ✅ INC RÉMENTER LE SOLDE
+          lastTransaction: new Date().toISOString(),
         });
 
         console.log("✅ Transaction enregistrée avec succès");
