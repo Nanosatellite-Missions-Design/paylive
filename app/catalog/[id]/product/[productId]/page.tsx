@@ -17,6 +17,8 @@ import {
   RotateCcw,
   ChevronsLeft,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getASubDocument } from "@/functions/get-a-document";
@@ -88,12 +90,28 @@ export default function ProductPage() {
   );
   const [phoneNumber, setPhoneNumber] = useState<string>("");
 
+  // ✅ CORRECTION : Utiliser selectedImage au lieu de currentImageIndices pour la page produit
+  // (car on n'a qu'un seul produit sur cette page)
+
   // Pour déterminer les fournisseurs disponibles
   const currentCountry = PAWAPAY_COUNTRIES.find(
     (c) => c.code === selectedCountry
   );
   const availableProviders = currentCountry?.providers || [];
   const t = useTranslations("CatalogPage.ProductPage");
+
+  // ✅ CORRECTION : Fonctions de navigation simplifiées pour un seul produit
+  const goToNextImage = () => {
+    if (!product) return;
+    const images = product.images || product.image || [];
+    setSelectedImage((prev) => (prev + 1 >= images.length ? 0 : prev + 1));
+  };
+
+  const goToPrevImage = () => {
+    if (!product) return;
+    const images = product.images || product.image || [];
+    setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
+  };
 
   // Mock data - replace with actual API call
   useEffect(() => {
@@ -308,6 +326,10 @@ export default function ProductPage() {
     );
   }
 
+  // ✅ CORRECTION : Récupérer les images de façon cohérente
+  const productImages = product.images || product.image || [];
+  const hasMultipleImages = productImages.length > 1;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -378,11 +400,59 @@ export default function ProductPage() {
           {/* Product Images */}
           <div className="space-y-6">
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-xl">
-              <img
-                src={product?.image?.[selectedImage] || "/placeholder.jpg"}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
+              {/* ✅ CORRECTION : Carousel avec navigation cohérente */}
+              <div className="relative w-full h-full">
+                <img
+                  src={productImages[selectedImage] || "/placeholder.jpg"}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+
+                {/* Boutons de navigation */}
+                {hasMultipleImages && (
+                  <>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToPrevImage();
+                      }}
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-2 transition-all duration-200"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        goToNextImage();
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white rounded-full p-2 transition-all duration-200"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Indicateurs de position (dots) */}
+              {hasMultipleImages && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                  {productImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage(index);
+                      }}
+                      className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                        index === selectedImage
+                          ? "bg-white scale-125"
+                          : "bg-white/50 hover:bg-white/80"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
                 className="absolute top-4 right-4 p-3 rounded-full bg-white/90 hover:bg-white transition-colors duration-200 shadow-lg"
@@ -396,9 +466,11 @@ export default function ProductPage() {
                 />
               </button>
             </div>
-            {Array.isArray(product?.images) && product.images.length > 1 && (
+
+            {/* Miniatures */}
+            {hasMultipleImages && (
               <div className="flex space-x-3 overflow-x-auto pb-2">
-                {product.images.map((image, index) => (
+                {productImages.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
