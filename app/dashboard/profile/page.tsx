@@ -21,7 +21,8 @@ import { useEffect } from "react";
 import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProfilePage() {
-  const { userInfo, userTransactions } = useAuth();
+  const { userInfo, userTransactions,logout } = useAuth();
+
   const t = useTranslations("Dashboard.Profile");
 
   const isCreator = userInfo?.role === "user" || false;
@@ -309,10 +310,7 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
-              onClick={() => {
-                // Ajoutez votre logique de déconnexion ici
-                console.log("Déconnexion");
-              }}
+              onClick={logout}
             >
               {t("logOut")}
             </Button>
