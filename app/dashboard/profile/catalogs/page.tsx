@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -53,38 +52,6 @@ import { deleteADocument } from "@/functions/delete-a-document";
 import { formatDate } from "@/functions/format-date";
 import { useTranslations } from "@/lib/useTranslations";
 
-// Mock data
-// const mockProducts = [
-//   { id: "1", name: "Wireless Headphones", price: 25000, inStock: true },
-//   { id: "2", name: "Smartphone Case", price: 5000, inStock: true },
-//   { id: "3", name: "Bluetooth Speaker", price: 15000, inStock: false },
-//   { id: "4", name: "Power Bank", price: 8000, inStock: true },
-//   { id: "5", name: "USB Cable", price: 2000, inStock: true },
-// ];
-
-const mockCatalogs: any = [
-  {
-    id: "cat1",
-    title: "Electronics Collection",
-    description: "Latest gadgets and accessories",
-    isActive: true,
-    productCount: 12,
-    createdAt: new Date("2024-01-15"),
-    views: 245,
-    selectedProducts: ["1", "3", "4"],
-  },
-  {
-    id: "cat2",
-    title: "Fashion Essentials",
-    description: "Trendy clothing and accessories",
-    isActive: false,
-    productCount: 8,
-    createdAt: new Date("2024-01-10"),
-    views: 89,
-    selectedProducts: ["2", "5"],
-  },
-];
-
 interface CatalogType {
   id: string;
   title: string;
@@ -109,13 +76,13 @@ export default function CatalogsPage() {
   const [newCatalog, setNewCatalog] = useState({
     title: "",
     description: "",
-    selectedProducts: [] as CatalogProduct[],
+    selectedProducts: [] as string[], // ✅ Changé pour stocker des IDs
   });
   const [editCatalog, setEditCatalog] = useState({
     id: "",
     title: "",
     description: "",
-    selectedProducts: [] as CatalogProduct[],
+    selectedProducts: [] as string[], // ✅ Changé pour stocker des IDs
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -142,7 +109,14 @@ export default function CatalogsPage() {
       });
       return;
     }
+
     setLoading(true);
+
+    // ✅ Récupérer les objets produits complets à partir des IDs sélectionnés
+    const selectedProductObjects = userProducts.filter((product) =>
+      newCatalog.selectedProducts.includes(product.id)
+    );
+
     const catalog: Omit<CatalogType, "id"> = {
       title: newCatalog.title,
       description: newCatalog.description,
@@ -153,7 +127,7 @@ export default function CatalogsPage() {
       productCount: newCatalog.selectedProducts.length,
       createdAt: new Date(),
       views: 0,
-      products: newCatalog.selectedProducts,
+      products: selectedProductObjects, // ✅ Stocker les objets produits complets
     };
 
     try {
@@ -167,28 +141,24 @@ export default function CatalogsPage() {
       setNewCatalog({ title: "", description: "", selectedProducts: [] });
       setIsCreateDialogOpen(false);
     } catch (error) {
-      console.error("Image upload error:", error);
-      setLoading(false);
+      console.error("Catalog creation error:", error);
       toast({
-        title: "Upload failed",
-        description: "Could not upload one or more images.",
+        title: "Creation failed",
+        description: "Could not create catalog.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Fonction corrigée pour obtenir les produits mis à jour
   const getUpdatedCatalogProducts = (catalog: Catalog) => {
-    return catalog.products
-      .map((productId) => {
-        // Si c'est déjà un ID string, trouver le produit actuel
-        if (typeof productId === "string") {
-          return userProducts.find((p) => p.id === productId);
-        }
-        // Si c'est un objet produit avec ID, trouver le produit actuel
-        return userProducts.find((p) => p.id === productId.id);
-      })
-      .filter(Boolean); // Filtrer les produits non trouvés
+    if (!catalog.products) return [];
+
+    return catalog.products.filter((product) =>
+      userProducts.some((p) => p.id === product.id)
+    );
   };
 
   const handleEditCatalog = async (e: React.FormEvent) => {
@@ -212,10 +182,28 @@ export default function CatalogsPage() {
       return;
     }
 
+    setLoading(true);
+
     try {
-      console.log(editCatalog);
-      // await addToCollection("catalogs", catalog)
-      await updateDocument("catalogs", editCatalog.id, editCatalog);
+      // ✅ Récupérer les objets produits complets pour l'update
+      const selectedProductObjects = userProducts.filter((product) =>
+        editCatalog.selectedProducts.includes(product.id)
+      );
+
+      const catalogUpdate = {
+        title: editCatalog.title,
+        description: editCatalog.description,
+        products: selectedProductObjects,
+        productCount: selectedProductObjects.length,
+      };
+
+      await updateDocument("catalogs", editCatalog.id, catalogUpdate);
+
+      toast({
+        title: "Success",
+        description: "Catalog updated successfully!",
+      });
+
       setIsEditDialogOpen(false);
       setEditCatalog({
         id: "",
@@ -223,56 +211,57 @@ export default function CatalogsPage() {
         description: "",
         selectedProducts: [],
       });
-
-      toast({
-        title: "Success",
-        description: "Catalog updated successfully!",
-      });
     } catch (error) {
-      console.error("Image upload error:", error);
-      setLoading(false);
+      console.error("Catalog update error:", error);
       toast({
-        title: "Upload failed",
-        description: "Could not upload one or more images.",
+        title: "Update failed",
+        description: "Could not update catalog.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
-
-    setIsEditDialogOpen(false);
-    setEditCatalog({
-      id: "",
-      title: "",
-      description: "",
-      selectedProducts: [],
-    });
-
-    toast({
-      title: "Success",
-      description: "Catalog updated successfully!",
-    });
   };
 
-  const handleDeleteProduct = async () => {
+  // ✅ Fonction corrigée pour la suppression
+  const handleDeleteCatalog = async () => {
+    if (!selectedCatalog) return;
+
     setLoading(true);
     try {
-      if (!user || !selectedCatalog) return;
       await deleteADocument("catalogs", selectedCatalog.id);
+
+      toast({
+        title: "Success",
+        description: "Catalog deleted successfully!",
+      });
+
       setSelectedCatalog(null);
       setIsDeleteDialogOpen(false);
     } catch (error) {
-      console.error("Error updating catalog:", error);
-      setLoading(false);
+      console.error("Error deleting catalog:", error);
       toast({
         title: "Error",
         description: "Failed to delete catalog.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const openEditDialog = (catalog: Catalog) => {
-    setEditCatalog(catalog);
+    // ✅ Initialiser correctement avec les IDs des produits
+    const productIds = catalog.products
+      ? catalog.products.map((p) => p.id)
+      : [];
+
+    setEditCatalog({
+      id: catalog.id,
+      title: catalog.title,
+      description: catalog.description,
+      selectedProducts: productIds,
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -305,42 +294,49 @@ export default function CatalogsPage() {
     }
   };
 
-  const toggleCatalogStatus = (catalogId: string) => {
-    // setCatalogs((prev) =>
-    //   prev.map((catalog) => (catalog.id === catalogId ? { ...catalog, isActive: !catalog.isActive } : catalog)),
-    // )
+  // ✅ Fonction corrigée pour basculer le statut
+  const toggleCatalogStatus = async (catalog: Catalog) => {
+    setLoading(true);
+    try {
+      await updateDocument("catalogs", catalog.id, {
+        isActive: !catalog.isActive,
+      });
+
+      toast({
+        title: "Success",
+        description: `Catalog ${
+          !catalog.isActive ? "activated" : "deactivated"
+        } successfully!`,
+      });
+    } catch (error) {
+      console.error("Error updating catalog status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update catalog status.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteCatalog = (catalogId: string) => {
-    // setCatalogs((prev) => prev.filter((catalog) => catalog.id !== catalogId))
-    toast({
-      title: "Catalog Deleted",
-      description: "The catalog has been removed successfully",
-    });
-  };
-
-  const handleProductToggle = (product: any, isEdit = false) => {
+  // ✅ Fonction corrigée pour le toggle des produits
+  const handleProductToggle = (productId: string, isEdit = false) => {
     if (isEdit) {
       setEditCatalog((prev) => ({
         ...prev,
-        selectedProducts: prev.selectedProducts.includes(product)
-          ? prev.selectedProducts.filter((id) => id !== product)
-          : [...prev.selectedProducts, product],
+        selectedProducts: prev.selectedProducts.includes(productId)
+          ? prev.selectedProducts.filter((id) => id !== productId)
+          : [...prev.selectedProducts, productId],
       }));
     } else {
       setNewCatalog((prev) => ({
         ...prev,
-        selectedProducts: prev.selectedProducts.includes(product)
-          ? prev.selectedProducts.filter((id) => id !== product)
-          : [...prev.selectedProducts, product],
+        selectedProducts: prev.selectedProducts.includes(productId)
+          ? prev.selectedProducts.filter((id) => id !== productId)
+          : [...prev.selectedProducts, productId],
       }));
     }
-  };
-
-  const getSelectedProductsForCatalog = (catalog: Catalog) => {
-    return userProducts.filter((product) =>
-      catalog.selectedProducts.includes(product)
-    );
   };
 
   return (
@@ -426,9 +422,11 @@ export default function CatalogsPage() {
                         <Checkbox
                           id={`create-${product.id}`}
                           checked={newCatalog.selectedProducts.includes(
-                            product
+                            product.id
                           )}
-                          onCheckedChange={() => handleProductToggle(product)}
+                          onCheckedChange={() =>
+                            handleProductToggle(product.id)
+                          }
                         />
                         <div className="flex-1 min-w-0">
                           <label
@@ -496,7 +494,7 @@ export default function CatalogsPage() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="edit-title">
-                  {t("CreateCatalogDialog.title")} *
+                  {t("CreateCatalogDialog.catalogTitle")} *
                 </Label>
                 <Input
                   id="edit-title"
@@ -512,7 +510,9 @@ export default function CatalogsPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-description">Description</Label>
+                <Label htmlFor="edit-description">
+                  {t("CreateCatalogDialog.description")}
+                </Label>
                 <Textarea
                   id="edit-description"
                   value={editCatalog.description}
@@ -719,6 +719,7 @@ export default function CatalogsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
@@ -727,15 +728,19 @@ export default function CatalogsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("deleteDialog.description")} {selectedCatalog?.name}.
+              {t("deleteDialog.description")} "{selectedCatalog?.title}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>
               {t("deleteDialog.cancel")}
             </AlertDialogCancel>
-            <AlertDialogAction disabled={loading} onClick={handleDeleteProduct}>
-              {t("deleteDialog.delete")}
+            <AlertDialogAction
+              disabled={loading}
+              onClick={handleDeleteCatalog}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {loading ? "Deleting..." : t("deleteDialog.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -857,15 +862,16 @@ export default function CatalogsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toggleCatalogStatus(catalog.id)}
+                    onClick={() => toggleCatalogStatus(catalog)}
                     className="flex-1"
+                    disabled={loading}
                   >
                     {catalog.isActive ? "Deactivate" : "Activate"}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => deleteCatalog(catalog.id)}
+                    onClick={() => openDeleteDialog(catalog)}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     <Trash2 className="h-3 w-3" />
