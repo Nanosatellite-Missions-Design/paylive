@@ -50,7 +50,7 @@
         }
     },
     "Auth": {
-        "description": "Bon retour ! Connectez-vous à votre compte.",
+        "loginDescription": "Bon retour ! Connectez-vous à votre compte.",
         "signupDescription": "Créez votre compte et commencez à vendre.",
         "phone": "Numéro de téléphone",
         "sendCode": "Envoyer le code",

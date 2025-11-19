@@ -78,43 +78,7 @@ interface PaymentDialogProps {
   handleCancel?: () => void;
 }
 
-const mockPaymentMethods: PaymentMethod[] = [
-  {
-    id: "card-1",
-    type: "card",
-    name: "Visa ending in 4242",
-    details: "Expires 12/25",
-    isDefault: true,
-    lastUsed: "2 days ago",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "card-2",
-    type: "card",
-    name: "Mastercard ending in 8888",
-    details: "Expires 08/26",
-    isDefault: false,
-    lastUsed: "1 week ago",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    id: "bank-1",
-    type: "bank",
-    name: "Chase Business Account",
-    details: "****1234",
-    isDefault: false,
-    lastUsed: "3 weeks ago",
-    icon: <Building2 className="h-5 w-5" />,
-  },
-  {
-    id: "digital-1",
-    type: "digital",
-    name: "PayPal",
-    details: "john@lawfirm.com",
-    isDefault: false,
-    icon: <Smartphone className="h-5 w-5" />,
-  },
-];
+
 
 export function PaymentDialog({
   open,
@@ -146,12 +110,7 @@ export function PaymentDialog({
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [currency, setCurrency] = useState("XAF");
 
-  // SUPPRESSION des états problématiques qui créent des conflits
-  // const [transactionSuccess, setTransactionSuccess] = useState(false);
-  // const [transactionId, setTransactionId] = useState("");
-  // const [currentPaymentState, setCurrentPaymentState] = useState(paymentState);
 
-  // Pour déterminer les fournisseurs disponibles
   const currentCountry = PAWAPAY_COUNTRIES.find(
     (c) => c.code === selectedCountry
   );
