@@ -25,6 +25,7 @@ import {
   Maximize,
   Minimize,
   PictureInPicture,
+  Share2, // AJOUT: Import de l'icône Share2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import QRCodeScanner from "@/components/qr-code-scanner";
@@ -52,6 +53,7 @@ export default function LiveSaleDetailPage() {
   const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [showShareSuccess, setShowShareSuccess] = useState(false); // AJOUT: État pour le feedback de partage
   const chatEndRef = useRef(null);
   const videoRef = useRef(null);
   const { toast } = useToast();
@@ -181,6 +183,45 @@ export default function LiveSaleDetailPage() {
       unsubscribeLiveChat();
     };
   }, [liveSale]);
+
+  // AJOUT: Fonction pour partager le live
+  const handleShareLive = async () => {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const liveUrl = `${baseUrl}/live/${id}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: liveSale?.title || "Live Shopping",
+          text: `Regardez ce live shopping: ${
+            liveSale?.title || "Découvrez des produits exclusifs en direct!"
+          }`,
+          url: liveUrl,
+        });
+      } catch (error) {
+        console.log("Error sharing:", error);
+        // L'utilisateur a probablement annulé le partage
+      }
+    } else {
+      // Fallback: copier dans le presse-papier
+      try {
+        await navigator.clipboard.writeText(liveUrl);
+        setShowShareSuccess(true);
+        toast({
+          title: "Lien copié !",
+          description: "Le lien du live a été copié dans le presse-papier.",
+        });
+        setTimeout(() => setShowShareSuccess(false), 2000);
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de copier le lien.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleBuyNow = (product: any) => {
     setProductToBuy(product);
@@ -376,6 +417,22 @@ export default function LiveSaleDetailPage() {
               loop
             />
             <div className="absolute bottom-4 right-4 flex gap-2">
+              {/* AJOUT: Bouton Partager */}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-black/50 hover:bg-black/70 text-white relative"
+                onClick={handleShareLive}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Partager
+                {showShareSuccess && (
+                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                    Lien copié !
+                  </div>
+                )}
+              </Button>
+
               <Button
                 variant="secondary"
                 size="sm"

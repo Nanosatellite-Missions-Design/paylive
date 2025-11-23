@@ -7,13 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShoppingCart, Search, Star, MapPin, Clock, Heart } from "lucide-react";
+import {
+  ShoppingCart,
+  Search,
+  Star,
+  MapPin,
+  Clock,
+  Heart,
+  Zap,
+} from "lucide-react";
 import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getADocument } from "@/functions/get-a-document";
 import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
-import { useAuth } from "@/contexts/auth-context"; // ← AJOUTEZ CET IMPORT
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { PaymentDialog } from "@/components/payment-dialog"; // ← AJOUTEZ CET IMPORT
 
 export default function CatalogPage() {
   const params = useParams();
@@ -27,8 +37,16 @@ export default function CatalogPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const { addToCart, catalog, products, setProducts, setCatalog } = useCart();
-  const { userProducts } = useAuth(); // ← AJOUTEZ CETTE LIGNE
+  const { userProducts } = useAuth();
+  const { toast } = useToast();
   const t = useTranslations("CatalogPage");
+
+  // AJOUT: États pour gérer le paiement direct depuis le catalogue
+  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
+  const [productToBuy, setProductToBuy] = useState<any>({});
+  const [paymentState, setPaymentState] = useState("selecting");
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
+  const [depositId, setDepositId] = useState("");
 
   const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     if (!userProducts || userProducts.length === 0) return catalogProducts;
@@ -91,6 +109,106 @@ export default function CatalogPage() {
   const handleAddToCart = (product: CatalogProduct) => {
     console.log("testing");
     addToCart(product, 1);
+    toast({
+      title: "Produit ajouté au panier",
+      description: `${product.name} a été ajouté à votre panier.`,
+    });
+  };
+
+  // AJOUT: Fonction pour acheter directement depuis le catalogue
+  const handleBuyNow = (product: CatalogProduct) => {
+    setProductToBuy({
+      ...product,
+      totalPrice: product.price.toString(),
+    });
+    setShowSelectPaymentNumber(true);
+    setPaymentState("selecting");
+    setIsPaymentProcessing(false);
+  };
+
+  // AJOUT: Gestion du callback de paiement
+  const handlePaymentComplete = (result: string) => {
+    console.log("🔄 Catalog: handlePaymentComplete appelé avec:", result);
+
+    if (result === "pending") {
+      setPaymentState("pending");
+      setIsPaymentProcessing(true);
+      toast({
+        title: "Paiement en cours",
+        description: "Veuillez confirmer le paiement sur votre téléphone.",
+      });
+    } else if (result === "failed") {
+      setPaymentState("failed");
+      setIsPaymentProcessing(false);
+      toast({
+        variant: "destructive",
+        title: "Paiement échoué",
+        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
+      });
+    } else {
+      // C'est un depositId - transaction réussie
+      setPaymentState("success");
+      setDepositId(result);
+      setIsPaymentProcessing(false);
+
+      // Enregistrer la transaction dans Firebase du côté vendeur
+      if (productToBuy && productToBuy.creatorId) {
+        const newTransaction = {
+          type: "purchase",
+          buyerId: "userInfo.uid", // À remplacer par l'ID réel de l'utilisateur connecté
+          sellerId: productToBuy.creatorId,
+          productId: productToBuy.id,
+          productName: productToBuy.name,
+          counterpartyId: productToBuy.creatorId,
+          amount: productToBuy.price,
+          quantity: 1,
+          paymentMethod: "mobile_money",
+          status: "completed",
+          depositId: result,
+          timestamp: new Date().toISOString(),
+        };
+
+        // Utiliser votre fonction setToSubCollection ici
+        // setToSubCollection(
+        //   result,
+        //   newTransaction,
+        //   "users",
+        //   productToBuy.creatorId,
+        //   "transactions"
+        // )
+        //   .then(() => {
+        //     console.log("✅ Transaction enregistrée chez le vendeur");
+        //   })
+        //   .catch((error) => {
+        //     console.error("❌ Erreur enregistrement vendeur:", error);
+        //   });
+      }
+
+      toast({
+        title: "Paiement réussi !",
+        description: `Votre achat de ${productToBuy?.name} a été confirmé.`,
+      });
+
+      // Fermer automatiquement après un délai en cas de succès
+      setTimeout(() => {
+        setShowSelectPaymentNumber(false);
+      }, 3000);
+    }
+  };
+
+  // AJOUT: Gestion de l'annulation du paiement
+  const handleCancelPaymentDialog = () => {
+    console.log("❌ Catalog: Annulation du paiement");
+    setShowSelectPaymentNumber(false);
+    setPaymentState("selecting");
+    setIsPaymentProcessing(false);
+
+    if (isPaymentProcessing) {
+      toast({
+        title: "Paiement annulé",
+        description: "Le processus de paiement a été interrompu.",
+      });
+    }
   };
 
   const handleProductClick = (productId: string) => {
@@ -309,27 +427,53 @@ export default function CatalogPage() {
                       </span>
                     )}
                   </div>
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    disabled={!product.inStock}
-                    className={`w-full rounded-xl font-semibold transition-all duration-200 ${
-                      product.inStock
-                        ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    {product.inStock ? (
-                      <>
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        {t("addToCart")}
-                      </>
-                    ) : (
-                      "Out of Stock"
-                    )}
-                  </Button>
+
+                  {/* MODIFICATION: Ajout des deux boutons côte à côte */}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      disabled={!product.inStock}
+                      className={`flex-1 rounded-xl font-semibold transition-all duration-200 ${
+                        product.inStock
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      {product.inStock ? (
+                        <>
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          {t("addToCart")}
+                        </>
+                      ) : (
+                        "Out of Stock"
+                      )}
+                    </Button>
+
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBuyNow(product);
+                      }}
+                      disabled={!product.inStock}
+                      className={`flex-1 rounded-xl font-semibold transition-all duration-200 ${
+                        product.inStock
+                          ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                          : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      {product.inStock ? (
+                        <>
+                          <Zap className="h-4 w-4 mr-2" />
+                          Buy Now
+                        </>
+                      ) : (
+                        "Out of Stock"
+                      )}
+                    </Button>
+                  </div>
                 </CardContent>
               </div>
             </Card>
@@ -351,6 +495,17 @@ export default function CatalogPage() {
           </div>
         )}
       </div>
+
+      {/* AJOUT: PaymentDialog pour les achats directs depuis le catalogue */}
+      <PaymentDialog
+        open={showSelectPaymentNumber}
+        onOpenChange={setShowSelectPaymentNumber}
+        amount={productToBuy.totalPrice || productToBuy.price || "0"}
+        product={productToBuy.name || ""}
+        onPaymentComplete={handlePaymentComplete}
+        paymentState={paymentState}
+        handleCancel={handleCancelPaymentDialog}
+      />
 
       <style jsx>{`
         @keyframes fadeInUp {

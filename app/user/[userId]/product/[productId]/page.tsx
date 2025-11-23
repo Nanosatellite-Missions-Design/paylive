@@ -5,62 +5,32 @@ import { useParams, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  ArrowLeft,
   ShoppingCart,
   Plus,
   Minus,
-  Star,
   Share2,
   Heart,
   Shield,
   Truck,
-  RotateCcw,
-  ChevronsLeft,
   Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getASubDocument } from "@/functions/get-a-document";
 import { PaymentDialog } from "@/components/payment-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
-import { useCart } from "@/contexts/cart-context";
-import { useTranslations } from "@/lib/useTranslations";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  CountryProvider,
-  getCountryByCode,
-  PAWAPAY_COUNTRIES,
-  getAllCountries,
-} from "@/lib/countries";
+import { Card, CardContent } from "@/components/ui/card";
 
-export default function ProductPage() {
+export default function DirectProductPage() {
   const params = useParams();
   const router = useRouter();
+  const userId = params.userId as string;
   const productId = params.productId as string;
 
-  const { catalog, addToCart } = useCart();
-  const [product, setProduct] = useState<CatalogProduct | null>(null);
+  const [product, setProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,38 +39,11 @@ export default function ProductPage() {
   const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
   const [productToBuy, setProductToBuy] = useState<any>({});
   const [paymentState, setPaymentState] = useState("selecting");
-  const { toast } = useToast();
-  const [depositId, setDepositId] = useState("");
-
-  // ✅ CORRECTION : États pour gérer correctement le flux de paiement
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-  const [lastTransactionStatus, setLastTransactionStatus] = useState<
-    string | null
-  >(null);
+  const [depositId, setDepositId] = useState("");
+  const { toast } = useToast();
 
-  // new states - conservés pour référence mais maintenant gérés dans PaymentDialog
-  const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
-    "pawapay"
-  );
-  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
-    undefined
-  );
-  const [mobileProvider, setMobileProvider] = useState<string | undefined>(
-    undefined
-  );
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
-
-  // ✅ CORRECTION : Utiliser selectedImage au lieu de currentImageIndices pour la page produit
-  // (car on n'a qu'un seul produit sur cette page)
-
-  // Pour déterminer les fournisseurs disponibles
-  const currentCountry = PAWAPAY_COUNTRIES.find(
-    (c) => c.code === selectedCountry
-  );
-  const availableProviders = currentCountry?.providers || [];
-  const t = useTranslations("CatalogPage.ProductPage");
-
-  // ✅ CORRECTION : Fonctions de navigation simplifiées pour un seul produit
+  // Fonctions de navigation des images
   const goToNextImage = () => {
     if (!product) return;
     const images = product.images || product.image || [];
@@ -113,34 +56,30 @@ export default function ProductPage() {
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Mock data - replace with actual API call
+  // Récupérer le produit directement
   useEffect(() => {
     const fetchProduct = async () => {
       setIsLoading(true);
-      // const unsubscribeUser = getADocument(catalogId, "users", (data) => {
-      //     setCatalogData(data);
-      // });
       const unsubscribeProduct = getASubDocument(
-        catalog?.creatorId ?? "",
+        userId,
         "products",
         productId,
         setProduct
       );
       setIsLoading(false);
       return () => {
-        // Safe to call even if undefined due to nullish coalescing
-        // if (unsubscribeUser) unsubscribeUser();
         if (unsubscribeProduct) unsubscribeProduct();
       };
     };
 
-    fetchProduct();
-  }, [catalog?.creatorId, productId]);
+    if (userId && productId) {
+      fetchProduct();
+    }
+  }, [userId, productId]);
 
-  // ✅ CORRECTION : Effet pour réinitialiser l'état de paiement quand le dialogue se ferme
+  // Réinitialiser l'état de paiement
   useEffect(() => {
     if (!showSelectPaymentNumber) {
-      // Réinitialiser l'état après un délai pour permettre les animations
       const timer = setTimeout(() => {
         setPaymentState("selecting");
         setIsPaymentProcessing(false);
@@ -148,16 +87,6 @@ export default function ProductPage() {
       return () => clearTimeout(timer);
     }
   }, [showSelectPaymentNumber]);
-
-  const handleAddToCart = () => {
-    if (product) {
-      addToCart(product, quantity);
-      toast({
-        title: "Produit ajouté au panier",
-        description: `${product.name} a été ajouté à votre panier.`,
-      });
-    }
-  };
 
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= (product?.inStock || 1)) {
@@ -177,7 +106,6 @@ export default function ProductPage() {
         console.log("Error sharing:", error);
       }
     } else {
-      // Fallback: copy to clipboard
       await navigator.clipboard.writeText(window.location.href);
       setShowShareSuccess(true);
       setTimeout(() => setShowShareSuccess(false), 2000);
@@ -192,13 +120,12 @@ export default function ProductPage() {
       totalPrice: (product.price * quantity).toString(),
     });
     setShowSelectPaymentNumber(true);
-    setPaymentState("selecting"); // ✅ CORRECTION : Réinitialiser l'état à chaque ouverture
+    setPaymentState("selecting");
     setIsPaymentProcessing(false);
   };
 
-  // ✅ CORRECTION COMPLÈTE : Nouvelle gestion du callback de paiement
   const handlePaymentComplete = (result: string) => {
-    console.log("🔄 Parent: handlePaymentComplete appelé avec:", result);
+    console.log("Payment complete:", result);
 
     if (result === "pending") {
       setPaymentState("pending");
@@ -216,12 +143,11 @@ export default function ProductPage() {
         description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
       });
     } else {
-      // C'est un depositId - transaction réussie
       setPaymentState("success");
       setDepositId(result);
       setIsPaymentProcessing(false);
 
-      // ✅ CORRECTION : Enregistrer la transaction dans Firebase du côté vendeur
+      // Enregistrer la transaction
       if (product && product.creatorId) {
         const newTransaction = {
           type: "purchase",
@@ -239,17 +165,17 @@ export default function ProductPage() {
         };
 
         setToSubCollection(
-          result, // Utiliser le depositId comme ID de document
+          result,
           newTransaction,
           "users",
           product.creatorId,
           "transactions"
         )
           .then(() => {
-            console.log("✅ Transaction enregistrée chez le vendeur");
+            console.log("✅ Transaction enregistrée");
           })
           .catch((error) => {
-            console.error("❌ Erreur enregistrement vendeur:", error);
+            console.error("❌ Erreur enregistrement:", error);
           });
       }
 
@@ -258,16 +184,13 @@ export default function ProductPage() {
         description: `Votre achat de ${product?.name} a été confirmé.`,
       });
 
-      // ✅ CORRECTION : Fermer automatiquement après un délai en cas de succès
       setTimeout(() => {
         setShowSelectPaymentNumber(false);
-        // Optionnel : Rediriger ou recharger les données
       }, 3000);
     }
   };
 
   const handleCancelPaymentDialog = () => {
-    console.log("❌ Parent: Annulation du paiement");
     setShowSelectPaymentNumber(false);
     setPaymentState("selecting");
     setIsPaymentProcessing(false);
@@ -280,20 +203,11 @@ export default function ProductPage() {
     }
   };
 
-  // ✅ CORRECTION : Fonction pour réessayer le paiement
-  const handleRetryPayment = () => {
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
-            <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto animate-spin animation-delay-150"></div>
-          </div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
             Loading product details...
           </p>
@@ -316,17 +230,16 @@ export default function ProductPage() {
             The product you're looking for doesn't exist or has been removed.
           </p>
           <Button
-            onClick={() => router.push(`/catalog/${catalog?.id}`)}
+            onClick={() => router.push("/")}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
           >
-            Back to Catalog
+            Back to Home
           </Button>
         </div>
       </div>
     );
   }
 
-  // ✅ CORRECTION : Récupérer les images de façon cohérente
   const productImages = product.images || product.image || [];
   const hasMultipleImages = productImages.length > 1;
 
@@ -341,11 +254,11 @@ export default function ProductPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/catalog/${catalog?.id}`)}
+                onClick={() => router.back()}
                 className="hover:bg-blue-50 rounded-xl"
               >
-                <ChevronsLeft className="h-4 w-4 mr-2" />
-                {/* Back to Catalog */}
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Back
               </Button>
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
@@ -354,7 +267,7 @@ export default function ProductPage() {
                     alt={product.creatorName}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                    {product.creatorName.charAt(0)}
+                    {product.creatorName?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm text-gray-600 font-medium">
@@ -370,25 +283,13 @@ export default function ProductPage() {
                 className="rounded-xl hover:bg-blue-50 border-blue-200 relative bg-transparent"
               >
                 <Share2 className="h-4 w-4 mr-2" />
-                {t("share")}
+                Share
                 {showShareSuccess && (
                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded">
                     Copied!
                   </div>
                 )}
               </Button>
-              {/* <Button
-                onClick={() => router.push(`/catalog/${catalogId}/cart`)}
-                className="relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Cart
-                {2 > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 hover:bg-red-500 animate-pulse">
-                    2
-                  </Badge>
-                )}
-              </Button> */}
             </div>
           </div>
         </div>
@@ -400,7 +301,6 @@ export default function ProductPage() {
           {/* Product Images */}
           <div className="space-y-6">
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-xl">
-              {/* ✅ CORRECTION : Carousel avec navigation cohérente */}
               <div className="relative w-full h-full">
                 <img
                   src={productImages[selectedImage] || "/placeholder.jpg"}
@@ -408,7 +308,6 @@ export default function ProductPage() {
                   className="w-full h-full object-cover"
                 />
 
-                {/* Boutons de navigation */}
                 {hasMultipleImages && (
                   <>
                     <button
@@ -433,10 +332,9 @@ export default function ProductPage() {
                 )}
               </div>
 
-              {/* Indicateurs de position (dots) */}
               {hasMultipleImages && (
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                  {productImages.map((_, index) => (
+                  {productImages.map((_: any, index: number) => (
                     <button
                       key={index}
                       onClick={(e) => {
@@ -467,10 +365,9 @@ export default function ProductPage() {
               </button>
             </div>
 
-            {/* Miniatures */}
             {hasMultipleImages && (
               <div className="flex space-x-3 overflow-x-auto pb-2">
-                {productImages.map((image, index) => (
+                {productImages.map((image: string, index: number) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -527,16 +424,12 @@ export default function ProductPage() {
             <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Shield className="h-5 w-5 text-green-500" />
-                <span>{t("securePayment")}</span>
+                <span>Secure Payment</span>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Truck className="h-5 w-5 text-blue-500" />
-                <span>{t("fastShipping")}</span>
+                <span>Fast Shipping</span>
               </div>
-              {/* <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <RotateCcw className="h-5 w-5 text-purple-500" />
-                <span>Easy Returns</span>
-              </div> */}
             </div>
 
             {product.inStock && (
@@ -545,7 +438,7 @@ export default function ProductPage() {
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        {t("quantity")}
+                        Quantity
                       </label>
                       <div className="flex items-center space-x-4">
                         <Button
@@ -600,18 +493,9 @@ export default function ProductPage() {
                             Processing...
                           </div>
                         ) : (
-                          t("buyNow")
+                          "Buy Now"
                         )}
                       </Button>
-
-                      {/* <Button
-                        onClick={handleAddToCart}
-                        disabled={isPaymentProcessing}
-                        className="w-full h-14 text-lg font-semibold bg-white text-gray-900 border border-gray-300 rounded-xl shadow hover:shadow-md transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <ShoppingCart className="h-5 w-5 mr-3" />
-                        {t("addToCart")}
-                      </Button> */}
                     </div>
                   </div>
                 </CardContent>
@@ -622,7 +506,7 @@ export default function ProductPage() {
             <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50">
               <CardContent className="p-8">
                 <h3 className="font-bold text-xl mb-6 text-gray-900">
-                  {t("sellerInformation")}
+                  Seller Information
                 </h3>
                 <div className="flex items-start space-x-4 mb-6">
                   <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
@@ -631,27 +515,13 @@ export default function ProductPage() {
                       alt={product.creatorName}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">
-                      {product.creatorName.charAt(0)}
+                      {product.creatorName?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <p className="font-bold text-lg text-gray-900">
                       {product.creatorName}
                     </p>
-                    {/* <div className="flex items-center space-x-2 mb-2">
-                      <div className="flex items-center space-x-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-600 font-medium">
-                        4.8 (124 reviews)
-                      </span>
-                    </div> */}
-                    {/* <p className="text-gray-600 leading-relaxed">{catalog.description}</p> */}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -666,7 +536,6 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* ✅ CORRECTION : PaymentDialog avec la bonne gestion des états */}
       <PaymentDialog
         open={showSelectPaymentNumber}
         onOpenChange={setShowSelectPaymentNumber}
@@ -676,12 +545,6 @@ export default function ProductPage() {
         paymentState={paymentState}
         handleCancel={handleCancelPaymentDialog}
       />
-
-      <style jsx>{`
-        .animation-delay-150 {
-          animation-delay: 150ms;
-        }
-      `}</style>
     </div>
   );
 }

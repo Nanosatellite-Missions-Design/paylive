@@ -22,7 +22,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Plus, Edit, Trash2, QrCode, Loader2 } from "lucide-react";
+import {
+  ChevronLeft,
+  Plus,
+  Edit,
+  Trash2,
+  QrCode,
+  Loader2,
+  Share2,
+} from "lucide-react"; // AJOUT: Share2
 import { useToast } from "@/hooks/use-toast";
 import QRCodeGenerator from "@/components/qr-code-generator";
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
@@ -43,7 +51,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProductsPage() {
   const { user, userInfo, userProducts, userCatalogs } = useAuth();
@@ -61,6 +68,7 @@ export default function ProductsPage() {
   const [editingNewImagePreviews, setEditingNewImagePreviews] = useState<
     string[]
   >([]);
+  const [showShareSuccess, setShowShareSuccess] = useState(false); // AJOUT: État pour le feedback de partage
 
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
   const [newProductName, setNewProductName] = useState("");
@@ -68,15 +76,53 @@ export default function ProductsPage() {
   const [newProductQuantity, setNewProductQuantity] = useState("");
   const [newProductDescription, setNewProductDescription] = useState("");
   const [newProductStatus, setNewProductStatus] = useState("");
-  const [newProductCategory, setNewProductCategory] = useState("electronics");
+  const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
-  const t = useTranslations("Dashboard.Products");
 
   useEffect(() => {
     console.log(userProducts);
   }, [user, userProducts]);
+  //  const baseUrl =https://www.paylivecm.shop;
+
+  // AJOUT: Fonction pour partager le produit
+  const handleShare = async (product: any) => {
+    // Utiliser la variable d'environnement ou l'URL actuelle en fallback
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const productUrl = `${baseUrl}/user/${userInfo.uid}/product/${product.id}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: product.description,
+          url: productUrl,
+        });
+      } catch (error) {
+        console.log("Error sharing:", error);
+        // Fallback si l'utilisateur annule le partage
+      }
+    } else {
+      // Fallback: copier dans le presse-papier
+      try {
+        await navigator.clipboard.writeText(productUrl);
+        setShowShareSuccess(true);
+        toast({
+          title: "Lien copié !",
+          description: "Le lien du produit a été copié dans le presse-papier.",
+        });
+        setTimeout(() => setShowShareSuccess(false), 2000);
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de copier le lien.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleAddProduct = async (e: any) => {
     e.preventDefault();
@@ -244,9 +290,16 @@ export default function ProductsPage() {
       <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
         <header className="mb-6">
           <div className="flex items-center mb-4">
-            <h1 className="text-2xl font-bold">{t("title")}</h1>
+            <Link href="/dashboard/profile" className="mr-2">
+              <Button variant="ghost" size="icon">
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <h1 className="text-2xl font-bold">My Products</h1>
           </div>
-          <p className="text-gray-500">{t("description")}</p>
+          <p className="text-gray-500">
+            Manage your products for live sales and auctions
+          </p>
         </header>
 
         <div className="space-y-4 mb-6">
@@ -282,6 +335,21 @@ export default function ProductsPage() {
                         XAF{product.price.toFixed(2)}
                       </p>
                       <div className="flex items-center gap-1">
+                        {/* AJOUT: Bouton Partager */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleShare(product)}
+                          className="h-8 w-8 relative"
+                        >
+                          <Share2 className="h-4 w-4" />
+                          {showShareSuccess && (
+                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                              Lien copié !
+                            </div>
+                          )}
+                        </Button>
+
                         <Button
                           variant="ghost"
                           size="icon"
@@ -318,20 +386,19 @@ export default function ProductsPage() {
         <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>{t("DeleteDialog.title")}</AlertDialogTitle>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                {t("DeleteDialog.description")} {selectedProduct?.name}.
+                This action cannot be undone. This will permanently delete the
+                product {selectedProduct?.name}.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>
-                {t("DeleteDialog.cancel")}
-              </AlertDialogCancel>
+              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 disabled={loading}
                 onClick={handleDeleteProduct}
               >
-                {t("DeleteDialog.delete")}
+                Continue
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -341,16 +408,16 @@ export default function ProductsPage() {
           <DialogTrigger asChild>
             <Button className="w-full">
               <Plus className="h-4 w-4 mr-2" />
-              {t("addNew")}
+              Add New Product
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t("addNew")}</DialogTitle>
+              <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddProduct} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="name">{t("ProductDialog.productName")}</Label>
+                <Label htmlFor="name">Product Name</Label>
                 <Input
                   id="name"
                   placeholder="Enter product name"
@@ -358,7 +425,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">{t("ProductDialog.price")} (XAF)</Label>
+                <Label htmlFor="price">Price (XAF)</Label>
                 <Input
                   id="price"
                   type="number"
@@ -368,7 +435,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">{t("ProductDialog.quantity")}</Label>
+                <Label htmlFor="price">Quantity</Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -378,9 +445,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">
-                  {t("ProductDialog.description")}
-                </Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   placeholder="Enter product description"
@@ -388,7 +453,7 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">{t("ProductDialog.category")}</Label>
+                <Label htmlFor="category">Category</Label>
                 <Select
                   defaultValue="electronics"
                   onValueChange={setNewProductCategory}
@@ -408,9 +473,7 @@ export default function ProductsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="image">
-                  {t("ProductDialog.productImages")}
-                </Label>
+                <Label htmlFor="image">Product Images</Label>
 
                 {/* Clickable Upload Box */}
                 <div
@@ -476,13 +539,13 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => setIsAddingProduct(false)}
                 >
-                  {t("ProductDialog.cancel")}
+                  Cancel
                 </Button>
                 <Button disabled={loading} type="submit">
                   {loading ? (
                     <Loader2 className="animate-spin" />
                   ) : (
-                    t("ProductDialog.add")
+                    "Add Product"
                   )}
                 </Button>
               </div>
@@ -493,14 +556,12 @@ export default function ProductsPage() {
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t("editDialog")}</DialogTitle>
+              <DialogTitle>Edit Product</DialogTitle>
             </DialogHeader>
             {editingProduct && (
               <form onSubmit={handleSaveEdit} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="edit-name">
-                    {t("ProductDialog.productName")}
-                  </Label>
+                  <Label htmlFor="edit-name">Product Name</Label>
                   <Input
                     id="edit-name"
                     value={editingProduct.name}
@@ -513,9 +574,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-price">
-                    {t("ProductDialog.price")} (XAF)
-                  </Label>
+                  <Label htmlFor="edit-price">Price (XAF)</Label>
                   <Input
                     id="edit-price"
                     type="number"
@@ -530,9 +589,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-description">
-                    {t("ProductDialog.description")}
-                  </Label>
+                  <Label htmlFor="edit-description">Description</Label>
                   <Textarea
                     id="edit-description"
                     value={editingProduct.description}
@@ -545,9 +602,7 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-category">
-                    {t("ProductDialog.category")}
-                  </Label>
+                  <Label htmlFor="edit-category">Category</Label>
                   <Select
                     value={editingProduct.category}
                     onValueChange={(value) =>
@@ -569,9 +624,7 @@ export default function ProductsPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-status">
-                    {t("ProductDialog.status")}
-                  </Label>
+                  <Label htmlFor="edit-status">Status</Label>
                   <Select
                     value={editingProduct.status}
                     onValueChange={(value) =>
@@ -658,13 +711,13 @@ export default function ProductsPage() {
                     type="button"
                     onClick={() => setIsEditing(false)}
                   >
-                    {t("ProductDialog.cancel")}
+                    Cancel
                   </Button>
                   <Button disabled={loading} type="submit">
                     {loading ? (
                       <Loader2 className="animate-spin" />
                     ) : (
-                      t("saveChanges")
+                      "Save Changes"
                     )}
                   </Button>
                 </div>
@@ -676,7 +729,7 @@ export default function ProductsPage() {
         <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
           <DialogContent className="max-w-xs">
             <DialogHeader>
-              <DialogTitle>{t("QRDialog.title")}</DialogTitle>
+              <DialogTitle>Product QR Code</DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center justify-center p-4">
               <div className="bg-white p-4 rounded-md">
@@ -691,10 +744,10 @@ export default function ProductsPage() {
                 {selectedProduct?.name}
               </p>
               <p className="text-center text-xs text-gray-500">
-                {t("QRDialog.description")}
+                Scan to view product details
               </p>
               <Button className="mt-4" onClick={() => window.print()}>
-                {t("QRDialog.button")}
+                Print QR Code
               </Button>
             </div>
           </DialogContent>

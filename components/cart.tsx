@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/contexts/cart-context";
+import { useAuth } from "@/contexts/auth-context";
 import {
   ShoppingCart,
   Plus,
@@ -26,16 +27,12 @@ import {
   MapPin,
   MessageSquare,
 } from "lucide-react";
-import {
-  addToCollection,
-  setToCollection,
-} from "@/functions/add-to-collection";
-import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
-import { toast } from "@/hooks/use-toast";
-import Loader from "@/components/loader";
-import { updateDocument } from "@/functions/update-doc-in-collection";
-import { increment } from "firebase/firestore";
+import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
+import { useToast } from "@/hooks/use-toast";
 import { useTranslations } from "@/lib/useTranslations";
+import { PaymentDialog } from "@/components/payment-dialog";
+import { setToCollection } from "@/functions/add-to-collection";
+
 interface FloatingCartProps {
   catalogId: string;
 }
@@ -50,157 +47,25 @@ export default function FloatingCart() {
     getCartItemCount,
     getCartTotal,
   } = useCart();
+
+  const { userInfo, refreshUserOrders } = useAuth();
+  const { toast } = useToast();
+
   const [isOpen, setIsOpen] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const [paymentState, setPaymentState] = useState("selecting");
 
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     phone: "",
+    email: "",
     address: "",
     notes: "",
   });
-  const [depositId, setDepositId] = useState("");
-  const [loading, setLoading] = useState(false);
+
   const t = useTranslations("CatalogPage.Cart");
-
-  useEffect(() => {
-    const savedDepositId = localStorage.getItem("depositId");
-
-    if (savedDepositId) {
-      setDepositId(savedDepositId);
-    }
-  }, []);
-
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-
-    if (depositId && catalog) {
-      intervalId = setInterval(async () => {
-        try {
-          const response = await fetch(
-            `/api/pawapay/deposits?depositId=${depositId}`
-          );
-          const data = await response.json();
-          const status = data[0]?.status || data.status;
-          console.log(status);
-          console.log(depositId);
-          if (status === "COMPLETED") {
-            clearInterval(intervalId);
-
-            // Retrieve form data after payment
-            const savedCartDatas = localStorage.getItem("cart");
-            const savedCustomerDatas = localStorage.getItem("customer");
-            if (savedCartDatas && savedCustomerDatas) {
-              const parsedCartDatas = JSON.parse(savedCartDatas);
-              const parsedCustomerDatas = JSON.parse(savedCustomerDatas);
-              try {
-                console.log(parsedCartDatas);
-                console.log(parsedCustomerDatas);
-                if (!catalog) return;
-                // Here you would typically send the order to your backend
-                const orderData = {
-                  catalogId: catalog.id,
-                  sellerName: catalog.creatorName,
-                  sellerId: catalog.creatorId,
-                  items: parsedCartDatas.items,
-                  total: parsedCartDatas.total,
-                  customer: parsedCustomerDatas,
-                  notes: parsedCustomerDatas.notes,
-                  status: "pending",
-                };
-                await addToCollection("orders", orderData);
-                await addToSubCollection(
-                  {
-                    amount: parsedCartDatas.total,
-                    type: "purchase",
-                    status: "completed",
-                    phoneNumber: parsedCustomerDatas.phone,
-                  },
-                  "users",
-                  catalog.creatorId,
-                  "transactions"
-                );
-                await updateDocument("users", catalog.creatorId, {
-                  balance: increment(parsedCartDatas.total),
-                  lifetimeSales: increment(parsedCartDatas.total),
-                });
-
-                const res = await fetch("/api/send-sms", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    to: catalog.creatorPhone,
-                    body: "PayLive: Vous avez reçu une nouvelle commande paylive, veuillez vous connecter et voir les détails de la commande",
-                  }),
-                });
-                // Retrieve existing orders from localStorage (or start empty)
-                const existingOrders = JSON.parse(
-                  localStorage.getItem("orders") || "[]"
-                );
-
-                // Add the new order to the array
-                existingOrders.push(orderData);
-
-                // Save back to localStorage
-                localStorage.setItem("orders", JSON.stringify(existingOrders));
-
-                toast({
-                  title: "Payment Completed",
-                  description: "Your order has been has been completed.",
-                });
-
-                // Reset form and close dialog
-                setCustomerInfo({
-                  name: "",
-                  phone: "",
-                  address: "",
-                  notes: "",
-                });
-
-                // Clear localStorage
-                localStorage.removeItem("depositId");
-                localStorage.removeItem("cart");
-                localStorage.removeItem("customer");
-                setDepositId("");
-                clearCart();
-
-                setLoading(false);
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "An error has occured.",
-                });
-              }
-              // Save the transaction here
-              // await saveTransaction(depositId);
-            }
-
-            toast({
-              title: "Payment Completed",
-              description: "Your order has been has been completed.",
-            });
-          } else if (status === undefined) {
-            toast({
-              title: "Payment Error",
-              description: "The payment has failed.",
-              variant: "destructive",
-            });
-            localStorage.removeItem("depositId");
-            setDepositId("");
-            localStorage.removeItem("pendingFormData");
-            setLoading(false);
-          }
-        } catch (error) {
-          console.error("Payment verification failed:", error);
-          clearInterval(intervalId);
-        }
-      }, 10000);
-    }
-
-    return () => clearInterval(intervalId);
-  }, [depositId, catalog]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -210,44 +75,174 @@ export default function FloatingCart() {
     }
   };
 
-  const handleSubmitOrder = async () => {
-    if (!cart || cart.items.length === 0) return;
+  const handleProceedToPayment = () => {
+    // Validation des champs obligatoires
+    if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
+      toast({
+        variant: "destructive",
+        title: "Informations manquantes",
+        description:
+          "Veuillez remplir tous les champs obligatoires (Nom, Téléphone, Adresse)",
+      });
+      return;
+    }
 
-    setIsSubmitting(true);
+    if (!cart || cart.items.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Panier vide",
+        description: "Votre panier est vide",
+      });
+      return;
+    }
 
-    const body = JSON.stringify({
-      amount: cart.total,
-      currentUrl: `${window.location}`,
-      product: "PayLive Payment",
-    });
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentComplete = async (result: string) => {
+    console.log("🔄 FloatingCart: handlePaymentComplete appelé avec:", result);
+
+    if (result === "pending") {
+      setPaymentState("pending");
+      setIsSubmitting(true);
+      toast({
+        title: "Paiement en cours",
+        description: "Veuillez confirmer le paiement sur votre téléphone.",
+      });
+    } else if (result === "failed") {
+      setPaymentState("failed");
+      setIsSubmitting(false);
+      toast({
+        variant: "destructive",
+        title: "Paiement échoué",
+        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
+      });
+    } else {
+      // Paiement réussi - créer la commande
+      try {
+        await createOrder(result);
+        setPaymentState("success");
+        setIsSubmitting(false);
+
+        toast({
+          title: "Commande créée !",
+          description: "Votre commande a été créée avec succès.",
+        });
+
+        // Fermer les dialogues après un délai
+        setTimeout(() => {
+          setShowPaymentDialog(false);
+          setShowCheckout(false);
+          setIsOpen(false);
+          clearCart();
+        }, 2000);
+      } catch (error) {
+        console.error("❌ Erreur création commande:", error);
+        setPaymentState("failed");
+        setIsSubmitting(false);
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Erreur lors de la création de la commande",
+        });
+      }
+    }
+  };
+
+  const createOrder = async (depositId: string) => {
+    if (!cart || !userInfo || !catalog) {
+      throw new Error("Cart, user info or catalog missing");
+    }
+
+    const orderData = {
+      id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      catalogId: catalog.id,
+      sellerId: catalog.creatorId,
+      sellerName: catalog.creatorName,
+      customer: {
+        ...customerInfo,
+        userId: userInfo.uid,
+      },
+      items: cart.items.map((item) => ({
+        productId: item.productId,
+        product: {
+          id: item.product.id,
+          name: item.product.name,
+          price: item.product.price,
+          image: item.product.images || item.product.image || [],
+          description: item.product.description,
+          category: item.product.category,
+        },
+        quantity: item.quantity,
+        price: item.product.price,
+      })),
+      total: getCartTotal(),
+      status: "pending" as const,
+      payment: {
+        method: "mobile_money",
+        depositId: depositId,
+        amount: getCartTotal(),
+        status: "completed",
+        timestamp: new Date().toISOString(),
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    console.log("📦 Création commande:", orderData);
 
     try {
-      setLoading(true);
-      const res = await fetch("/api/pawapay/deposits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
+      // ✅ CORRECTION : Utilisez setToCollection pour la collection principale
+      await setToCollection("orders", orderData.id, orderData);
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Unknown error");
+      // ✅ SAUVEGARDE DANS LA SOUS-COLLECTION DE L'UTILISATEUR (acheteur)
+      await setToSubCollection(
+        orderData.id, // ID du document
+        orderData,
+        "users",
+        userInfo.uid,
+        "orders"
+      );
 
-      // Save depositId in localStorage
-      localStorage.setItem("depositId", data.depositId);
-      setDepositId(data.depositId);
+      // ✅ SAUVEGARDE DANS LA SOUS-COLLECTION DU VENDEUR
+      await setToSubCollection(
+        orderData.id, // ID du document
+        orderData,
+        "users",
+        catalog.creatorId,
+        "orders"
+      );
 
-      // Optional: Save any form data so you can still create the account after refresh
-      localStorage.setItem("customer", JSON.stringify(customerInfo));
+      console.log("✅ Commande créée avec succès dans Firebase");
 
-      if (data?.redirectUrl) {
-        window.location.href = data.redirectUrl;
+      // Rafraîchir les commandes de l'utilisateur
+      if (refreshUserOrders) {
+        await refreshUserOrders();
       }
-    } catch (error) {}
 
-    // Clear cart and show success
-    setOrderSubmitted(true);
-    setShowCheckout(false);
+      // Envoyer un SMS au vendeur
+      try {
+        const res = await fetch("/api/send-sms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: catalog.creatorPhone,
+            body: "PayLive: Vous avez reçu une nouvelle commande paylive, veuillez vous connecter et voir les détails de la commande",
+          }),
+        });
+        console.log("✅ SMS envoyé au vendeur");
+      } catch (error) {
+        console.error("❌ Erreur envoi SMS:", error);
+      }
+    } catch (error) {
+      console.error("❌ Erreur sauvegarde commande:", error);
+      throw error;
+    }
+  };
 
+  const handleCancelPayment = () => {
+    setShowPaymentDialog(false);
+    setPaymentState("selecting");
     setIsSubmitting(false);
   };
 
@@ -259,7 +254,6 @@ export default function FloatingCart() {
 
   return (
     <>
-      {depositId && <Loader />}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
@@ -276,27 +270,13 @@ export default function FloatingCart() {
         </DialogTrigger>
 
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto p-0 bg-gradient-to-br from-white to-gray-50">
-          {orderSubmitted ? (
-            // Success State
-            <div className="p-8 text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-12 w-12 text-green-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Order Submitted Successfully!
-              </h2>
-              <p className="text-gray-600 leading-relaxed">
-                Thank you for your order! The seller will contact you soon to
-                confirm details and arrange payment & delivery.
-              </p>
-            </div>
-          ) : showCheckout ? (
+          {showCheckout ? (
             // Checkout Form
             <div className="flex flex-col h-full">
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-2xl font-bold text-gray-900">
-                    [t("checkout")]
+                    {t("checkout")}
                   </DialogTitle>
                   <Button
                     variant="ghost"
@@ -385,6 +365,29 @@ export default function FloatingCart() {
 
                   <div>
                     <Label
+                      htmlFor="checkout-email"
+                      className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span>Email (Optional)</span>
+                    </Label>
+                    <Input
+                      id="checkout-email"
+                      type="email"
+                      value={customerInfo.email}
+                      onChange={(e) =>
+                        setCustomerInfo({
+                          ...customerInfo,
+                          email: e.target.value,
+                        })
+                      }
+                      placeholder="Enter your email"
+                      className="h-12 rounded-xl border-2 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <Label
                       htmlFor="checkout-address"
                       className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
                     >
@@ -432,7 +435,7 @@ export default function FloatingCart() {
 
               <div className="p-6 bg-gray-50 border-t">
                 <Button
-                  onClick={handleSubmitOrder}
+                  onClick={handleProceedToPayment}
                   disabled={
                     !customerInfo.name ||
                     !customerInfo.phone ||
@@ -444,17 +447,18 @@ export default function FloatingCart() {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
-                      {t("submittingOrder")}...
+                      Processing...
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5 mr-3" />
-                      {t("submitOrder")} - XAF{getCartTotal().toFixed(2)}
+                      Proceed to Payment - XAF{getCartTotal().toFixed(2)}
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-gray-600 text-center mt-3">
-                  {t("footer")}
+                  You will need to complete the payment before your order is
+                  confirmed.
                 </p>
               </div>
             </div>
@@ -486,7 +490,11 @@ export default function FloatingCart() {
                         }}
                       >
                         <img
-                          src={item.product.image?.[0] || "/placeholder.jpg"}
+                          src={
+                            item.product.images?.[0] ||
+                            item.product.image?.[0] ||
+                            "/placeholder.jpg"
+                          }
                           alt={item.product.name}
                           className="w-16 h-16 object-cover rounded-lg shadow-md"
                         />
@@ -586,6 +594,17 @@ export default function FloatingCart() {
         </DialogContent>
       </Dialog>
 
+      {/* Payment Dialog */}
+      <PaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        amount={getCartTotal().toString()}
+        product={`Order from ${cart?.sellerName || "Seller"}`}
+        onPaymentComplete={handlePaymentComplete}
+        paymentState={paymentState}
+        handleCancel={handleCancelPayment}
+      />
+
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -600,7 +619,4 @@ export default function FloatingCart() {
       `}</style>
     </>
   );
-}
-function nanoid(arg0: number) {
-  throw new Error("Function not implemented.");
 }

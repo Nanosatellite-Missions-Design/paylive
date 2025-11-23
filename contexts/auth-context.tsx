@@ -46,6 +46,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginWithPhoneNumber: (phone: string, appVerifier: any) => Promise<any>;
   confirmOtp: (otp: string, name: string) => Promise<void>;
+  refreshUserOrders: () => Promise<void | (() => void)>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -214,6 +215,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUsers([]);
   };
 
+  const refreshUserOrders = async () => {
+    if (!user?.uid) return;
+
+    try {
+      // Utilisez votre fonction existante pour récupérer les commandes
+      const unsubscribe = listenToSubCollection(
+        "users",
+        user.uid,
+        "orders",
+        (orders: Order[]) => {
+          setUserOrders(orders);
+        }
+      );
+
+      // Retournez la fonction unsubscribe si nécessaire
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error refreshing orders:", error);
+    }
+  };
+
   // User document listener
   useEffect(() => {
     if (!user) {
@@ -317,6 +339,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         loginWithPhoneNumber,
         confirmOtp,
+        refreshUserOrders,
       }}
     >
       {children}
