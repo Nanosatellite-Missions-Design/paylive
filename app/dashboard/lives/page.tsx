@@ -34,6 +34,7 @@ import {
   Pause,
   Package,
   Loader2,
+  Share2, // AJOUT: Import de l'icône Share2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -59,6 +60,11 @@ export default function LiveSalesManagementPage() {
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useTranslations("Dashboard.Lives");
+
+  // AJOUT: État pour le partage
+  const [shareStates, setShareStates] = useState<{ [key: string]: boolean }>(
+    {}
+  );
 
   useEffect(() => {
     if (!userInfo?.uid || !lives) return;
@@ -118,6 +124,45 @@ export default function LiveSalesManagementPage() {
     };
   }, [userInfo?.uid, lives]);
 
+  // AJOUT: Fonction pour partager le live
+  const handleShareLive = async (liveId: string, liveTitle: string) => {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const liveUrl = `${baseUrl}/live/${liveId}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: liveTitle,
+          text: `Rejoignez-moi pour ce live shopping: ${liveTitle}`,
+          url: liveUrl,
+        });
+      } catch (error) {
+        // L'utilisateur a probablement annulé le partage
+        console.log("Error sharing:", error);
+      }
+    } else {
+      // Fallback: copier dans le presse-papier
+      try {
+        await navigator.clipboard.writeText(liveUrl);
+        setShareStates((prev) => ({ ...prev, [liveId]: true }));
+        toast({
+          title: "Lien copié !",
+          description: "Le lien du live a été copié dans le presse-papier.",
+        });
+        setTimeout(() => {
+          setShareStates((prev) => ({ ...prev, [liveId]: false }));
+        }, 3000);
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de copier le lien.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleCreateLiveSale = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -145,7 +190,7 @@ export default function LiveSalesManagementPage() {
       scheduledFor: `${date} - ${time}`,
       startedAt: "",
       viewers: 0,
-      products: selectedProducts, // implement product selection later
+      products: selectedProducts,
       description,
       image: imageUrl,
     };
@@ -154,22 +199,22 @@ export default function LiveSalesManagementPage() {
     setIsCreatingLiveSale(false);
     setSelectedProducts([]);
     setThumbnail(null);
-    setLoading(true);
+    setNewLiveTitle("");
+    setNewLiveDescription("");
+    setLoading(false);
 
     toast({
-      title: "Live sale created",
-      description: "Your new live sale has been scheduled successfully.",
+      title: "Live créé",
+      description: "Votre nouveau live a été programmé avec succès.",
     });
-
-    console.log("New Live Sale:", newLiveSale);
   };
 
   const handleStartLiveSale = async (id: any) => {
     const now = new Date().toISOString();
     await updateDocument("lives", id, { status: "active", startedAt: now });
     toast({
-      title: "Live sale started",
-      description: "Your live sale has started successfully.",
+      title: "Live démarré",
+      description: "Votre live a commencé avec succès.",
     });
   };
 
@@ -179,8 +224,8 @@ export default function LiveSalesManagementPage() {
     await updateDocument("lives", id, { status: "ended", endedAt: now });
 
     toast({
-      title: "Live sale ended",
-      description: "Your live sale has ended successfully.",
+      title: "Live terminé",
+      description: "Votre live s'est terminé avec succès.",
     });
   };
 
@@ -190,8 +235,8 @@ export default function LiveSalesManagementPage() {
     });
 
     toast({
-      title: "Featured product updated",
-      description: "The featured product has been updated successfully.",
+      title: "Produit vedette mis à jour",
+      description: "Le produit vedette a été mis à jour avec succès.",
     });
 
     setShowProductsDialog(false);
@@ -200,11 +245,11 @@ export default function LiveSalesManagementPage() {
   const getStatusBadge = (status: any) => {
     switch (status) {
       case "active":
-        return <Badge className="bg-red-500">Live Now</Badge>;
+        return <Badge className="bg-red-500">En Direct</Badge>;
       case "scheduled":
-        return <Badge className="bg-amber-500">Scheduled</Badge>;
+        return <Badge className="bg-amber-500">Programmé</Badge>;
       case "ended":
-        return <Badge className="bg-gray-500">Ended</Badge>;
+        return <Badge className="bg-gray-500">Terminé</Badge>;
       default:
         return null;
     }
@@ -244,8 +289,10 @@ export default function LiveSalesManagementPage() {
                     <Input
                       id="title"
                       name="title"
-                      placeholder="Enter live sale title"
+                      placeholder="Entrez le titre du live"
                       required
+                      value={newLiveTitle}
+                      onChange={(e) => setNewLiveTitle(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -255,8 +302,10 @@ export default function LiveSalesManagementPage() {
                     <Textarea
                       id="description"
                       name="description"
-                      placeholder="Enter description"
+                      placeholder="Entrez la description"
                       required
+                      value={newLiveDescritpion}
+                      onChange={(e) => setNewLiveDescription(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -306,10 +355,10 @@ export default function LiveSalesManagementPage() {
                       className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50"
                     >
                       <p className="text-sm text-gray-500">
-                        Click to upload or drag and drop
+                        Cliquez pour télécharger ou glisser-déposer
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        PNG, JPG, GIF up to 5MB
+                        PNG, JPG, GIF jusqu'à 5MB
                       </p>
                     </div>
                     <input
@@ -326,7 +375,7 @@ export default function LiveSalesManagementPage() {
                       <div className="mt-2">
                         <img
                           src={URL.createObjectURL(thumbnail)}
-                          alt="Thumbnail preview"
+                          alt="Aperçu de la miniature"
                           className="w-32 h-20 object-cover rounded border"
                         />
                       </div>
@@ -340,6 +389,8 @@ export default function LiveSalesManagementPage() {
                       onClick={() => {
                         setIsCreatingLiveSale(false);
                         setThumbnail(null);
+                        setNewLiveTitle("");
+                        setNewLiveDescription("");
                       }}
                       disabled={loading}
                     >
@@ -416,10 +467,24 @@ export default function LiveSalesManagementPage() {
 
                   <div className="mt-4 flex flex-col gap-2">
                     {sale.status === "scheduled" && (
-                      <Button onClick={() => handleStartLiveSale(sale.id)}>
-                        <Play className="h-4 w-4 mr-2" />
-                        {t("LiveCard.startLive")}
-                      </Button>
+                      <>
+                        <Button onClick={() => handleStartLiveSale(sale.id)}>
+                          <Play className="h-4 w-4 mr-2" />
+                          {t("LiveCard.startLive")}
+                        </Button>
+
+                        {/* AJOUT: Bouton Partager pour les lives programmés */}
+                        <Button
+                          variant="outline"
+                          onClick={() => handleShareLive(sale.id, sale.title)}
+                          className="relative"
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          {shareStates[sale.id]
+                            ? "Lien copié !"
+                            : "Partager l'invitation"}
+                        </Button>
+                      </>
                     )}
 
                     {sale.status === "active" && (
@@ -430,6 +495,18 @@ export default function LiveSalesManagementPage() {
                         >
                           <Pause className="h-4 w-4 mr-2" />
                           {t("LiveCard.endLive")}
+                        </Button>
+
+                        {/* AJOUT: Bouton Partager pour les lives actifs */}
+                        <Button
+                          variant="outline"
+                          onClick={() => handleShareLive(sale.id, sale.title)}
+                          className="relative"
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          {shareStates[sale.id]
+                            ? "Lien copié !"
+                            : "Partager le live"}
                         </Button>
 
                         <Dialog
@@ -522,8 +599,8 @@ export default function LiveSalesManagementPage() {
 
                     {sale.status === "ended" && (
                       <div className="text-sm text-gray-500">
-                        <p>Started: {sale.startedAt}</p>
-                        <p>Total viewers: {sale.viewers}</p>
+                        <p>Commençé le: {sale.startedAt}</p>
+                        <p>Spectateurs totaux: {sale.viewers}</p>
                       </div>
                     )}
                   </div>
@@ -560,7 +637,7 @@ export default function LiveSalesManagementPage() {
                     <div className="flex items-center justify-between mt-3 text-sm text-gray-500">
                       <div className="flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
-                        <span>Started {sale.startedAt}</span>
+                        <span>Commençé {sale.startedAt}</span>
                       </div>
                       <span>
                         {sale.products.length} {t("LiveCard.products")}
@@ -574,6 +651,18 @@ export default function LiveSalesManagementPage() {
                       >
                         <Pause className="h-4 w-4 mr-2" />
                         {t("LiveCard.endLive")}
+                      </Button>
+
+                      {/* AJOUT: Bouton Partager pour les lives actifs */}
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShareLive(sale.id, sale.title)}
+                        className="relative"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        {shareStates[sale.id]
+                          ? "Lien copié !"
+                          : "Partager le live"}
                       </Button>
 
                       <Dialog
@@ -697,10 +786,22 @@ export default function LiveSalesManagementPage() {
                       </span>
                     </div>
 
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-col gap-2">
                       <Button onClick={() => handleStartLiveSale(sale.id)}>
                         <Play className="h-4 w-4 mr-2" />
                         {t("LiveCard.startLive")}
+                      </Button>
+
+                      {/* AJOUT: Bouton Partager pour les lives programmés */}
+                      <Button
+                        variant="outline"
+                        onClick={() => handleShareLive(sale.id, sale.title)}
+                        className="relative"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        {shareStates[sale.id]
+                          ? "Lien copié !"
+                          : "Partager l'invitation"}
                       </Button>
                     </div>
                   </CardContent>
@@ -740,8 +841,8 @@ export default function LiveSalesManagementPage() {
                     </div>
 
                     <div className="mt-4 text-sm text-gray-500">
-                      <p>Started: {sale.startedAt}</p>
-                      <p>Total viewers: {sale.viewers}</p>
+                      <p>Commençé le: {sale.startedAt}</p>
+                      <p>Spectateurs totaux: {sale.viewers}</p>
                     </div>
                   </CardContent>
                 </Card>
