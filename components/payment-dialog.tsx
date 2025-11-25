@@ -29,6 +29,7 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslations } from "@/lib/useTranslations";
@@ -58,6 +59,14 @@ import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { getCurrencyByCountry } from "@/lib/currencies";
 
+// Importez les fonctions de conversion depuis votre autre projet
+import {
+  getCurrencyForCountry,
+  convertXAFToCurrency,
+  formatCurrencyWithSymbol,
+  formatLocalDisplay,
+} from "@/lib/allocate";
+
 interface PaymentMethod {
   id: string;
   type: "card" | "bank" | "digital";
@@ -77,8 +86,6 @@ interface PaymentDialogProps {
   paymentState: string;
   handleCancel?: () => void;
 }
-
-
 
 export function PaymentDialog({
   open,
@@ -109,7 +116,10 @@ export function PaymentDialog({
   );
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [currency, setCurrency] = useState("XAF");
-
+  const [userLocation, setUserLocation] = useState<{
+    country: string;
+    countryCode: string;
+  } | null>(null);
 
   const currentCountry = PAWAPAY_COUNTRIES.find(
     (c) => c.code === selectedCountry
@@ -117,6 +127,65 @@ export function PaymentDialog({
   const availableProviders = currentCountry?.providers || [];
 
   const t = useTranslations("LivePage");
+
+  // Détection de la localisation de l'utilisateur
+  useEffect(() => {
+    const getUserLocation = async () => {
+      try {
+        const response = await fetch("https://ipapi.co/json/");
+        const data = await response.json();
+
+        if (data.country_code) {
+          setUserLocation({
+            country: data.country_name,
+            countryCode: data.country_code,
+          });
+
+          // Définir comme pays par défaut si c'est un pays PawaPay
+          const isPawaPayCountry = PAWAPAY_COUNTRIES.some(
+            (country) => country.code === data.country_code
+          );
+          if (isPawaPayCountry) {
+            setSelectedCountry(data.country_code);
+          }
+        }
+      } catch (error) {
+        console.log("Could not get user location:", error);
+        // Fallback vers le premier pays disponible
+        setSelectedCountry(PAWAPAY_COUNTRIES[0]?.code || "CMR");
+      }
+    };
+
+    getUserLocation();
+  }, []);
+
+  // Fonction sécurisée pour parser le montant
+  const getSafeAmount = (): number => {
+    if (!amount) return 0;
+    try {
+      // Supprimer tous les caractères non numériques sauf le point décimal
+      const cleanAmount = amount.replace(/[^\d.]/g, "");
+      return parseFloat(cleanAmount) || 0;
+    } catch (error) {
+      console.error("Error parsing amount:", error);
+      return 0;
+    }
+  };
+
+  // Fonction pour obtenir le montant dans la devise locale
+  const getLocalAmount = (countryCode: string): number => {
+    const targetCurrency = getCurrencyForCountry(countryCode);
+    // Convertir le montant XAF en devise locale
+    const amountNumber = getSafeAmount();
+    return convertXAFToCurrency(amountNumber, targetCurrency);
+  };
+
+  // Fonction pour formater l'affichage du montant local
+  const getLocalAmountDisplay = (countryCode: string): string => {
+    const amountNumber = getSafeAmount();
+    if (amountNumber === 0) return "0";
+    return formatLocalDisplay(amountNumber, countryCode);
+  };
 
   const handleAddPaymentMethod = () => {
     onOpenChange(false);
@@ -126,7 +195,7 @@ export function PaymentDialog({
   // Effet pour synchroniser la devise quand le pays change
   useEffect(() => {
     if (selectedCountry) {
-      const newCurrency = getCurrencyByCountry(selectedCountry);
+      const newCurrency = getCurrencyForCountry(selectedCountry);
       setCurrency(newCurrency);
     }
   }, [selectedCountry]);
@@ -135,6 +204,12 @@ export function PaymentDialog({
     // 1. Validation de base
     if (!selectedCountry || !mobileProvider || !phoneNumber) {
       alert("Veuillez remplir tous les champs requis");
+      return;
+    }
+
+    const amountNumber = getSafeAmount();
+    if (amountNumber === 0) {
+      alert("Montant invalide");
       return;
     }
 
@@ -156,13 +231,18 @@ export function PaymentDialog({
     const countryCodeDigits = country.dialCode.replace("+", "");
     const finalPhoneNumber = countryCodeDigits + cleanPhoneNumber;
 
-    // 5. Préparer les données de la transaction
+    // 5. ✅ CORRECTION : Utiliser le montant converti dans la devise locale
+    const localAmount = getLocalAmount(selectedCountry);
+    const targetCurrency = getCurrencyForCountry(selectedCountry);
+
+    // Préparer les données de la transaction
     const paymentData = {
-      amount: amount,
+      amount: localAmount.toString(), // ✅ Montant dans la devise locale
       countryCode: selectedCountry,
       mobileProviderId: mobileProvider,
       phoneNumber: finalPhoneNumber,
-      currency: currency,
+      currency: targetCurrency, // ✅ Devise locale
+      originalAmountXAF: amountNumber.toString(), // Garder une trace du montant original
     };
 
     try {
@@ -173,6 +253,14 @@ export function PaymentDialog({
       if (onPaymentComplete) {
         onPaymentComplete("pending");
       }
+
+      console.log("🔹 REQUÊTE PAWAPAY - DEVISE LOCALE:", {
+        country: selectedCountry,
+        currency: targetCurrency,
+        amountLocal: localAmount,
+        amountXAF: amountNumber,
+        paymentData,
+      });
 
       const response = await fetch("/api/pawapay/deposits", {
         method: "POST",
@@ -196,10 +284,12 @@ export function PaymentDialog({
 
       if (userInfo && userInfo.uid) {
         try {
-          // Créer l'objet transaction
+          // Créer l'objet transaction avec les informations de devise
           const transactionRecord = {
-            amount: parseInt(paymentData.amount),
-            currency: paymentData.currency,
+            amount: amountNumber, // Montant original en XAF
+            currency: "XAF", // Toujours stocker en XAF pour référence
+            localAmount: localAmount, // Montant dans la devise locale
+            localCurrency: targetCurrency, // Devise utilisée pour le paiement
             depositId: result.depositId, // ID de la transaction Pawapay
             status: result.status || "ACCEPTED",
             phoneNumber: finalPhoneNumber,
@@ -273,6 +363,23 @@ export function PaymentDialog({
     setPhoneNumber("");
   };
 
+  // Formater le numéro de téléphone pour l'affichage
+  const formatPhoneDisplay = (phone: string): string => {
+    const cleanPhone = phone.replace(/[^\d]/g, "");
+    if (cleanPhone.length <= 3) return cleanPhone;
+    if (cleanPhone.length <= 6)
+      return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3)}`;
+    return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(
+      3,
+      6
+    )} ${cleanPhone.slice(6, 9)}`;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhoneDisplay(value);
+    setPhoneNumber(formatted);
+  };
+
   // ✅ CORRECTION : Utiliser directement paymentState du parent sans état local
 
   // Pending State
@@ -301,7 +408,17 @@ export function PaymentDialog({
                 Please complete the payment process in your payment provider's
                 window
               </p>
-              <p className="text-lg font-bold text-blue-600">{amount}</p>
+              <p className="text-lg font-bold text-blue-600">
+                {selectedCountry
+                  ? getLocalAmountDisplay(selectedCountry)
+                  : amount}
+              </p>
+              {selectedCountry &&
+                getCurrencyForCountry(selectedCountry) !== "XAF" && (
+                  <p className="text-sm text-gray-500">
+                    Reference: {amount} XAF
+                  </p>
+                )}
             </div>
 
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -345,15 +462,27 @@ export function PaymentDialog({
                 Payment Successful!
               </h3>
               <p className="text-sm text-muted-foreground">
-                Your payment of {amount} has been processed successfully
+                Your payment has been processed successfully
               </p>
               <div className="bg-green-50 p-3 rounded-lg">
+                <p className="text-sm text-green-700">
+                  <strong>Amount Paid:</strong>{" "}
+                  {selectedCountry
+                    ? getLocalAmountDisplay(selectedCountry)
+                    : amount}
+                </p>
                 <p className="text-sm text-green-700">
                   <strong>Product:</strong> {product}
                 </p>
                 <p className="text-sm text-green-700">
                   <strong>Payment Method:</strong> Mobile Money
                 </p>
+                {selectedCountry &&
+                  getCurrencyForCountry(selectedCountry) !== "XAF" && (
+                    <p className="text-sm text-green-700">
+                      <strong>Reference:</strong> {amount} XAF
+                    </p>
+                  )}
               </div>
             </div>
           </div>
@@ -394,7 +523,7 @@ export function PaymentDialog({
                 Payment Not Completed
               </h3>
               <p className="text-sm text-muted-foreground">
-                We couldn't process your payment of {amount}
+                We couldn't process your payment
               </p>
               <div className="bg-red-50 p-3 rounded-lg">
                 <p className="text-sm text-red-700">
@@ -462,7 +591,16 @@ export function PaymentDialog({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">{amount}</p>
+                  <p className="text-2xl font-bold">
+                    {selectedCountry && amount
+                      ? getLocalAmountDisplay(selectedCountry)
+                      : amount || "0"}
+                  </p>
+                  {selectedCountry &&
+                    getCurrencyForCountry(selectedCountry) !== "XAF" &&
+                    amount && (
+                      <p className="text-sm text-gray-500 mt-1">{amount} XAF</p>
+                    )}
                   <Badge variant="secondary" className="text-xs">
                     {t("BuyDialog.secure")}
                   </Badge>
@@ -476,22 +614,20 @@ export function PaymentDialog({
           {/* Payment Methods */}
           <div className="space-y-4">
             <div className="flex items-center ml-10 ">
-              {/* <h3 className="text-lg font-semibold">Payment Methods</h3> */}
-              {/* <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddPaymentMethod}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button> */}
               <Tabs
                 value={paymentMethod}
                 onValueChange={(value) => setPaymentMethod(value as "pawapay")}
               >
                 {/* Le contenu du paiement Mobile Money */}
                 <TabsContent value="pawapay" className="space-y-4 mt-4">
+                  {/* Localisation détectée */}
+                  {userLocation && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                      <MapPin className="h-4 w-4" />
+                      <span>Detected location: {userLocation.country}</span>
+                    </div>
+                  )}
+
                   {/* 1. Country Selection */}
                   <div className="space-y-2 w-full">
                     <Label>Country *</Label>
@@ -504,18 +640,40 @@ export function PaymentDialog({
                         <SelectValue placeholder="Select your country" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* CORRECTION 2: Afficher la liste des PAWAPAY_COUNTRIES */}
-                        {PAWAPAY_COUNTRIES.map((country: CountryProvider) => (
-                          <SelectItem key={country.code} value={country.code}>
-                            <div className="flex items-center gap-2">
-                              {/* Assurez-vous que l'image du drapeau est disponible si vous l'utilisez */}
-                              {/* <img src={country.flag} alt={`${country.name} flag`} className="w-6 h-4 object-cover rounded" /> */}
-                              <span className="flex-1">
-                                {country.dialCode} {country.name}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {PAWAPAY_COUNTRIES.map((country: CountryProvider) => {
+                          // Gestion sécurisée du montant pour l'affichage
+                          const amountNumber = getSafeAmount();
+                          const displayAmount =
+                            amountNumber > 0
+                              ? formatLocalDisplay(amountNumber, country.code)
+                              : "";
+
+                          return (
+                            <SelectItem key={country.code} value={country.code}>
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={country.flag}
+                                  alt={`${country.name} flag`}
+                                  className="w-6 h-4 object-cover rounded"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-medium">
+                                    {country.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {country.dialCode} •{" "}
+                                    {getCurrencyForCountry(country.code)}
+                                    {getCurrencyForCountry(country.code) !==
+                                      "XAF" &&
+                                      displayAmount && (
+                                        <span> • ≈ {displayAmount}</span>
+                                      )}
+                                  </div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -531,7 +689,6 @@ export function PaymentDialog({
                           onValueChange={setMobileProvider}
                           disabled={isProcessing}
                         >
-                          {/* CORRECTION 3: Afficher chaque fournisseur */}
                           {availableProviders.map((provider) => (
                             <div
                               key={provider.id}
@@ -557,9 +714,7 @@ export function PaymentDialog({
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number *</Label>
                         <div className="flex gap-2">
-                          {/* Afficher le dialCode: currentCountry?.dialCode */}
                           <div className="flex items-center px-3 border rounded-md bg-muted text-muted-foreground min-w-[80px] justify-center">
-                            {/* Récupère le dialCode du pays sélectionné */}
                             {currentCountry?.dialCode}
                           </div>
                           <Input
@@ -567,7 +722,7 @@ export function PaymentDialog({
                             type="tel"
                             placeholder="6XX XXX XXX"
                             value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            onChange={(e) => handlePhoneChange(e.target.value)}
                             className="flex-1"
                             disabled={isProcessing}
                           />
@@ -583,12 +738,12 @@ export function PaymentDialog({
                         size="lg"
                         className="w-full"
                         onClick={handlePayment}
-                        // Condition du bouton: Pays, Fournisseur, Numéro, et Termes doivent être validés si vous ajoutez la validation des termes.
                         disabled={
                           isProcessing ||
                           !selectedCountry ||
                           !mobileProvider ||
-                          phoneNumber.length < 5
+                          phoneNumber.length < 5 ||
+                          !amount
                         }
                       >
                         {isProcessing ? (
@@ -597,7 +752,11 @@ export function PaymentDialog({
                             Processing Payment...
                           </div>
                         ) : (
-                          `Pay ${amount} with Mobile Money`
+                          `Pay ${
+                            selectedCountry && amount
+                              ? getLocalAmountDisplay(selectedCountry)
+                              : amount || "0"
+                          } with Mobile Money`
                         )}
                       </Button>
                     </>
@@ -606,6 +765,7 @@ export function PaymentDialog({
               </Tabs>
             </div>
 
+            {/* Ancien code pour les méthodes de paiement existantes */}
             <RadioGroup
               value={selectedPaymentMethod}
               onValueChange={setSelectedPaymentMethod}
@@ -648,31 +808,6 @@ export function PaymentDialog({
                   </Label>
                 </div>
               ))}
-              {/* <div key={"other"} className="relative">
-                <Label
-                  htmlFor={"other"}
-                  className="flex items-center space-x-3 rounded-lg border p-4 cursor-pointer hover:bg-accent transition-colors"
-                >
-                  <RadioGroupItem value={"other"} id={"other"} />
-
-                  <div className="flex items-center gap-3 flex-1">
-                    <Smartphone className="h-5 w-5 text-purple-600" />
-
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">Other</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Use another number to pay
-                      </p>
-                    </div>
-                  </div>
-
-                  {selectedPaymentMethod === "other" && (
-                    <Check className="h-5 w-5 text-green-600" />
-                  )}
-                </Label>
-              </div> */}
             </RadioGroup>
           </div>
 
@@ -691,28 +826,7 @@ export function PaymentDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-3">
-          {/* <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isProcessing}
-            className="w-full sm:w-auto"
-          >
-            {t("cancel")}
-          </Button>
-          <Button
-            onClick={handlePayment}
-            disabled={!selectedPaymentMethod || isProcessing}
-            className="w-full sm:w-auto"
-          >
-            {isProcessing ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                Processing...
-              </div>
-            ) : (
-              `${t("BuyDialog.pay")} ${amount}`
-            )}
-          </Button> */}
+          {/* Les boutons du footer peuvent être réactivés si nécessaire */}
         </DialogFooter>
       </DialogContent>
     </Dialog>

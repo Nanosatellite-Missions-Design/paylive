@@ -234,3 +234,22 @@ function getFallbackCountries(): Country[] {
   return fallbackCountries.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// Fonction pour obtenir la devise d'un pays (identique à celle dans allocate.ts pour cohérence)
+export function getCurrencyForCountry(countryCode: string): string {
+  const currencyMap: { [key: string]: string } = {
+    BEN: "XOF",
+    BFA: "XOF", 
+    CIV: "XOF",
+    SEN: "XOF", // West Africa CFA
+    CMR: "XAF",
+    COD: "CDF",
+    COG: "XAF",
+    GAB: "XAF", // Central Africa
+    KEN: "KES",
+    RWA: "RWF", 
+    UGA: "UGX",
+    ZMB: "ZMW", // East/South Africa
+    SLE: "SLE", // Sierra Leone
+  };
+  return currencyMap[countryCode] || "XAF";
+}
