@@ -377,7 +377,7 @@ export default function LiveSaleDetailPage() {
           <header className="mb-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center">
-                <Link href="/live" className="mr-2">
+                <Link href="/dashboard/lives" className="mr-2">
                   <Button variant="ghost" size="icon">
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
@@ -396,11 +396,25 @@ export default function LiveSaleDetailPage() {
                   {liveSale?.viewers} {t("watching")}
                 </span>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-black/50 hover:bg-black/70 text-white relative"
+                onClick={handleShareLive}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Partager
+                {showShareSuccess && (
+                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                    Lien copié !
+                  </div>
+                )}
+              </Button>
             </div>
           </header>
         )}
 
-        <div className={`relative mb-4 ${isFullscreen ? "h-full" : ""}`}>
+        {/* <div className={`relative mb-4 ${isFullscreen ? "h-full" : ""}`}>
           <div
             className={`relative ${isFullscreen ? "h-full" : "aspect-video"}`}
           >
@@ -416,66 +430,53 @@ export default function LiveSaleDetailPage() {
               muted
               loop
             />
-            <div className="absolute bottom-4 right-4 flex gap-2">
-              {/* AJOUT: Bouton Partager */}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-black/50 hover:bg-black/70 text-white relative"
-                onClick={handleShareLive}
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Partager
-                {showShareSuccess && (
-                  <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                    Lien copié !
-                  </div>
-                )}
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-black/50 hover:bg-black/70 text-white"
-                onClick={toggleFullscreen}
-              >
-                {isFullscreen ? (
-                  <Minimize className="h-4 w-4" />
-                ) : (
-                  <Maximize className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-black/50 hover:bg-black/70 text-white"
-                onClick={togglePictureInPicture}
-              >
-                <PictureInPicture className="h-4 w-4" />
-              </Button>
-              <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-black/50 hover:bg-black/70 text-white"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Scan
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Scan Product QR Code</DialogTitle>
-                  </DialogHeader>
-                  <QRCodeScanner
-                    onScan={handleQRScan}
-                    onClose={() => setShowQRScanner(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
           </div>
+        </div> */}
+
+        <div className="absolute bottom-4 right-4 flex gap-2">
+          {/* AJOUT: Bouton Partager */}
+
+          {/* <Button
+            variant="secondary"
+            size="sm"
+            className="bg-black/50 hover:bg-black/70 text-white"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? (
+              <Minimize className="h-4 w-4" />
+            ) : (
+              <Maximize className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="bg-black/50 hover:bg-black/70 text-white"
+            onClick={togglePictureInPicture}
+          >
+            <PictureInPicture className="h-4 w-4" />
+          </Button>
+          <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
+            <DialogTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="bg-black/50 hover:bg-black/70 text-white"
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                Scan
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Scan Product QR Code</DialogTitle>
+              </DialogHeader>
+              <QRCodeScanner
+                onScan={handleQRScan}
+                onClose={() => setShowQRScanner(false)}
+              />
+            </DialogContent>
+          </Dialog> */}
         </div>
 
         {!isFullscreen && (

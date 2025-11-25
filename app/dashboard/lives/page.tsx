@@ -34,7 +34,7 @@ import {
   Pause,
   Package,
   Loader2,
-  Share2, // AJOUT: Import de l'icône Share2
+  Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
@@ -61,7 +61,7 @@ export default function LiveSalesManagementPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useTranslations("Dashboard.Lives");
 
-  // AJOUT: État pour le partage
+  // État pour le partage
   const [shareStates, setShareStates] = useState<{ [key: string]: boolean }>(
     {}
   );
@@ -124,7 +124,7 @@ export default function LiveSalesManagementPage() {
     };
   }, [userInfo?.uid, lives]);
 
-  // AJOUT: Fonction pour partager le live
+  // Fonction pour partager le live
   const handleShareLive = async (liveId: string, liveTitle: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const liveUrl = `${baseUrl}/live/${liveId}`;
@@ -229,7 +229,13 @@ export default function LiveSalesManagementPage() {
     });
   };
 
-  const handleSetFeaturedProduct = async (saleId: any, productId: any) => {
+  const handleSetFeaturedProduct = async (
+    saleId: any,
+    productId: any,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation(); // Empêche la fermeture du dialog
+
     await updateDocument("lives", saleId, {
       currentFeaturedProduct: productId,
     });
@@ -239,7 +245,7 @@ export default function LiveSalesManagementPage() {
       description: "Le produit vedette a été mis à jour avec succès.",
     });
 
-    setShowProductsDialog(false);
+    // Ne fermez PAS le dialog ici
   };
 
   const getStatusBadge = (status: any) => {
@@ -473,7 +479,7 @@ export default function LiveSalesManagementPage() {
                           {t("LiveCard.startLive")}
                         </Button>
 
-                        {/* AJOUT: Bouton Partager pour les lives programmés */}
+                        {/* Bouton Partager pour les lives programmés */}
                         <Button
                           variant="outline"
                           onClick={() => handleShareLive(sale.id, sale.title)}
@@ -497,7 +503,7 @@ export default function LiveSalesManagementPage() {
                           {t("LiveCard.endLive")}
                         </Button>
 
-                        {/* AJOUT: Bouton Partager pour les lives actifs */}
+                        {/* Bouton Partager pour les lives actifs */}
                         <Button
                           variant="outline"
                           onClick={() => handleShareLive(sale.id, sale.title)}
@@ -560,10 +566,11 @@ export default function LiveSalesManagementPage() {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() =>
+                                        onClick={(e) =>
                                           handleSetFeaturedProduct(
                                             sale.id,
-                                            product.id
+                                            product.id,
+                                            e
                                           )
                                         }
                                       >
@@ -653,7 +660,7 @@ export default function LiveSalesManagementPage() {
                         {t("LiveCard.endLive")}
                       </Button>
 
-                      {/* AJOUT: Bouton Partager pour les lives actifs */}
+                      {/* Bouton Partager pour les lives actifs */}
                       <Button
                         variant="outline"
                         onClick={() => handleShareLive(sale.id, sale.title)}
@@ -688,7 +695,7 @@ export default function LiveSalesManagementPage() {
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
                             <p className="text-sm text-gray-500">
-                              {t("CreateLiveDialog.description")}
+                              {t("LiveCard.manageProductsDialog.description")}
                             </p>
 
                             <div className="space-y-2">
@@ -705,7 +712,8 @@ export default function LiveSalesManagementPage() {
                                       XAF{product.price}
                                     </p>
                                   </div>
-                                  {product.featured ? (
+                                  {sale.currentFeaturedProduct ===
+                                  product.id ? (
                                     <Badge className="bg-primary">
                                       {t(
                                         "LiveCard.manageProductsDialog.featured"
@@ -715,10 +723,11 @@ export default function LiveSalesManagementPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() =>
+                                      onClick={(e) =>
                                         handleSetFeaturedProduct(
                                           sale.id,
-                                          product.id
+                                          product.id,
+                                          e
                                         )
                                       }
                                     >
@@ -792,7 +801,7 @@ export default function LiveSalesManagementPage() {
                         {t("LiveCard.startLive")}
                       </Button>
 
-                      {/* AJOUT: Bouton Partager pour les lives programmés */}
+                      {/* Bouton Partager pour les lives programmés */}
                       <Button
                         variant="outline"
                         onClick={() => handleShareLive(sale.id, sale.title)}
