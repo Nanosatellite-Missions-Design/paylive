@@ -368,12 +368,12 @@ export default function TransactionsPage() {
                   </p>
                   <p className="text-xs text-gray-500">{t("thisMonth")}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-lg font-semibold">
                     XAF{(currentBalance * 0.1).toLocaleString()}
                   </p>
                   <p className="text-xs text-gray-500">{t("pending")}</p>
-                </div>
+                </div> */}
               </div>
 
               <WithdrawDialog

@@ -21,7 +21,7 @@ import { useEffect } from "react";
 import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProfilePage() {
-  const { userInfo, userTransactions,logout } = useAuth();
+  const { userInfo, userTransactions, logout } = useAuth();
 
   const t = useTranslations("Dashboard.Profile");
 

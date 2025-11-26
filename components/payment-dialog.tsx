@@ -58,6 +58,7 @@ import {
 import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { updateDocument } from "@/functions/update-doc-in-collection";
 import { getCurrencyByCountry } from "@/lib/currencies";
+import { pollTransactionStatus } from "@/lib/pawapaypolling";
 
 // Importez les fonctions de conversion depuis votre autre projet
 import {
@@ -279,67 +280,61 @@ export function PaymentDialog({
         return;
       }
 
-      // 7. ✅ SUCCÈS - Mettre à jour Firebase et notifier le parent
-      console.log("✅ Réponse API réussie:", result);
+      console.log("📩 Transaction Pawapay créée, depositId:", result.depositId);
 
-      if (userInfo && userInfo.uid) {
-        try {
-          // Créer l'objet transaction avec les informations de devise
-          const transactionRecord = {
-            amount: amountNumber, // Montant original en XAF
-            currency: "XAF", // Toujours stocker en XAF pour référence
-            localAmount: localAmount, // Montant dans la devise locale
-            localCurrency: targetCurrency, // Devise utilisée pour le paiement
-            depositId: result.depositId, // ID de la transaction Pawapay
-            status: result.status || "ACCEPTED",
-            phoneNumber: finalPhoneNumber,
-            provider: mobileProvider,
-            country: selectedCountry,
-            product: product, // Le produit acheté
-            user: {
-              uid: userInfo.uid,
-              name: userInfo.name || "Unknown",
-              phone: userInfo.phone || "Unknown",
-            },
-            timestamp: new Date().toISOString(),
-            type: "deposit", // Type de transaction
-          };
+      // ⏳ POLLING : Attendre la confirmation SUCCESSFUL
+      const pollResult = await pollTransactionStatus(result.depositId);
 
-          console.log(
-            "📝 Enregistrement transaction Firebase:",
-            transactionRecord
-          );
+      if (!pollResult.ok) {
+        console.warn("⚠️ Transaction non confirmée:", pollResult);
+        if (onPaymentComplete) onPaymentComplete("failed");
+        return alert("Le paiement n'a pas été confirmé par Pawapay");
+      }
 
-          // ✅ CORRECTION : Attendre que Firebase soit mis à jour avant de notifier le parent
-          await addToSubCollection(
-            transactionRecord,
-            "users",
-            userInfo.uid,
-            "transactions"
-          );
-          console.log("✅ Transaction enregistrée dans Firebase");
+      // ✅ Transaction confirmée → mise à jour Firebase et solde
+      if (userInfo?.uid) {
+        const transactionRecord = {
+          amount: amountNumber, // Montant original en XAF
+          currency: "XAF", // Toujours stocker en XAF pour référence
+          localAmount: localAmount, // Montant dans la devise locale
+          localCurrency: targetCurrency, // Devise utilisée pour le paiement
+          depositId: result.depositId, // ID de la transaction Pawapay
+          status: "SUCCESSFUL",
+          phoneNumber: finalPhoneNumber,
+          provider: mobileProvider,
+          country: selectedCountry,
+          product,
+          user: {
+            uid: userInfo.uid,
+            name: userInfo.name || "Unknown",
+            phone: userInfo.phone || "Unknown",
+          },
+          timestamp: new Date().toISOString(),
+          type: "deposit",
+        };
 
-          await updateDocument("users", userInfo.uid, {
-            lastTransaction: new Date().toISOString(),
-            // Vous pouvez aussi mettre à jour le solde ici si nécessaire
-          });
+        console.log(
+          "📝 Enregistrement transaction Firebase:",
+          transactionRecord
+        );
 
-          // ✅ CORRECTION CRITIQUE : Notifier le parent du succès APRÈS la mise à jour Firebase
-          if (onPaymentComplete) {
-            onPaymentComplete(result.depositId);
-          }
-        } catch (firebaseError) {
-          console.error("❌ Erreur Firebase:", firebaseError);
-          // Notifier le parent de l'échec en cas d'erreur Firebase
-          if (onPaymentComplete) {
-            onPaymentComplete("failed");
-          }
-        }
+        await addToSubCollection(
+          transactionRecord,
+          "users",
+          userInfo.uid,
+          "transactions"
+        );
+
+        await updateDocument("users", userInfo.uid, {
+          lastTransaction: new Date().toISOString(),
+          // ⚡ ici tu peux mettre à jour le solde réel
+        });
+
+        console.log("✅ Transaction enregistrée et solde mis à jour");
+
+        if (onPaymentComplete) onPaymentComplete(result.depositId);
       } else {
-        // Si pas d'userInfo, notifier quand même le succès
-        if (onPaymentComplete) {
-          onPaymentComplete(result.depositId);
-        }
+        if (onPaymentComplete) onPaymentComplete(result.depositId);
       }
     } catch (error) {
       console.error("❌ Erreur lors du paiement:", error);
