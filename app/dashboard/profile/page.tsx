@@ -6,7 +6,6 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Settings,
   CreditCard,
-  Gavel,
   Video,
   History,
   ChevronRight,
@@ -17,7 +16,6 @@ import {
   Store,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { useEffect } from "react";
 import { useTranslations } from "@/lib/useTranslations";
 
 export default function ProfilePage() {
@@ -28,12 +26,15 @@ export default function ProfilePage() {
   const isCreator = userInfo?.role === "user" || false;
 
   const calculateStats = () => {
+    // ✅ UTILISER DIRECTEMENT LE BALANCE DE USERINFO
+    const currentBalance = userInfo?.balance || 0;
+
     if (!userTransactions || userTransactions.length === 0) {
       return {
         totalSales: 0,
         totalEarnings: 0,
         monthlyEarnings: 0,
-        currentBalance: 0,
+        currentBalance, // ✅ SOLDE DIRECT DEPUIS USERINFO
       };
     }
 
@@ -41,20 +42,7 @@ export default function ProfilePage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // ✅ CALCUL DU SOLDE RÉEL depuis toutes les transactions
-    const currentBalance = userTransactions.reduce((balance, transaction) => {
-      if (transaction.type === "deposit" || transaction.type === "sale") {
-        return balance + (transaction.amount || 0);
-      } else if (
-        transaction.type === "withdrawal" ||
-        transaction.type === "purchase"
-      ) {
-        return balance - (transaction.amount || 0);
-      }
-      return balance;
-    }, 0);
-
-    // ✅ CALCUL DES GAINS MENSUELS
+    // ✅ CALCUL DES GAINS MENSUELS (dépôts + ventes)
     const monthlyTransactions = userTransactions.filter((transaction) => {
       if (!transaction.createdAt) return false;
       const transactionDate =
@@ -71,21 +59,24 @@ export default function ProfilePage() {
       .filter((t) => t.type === "deposit" || t.type === "sale")
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
-    // ✅ CALCUL DES GAINS TOTAUX
+    // ✅ CALCUL DES GAINS TOTAUX (dépôts + ventes)
     const totalEarnings = userTransactions
       .filter((t) => t.type === "deposit" || t.type === "sale")
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
-    // ✅ CALCUL DES VENTES
-    const totalSales = userTransactions.filter(
+    // ✅ CALCUL DES ACHATS TOTAUX
+    const totalPurchases = userTransactions.filter(
       (t) => t.type === "purchase"
     ).length;
 
+    // ✅ CALCUL DES VENTES TOTALES (pour les créateurs)
+    const totalSales = userTransactions.filter((t) => t.type === "sale").length;
+
     return {
-      totalSales,
+      totalSales: isCreator ? totalSales : totalPurchases,
       totalEarnings,
       monthlyEarnings,
-      currentBalance, // ✅ SOLDE CALCULÉ
+      currentBalance, // ✅ SOLDE DIRECT DEPUIS USERINFO
     };
   };
 
@@ -98,16 +89,23 @@ export default function ProfilePage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold mb-2">{t("title")}</h1>
         <div className="flex items-center">
-          <div className="w-12 h-12 rounded-full overflow-hidden mr-3">
-            <img
-              src={userInfo.photoURL || "/placeholder-user.jpg"}
-              alt={userInfo?.name}
-              className="w-full h-full object-cover"
-            />
+          <div className="w-12 h-12 rounded-full overflow-hidden mr-3 bg-gray-200 flex items-center justify-center">
+            {userInfo.photoURL ? (
+              <img
+                src={userInfo.photoURL}
+                alt={userInfo.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-lg font-semibold text-gray-600">
+                {userInfo.name?.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
-          <div>
-            <h2 className="font-semibold">{userInfo?.name}</h2>
-            <p className="text-sm text-gray-500">{userInfo?.phone}</p>
+          <div className="flex-1">
+            <h2 className="font-semibold">{userInfo.name}</h2>
+            <p className="text-sm text-gray-500">{userInfo.phone}</p>
+            <p className="text-xs text-gray-400 capitalize">{userInfo.role}</p>
           </div>
           <Link href="/dashboard/profile/edit" className="ml-auto">
             <Button variant="outline" size="sm">
@@ -117,13 +115,14 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* ✅ AFFICHAGE FINANCIER AVEC DONNÉES RÉELLES */}
+      {/* ✅ AFFICHAGE FINANCIER AVEC BALANCE RÉEL */}
       {isCreator && (
         <section className="mb-6">
           <h2 className="text-lg font-semibold mb-3">
             {t("financialOverview")}
           </h2>
           <div className="grid grid-cols-2 gap-3">
+            {/* ✅ CARTE SOLDE ACTUEL - DIRECT DEPUIS USERINFO */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -132,13 +131,22 @@ export default function ProfilePage() {
                   </h3>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
-                <p className="text-2xl font-bold text-green-600">
-                  XAF{stats.currentBalance.toLocaleString()}
+                <p
+                  className={`text-2xl font-bold ${
+                    stats.currentBalance >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  XAF {stats.currentBalance.toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Solde actuel</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.currentBalance >= 0 ? "Solde disponible" : "Découvert"}
+                </p>
               </CardContent>
             </Card>
 
+            {/* ✅ CARTE GAINS DU MOIS */}
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -146,12 +154,13 @@ export default function ProfilePage() {
                   <TrendingUp className="h-4 w-4 text-blue-500" />
                 </div>
                 <p className="text-2xl font-bold">
-                  XAF{stats.monthlyEarnings.toLocaleString()}
+                  XAF {stats.monthlyEarnings.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Gains ce mois</p>
               </CardContent>
             </Card>
 
+            {/* ✅ CARTE RÉSUMÉ COMPLET */}
             <Card className="col-span-2">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -161,19 +170,23 @@ export default function ProfilePage() {
                   <BarChart3 className="h-4 w-4 text-purple-500" />
                 </div>
                 <p className="text-2xl font-bold">
-                  XAF{stats.totalEarnings.toLocaleString()}
+                  XAF {stats.totalEarnings.toLocaleString()}
                 </p>
-                <div className="flex justify-between mt-2 text-sm">
+                <div className="flex justify-between items-center mt-2 text-sm">
                   <span className="text-gray-500">
-                    {t("totalSales")}: {stats.totalSales}
+                    {isCreator ? "Ventes totales" : "Achats totaux"}:{" "}
+                    {stats.totalSales}
                   </span>
                   <Link
                     href="/dashboard/profile/transactions"
-                    className="text-blue-600 flex items-center"
+                    className="text-blue-600 flex items-center hover:text-blue-700"
                   >
                     {t("details")} <ChevronRight className="h-3 w-3 ml-1" />
                   </Link>
                 </div>
+                {/* <div className="mt-2 text-xs text-gray-400">
+                  {userTransactions?.length || 0} transactions enregistrées
+                </div> */}
               </CardContent>
             </Card>
           </div>
@@ -186,15 +199,21 @@ export default function ProfilePage() {
           <h2 className="text-lg font-semibold mb-3">Résumé de l'activité</h2>
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <h3 className="text-sm text-gray-500 mb-1">Total Achats</h3>
                   <p className="text-xl font-bold">{stats.totalSales}</p>
                 </div>
                 <div>
                   <h3 className="text-sm text-gray-500 mb-1">Solde Actuel</h3>
-                  <p className="text-xl font-bold">
-                    XAF{stats.currentBalance.toLocaleString()}
+                  <p
+                    className={`text-xl font-bold ${
+                      stats.currentBalance >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    XAF {stats.currentBalance.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -277,7 +296,7 @@ export default function ProfilePage() {
           <CardContent className="p-0">
             <Link
               href="/dashboard/profile/edit"
-              className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
+              className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center">
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
@@ -287,7 +306,7 @@ export default function ProfilePage() {
             </Link>
             <Link
               href="/dashboard/profile/payment-methods"
-              className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
+              className="flex items-center justify-between p-4 border-b hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center">
                 <CreditCard className="h-5 w-5 mr-3 text-gray-500" />
@@ -297,7 +316,7 @@ export default function ProfilePage() {
             </Link>
             <Link
               href="/dashboard/settings"
-              className="flex items-center justify-between p-4 hover:bg-gray-50"
+              className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center">
                 <Settings className="h-5 w-5 mr-3 text-gray-500" />
@@ -309,7 +328,7 @@ export default function ProfilePage() {
           <CardFooter className="p-4 pt-0">
             <Button
               variant="outline"
-              className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+              className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
               onClick={logout}
             >
               {t("logOut")}

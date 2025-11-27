@@ -102,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           phone: user.phoneNumber,
           role: "user",
           paymentMethods: [],
+          balance: 0,
         });
       }
 

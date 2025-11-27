@@ -292,25 +292,73 @@ export function PaymentDialog({
       }
 
       // ✅ Transaction confirmée → mise à jour Firebase et solde
+      // if (userInfo?.uid) {
+      //   const transactionRecord = {
+      //     amount: amountNumber, // Montant original en XAF
+      //     currency: "XAF", // Toujours stocker en XAF pour référence
+      //     localAmount: localAmount, // Montant dans la devise locale
+      //     localCurrency: targetCurrency, // Devise utilisée pour le paiement
+      //     depositId: result.depositId, // ID de la transaction Pawapay
+      //     status: "SUCCESSFUL",
+      //     phoneNumber: finalPhoneNumber,
+      //     provider: mobileProvider,
+      //     country: selectedCountry,
+      //     product,
+      //     user: {
+      //       uid: userInfo.uid,
+      //       name: userInfo.name || "Unknown",
+      //       phone: userInfo.phone || "Unknown",
+      //     },
+      //     timestamp: new Date().toISOString(),
+      //     type: "deposit",
+      //   };
+
+      //   console.log(
+      //     "📝 Enregistrement transaction Firebase:",
+      //     transactionRecord
+      //   );
+
+      //   await addToSubCollection(
+      //     transactionRecord,
+      //     "users",
+      //     userInfo.uid,
+      //     "transactions"
+      //   );
+
+      //   await updateDocument("users", userInfo.uid, {
+      //     lastTransaction: new Date().toISOString(),
+      //     // ⚡ ici tu peux mettre à jour le solde réel
+      //   });
+
+      //   console.log("✅ Transaction enregistrée et solde mis à jour");
+
+      //   if (onPaymentComplete) onPaymentComplete(result.depositId);
+      // } else {
+      //   if (onPaymentComplete) onPaymentComplete(result.depositId);
+      // }
+      // ✅ ANCIENNE STRUCTURE DE TRANSACTION (comme avant)
       if (userInfo?.uid) {
         const transactionRecord = {
-          amount: amountNumber, // Montant original en XAF
-          currency: "XAF", // Toujours stocker en XAF pour référence
-          localAmount: localAmount, // Montant dans la devise locale
-          localCurrency: targetCurrency, // Devise utilisée pour le paiement
-          depositId: result.depositId, // ID de la transaction Pawapay
+          // ✅ STRUCTURE PROPRE AVEC ID UNIQUE
+          id: result.depositId, // Utiliser le depositId comme ID
+          depositId: result.depositId,
+          amount: amountNumber,
+          currency: "XAF",
+          localAmount: localAmount,
+          localCurrency: targetCurrency,
+          type: "deposit",
           status: "SUCCESSFUL",
           phoneNumber: finalPhoneNumber,
           provider: mobileProvider,
           country: selectedCountry,
-          product,
+          product: product,
           user: {
             uid: userInfo.uid,
             name: userInfo.name || "Unknown",
             phone: userInfo.phone || "Unknown",
           },
+          createdAt: new Date(),
           timestamp: new Date().toISOString(),
-          type: "deposit",
         };
 
         console.log(
@@ -318,6 +366,7 @@ export function PaymentDialog({
           transactionRecord
         );
 
+        // ✅ AJOUTER À LA SOUS-COLLECTION TRANSACTIONS
         await addToSubCollection(
           transactionRecord,
           "users",
@@ -325,12 +374,15 @@ export function PaymentDialog({
           "transactions"
         );
 
+        // ✅ METTRE À JOUR LE BALANCE DE L'UTILISATEUR
+        const newBalance = (userInfo.balance || 0) + amountNumber;
         await updateDocument("users", userInfo.uid, {
-          lastTransaction: new Date().toISOString(),
-          // ⚡ ici tu peux mettre à jour le solde réel
+          balance: newBalance,
+          lastTransaction: new Date(),
+          updatedAt: new Date(),
         });
 
-        console.log("✅ Transaction enregistrée et solde mis à jour");
+        console.log("✅ Transaction enregistrée et balance mise à jour");
 
         if (onPaymentComplete) onPaymentComplete(result.depositId);
       } else {
