@@ -15,6 +15,7 @@ import {
   Minus,
   X,
   Clock,
+  CheckCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import WithdrawDialog from "@/components/withdraw-dialog";
@@ -38,6 +39,9 @@ interface RealTransaction {
   depositId?: string;
   netAmount?: number;
   fees?: number;
+  // ✅ AJOUTER LE CHAMP POUR LE STATUT PAWAPAY RÉEL
+  pawapayResponse?: any;
+  pollingResult?: any;
 }
 
 export default function TransactionsPage() {
@@ -47,6 +51,36 @@ export default function TransactionsPage() {
   // ✅ UTILISER LE BALANCE DE USERINFO
   const isCreator = userInfo?.role === "user" || false;
   const currentBalance = userInfo?.balance || 0;
+
+  // ✅ FONCTION POUR OBTENIR LE STATUT RÉEL DE LA TRANSACTION
+  const getRealTransactionStatus = (transaction: RealTransaction): string => {
+    // ✅ PRIORITÉ 1: Statut PawaPay réel depuis pollingResult
+    if (
+      transaction.pollingResult?.ok &&
+      transaction.pawapayResponse?.data?.status
+    ) {
+      const pawapayStatus = transaction.pawapayResponse.data.status;
+      console.log(
+        `📊 Statut réel PawaPay pour ${transaction.id}:`,
+        pawapayStatus
+      );
+      return pawapayStatus.toLowerCase();
+    }
+
+    // ✅ PRIORITÉ 2: Statut PawaPay depuis pawapayResponse
+    if (transaction.pawapayResponse?.data?.status) {
+      const pawapayStatus = transaction.pawapayResponse.data.status;
+      console.log(`📊 Statut PawaPay pour ${transaction.id}:`, pawapayStatus);
+      return pawapayStatus.toLowerCase();
+    }
+
+    // ✅ PRIORITÉ 3: Statut Firestore
+    console.log(
+      `📊 Statut Firestore pour ${transaction.id}:`,
+      transaction.status
+    );
+    return transaction.status?.toLowerCase() || "pending";
+  };
 
   // ✅ FILTRER LES TRANSACTIONS - EXCLURE LES TRANSACTIONS ÉCHOUÉES OU DE TEST
   const getValidTransactions = () => {
@@ -62,12 +96,15 @@ export default function TransactionsPage() {
         return false;
       }
 
-      // ✅ CORRECTION : Exclure les transactions échouées ou annulées
-      const status = transaction.status?.toLowerCase();
+      // ✅ CORRECTION : Utiliser le statut réel
+      const realStatus = getRealTransactionStatus(transaction);
+
+      // Exclure uniquement les transactions vraiment échouées
       if (
-        status === "failed" ||
-        status === "cancelled" ||
-        status === "rejected"
+        realStatus === "failed" ||
+        realStatus === "cancelled" ||
+        realStatus === "rejected" ||
+        realStatus === "declined"
       ) {
         return false;
       }
@@ -185,15 +222,17 @@ export default function TransactionsPage() {
     }
   };
 
-  // ✅ BADGES DE STATUT CORRIGÉS - BASÉS SUR LES VRAIS STATUTS PAWAPAY
-  const getStatusBadge = (status: string) => {
-    const statusText = status?.toLowerCase() || "pending";
+  // ✅ BADGES DE STATUT CORRIGÉS - BASÉS SUR LE STATUT RÉEL PAWAPAY
+  const getStatusBadge = (transaction: RealTransaction) => {
+    const realStatus = getRealTransactionStatus(transaction);
+    console.log(`🎯 Badge pour ${transaction.id}:`, realStatus);
 
-    switch (statusText) {
+    switch (realStatus) {
       case "successful":
       case "completed":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+            <CheckCircle className="h-3 w-3 mr-1" />
             Complété
           </Badge>
         );
@@ -220,13 +259,13 @@ export default function TransactionsPage() {
       default:
         return (
           <Badge className="bg-gray-100 text-gray-800 border-gray-200 text-xs">
-            {status}
+            {realStatus}
           </Badge>
         );
     }
   };
 
-  // ✅ RENDU DES TRANSACTIONS CORRIGÉ - NE PAS AFFICHER LES ÉCHECS
+  // ✅ RENDU DES TRANSACTIONS CORRIGÉ
   const renderTransactionList = (transactionList: RealTransaction[]) => (
     <div className="space-y-3">
       {transactionList.map((transaction) => {
@@ -236,12 +275,15 @@ export default function TransactionsPage() {
         const isDebit =
           transaction.type === "withdrawal" || transaction.type === "purchase";
 
-        // ✅ NE PAS AFFICHER LES TRANSACTIONS ÉCHOUÉES
-        const status = transaction.status?.toLowerCase();
+        // ✅ UTILISER LE STATUT RÉEL POUR LE FILTRAGE
+        const realStatus = getRealTransactionStatus(transaction);
+
+        // NE PAS AFFICHER LES TRANSACTIONS ÉCHOUÉES
         if (
-          status === "failed" ||
-          status === "cancelled" ||
-          status === "rejected"
+          realStatus === "failed" ||
+          realStatus === "cancelled" ||
+          realStatus === "rejected" ||
+          realStatus === "declined"
         ) {
           return null;
         }
@@ -265,7 +307,7 @@ export default function TransactionsPage() {
                       {transaction.type === "deposit" && "Dépôt"}
                       {transaction.type === "withdrawal" && "Retrait"}
                     </h3>
-                    {getStatusBadge(transaction.status)}
+                    {getStatusBadge(transaction)}
                   </div>
 
                   <p className="text-sm text-gray-500 mb-1">
@@ -334,10 +376,16 @@ export default function TransactionsPage() {
     </div>
   );
 
-  // ✅ CALCUL DES RETRAITS EN ATTENTE (UNIQUEMENT LES VALIDES)
-  const pendingWithdrawals = validTransactions.filter(
-    (t: RealTransaction) => t.type === "withdrawal" && t.status === "pending"
-  ).length;
+  // ✅ CALCUL DES RETRAITS EN ATTENTE (BASÉ SUR LE STATUT RÉEL)
+  const pendingWithdrawals = validTransactions.filter((t: RealTransaction) => {
+    const realStatus = getRealTransactionStatus(t);
+    return (
+      t.type === "withdrawal" &&
+      (realStatus === "pending" ||
+        realStatus === "processing" ||
+        realStatus === "initiated")
+    );
+  }).length;
 
   // ✅ FONCTION DE RETRAIT
   const handleWithdraw = async (request: WithdrawRequest) => {
@@ -370,10 +418,6 @@ export default function TransactionsPage() {
     sales: sortedTransactions.filter((t) => t.type === "sale").length,
   };
 
-  // ✅ AFFICHER UN MESSAGE SI DES TRANSACTIONS ONT ÉTÉ FILTRÉES
-  const filteredCount =
-    (userTransactions?.length || 0) - validTransactions.length;
-
   return (
     <div className="container max-w-lg mx-auto px-4 py-6 pb-20 md:pb-6">
       <header className="mb-6">
@@ -386,40 +430,6 @@ export default function TransactionsPage() {
           <h1 className="text-2xl font-bold">{t("title")}</h1>
         </div>
         <p className="text-gray-500">{t("descritption")}</p>
-
-        {/* ✅ STATISTIQUES RAPIDES */}
-        {/* {sortedTransactions.length > 0 && (
-          <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-            <div className="bg-blue-50 p-2 rounded">
-              <p className="font-semibold text-blue-700">
-                {transactionStats.total}
-              </p>
-              <p className="text-xs text-blue-600">Total</p>
-            </div>
-            <div className="bg-green-50 p-2 rounded">
-              <p className="font-semibold text-green-700">
-                {transactionStats.deposits}
-              </p>
-              <p className="text-xs text-green-600">Dépôts</p>
-            </div>
-            <div className="bg-red-50 p-2 rounded">
-              <p className="font-semibold text-red-700">
-                {transactionStats.withdrawals}
-              </p>
-              <p className="text-xs text-red-600">Retraits</p>
-            </div>
-            <div className="bg-purple-50 p-2 rounded">
-              <p className="font-semibold text-purple-700">
-                {isCreator
-                  ? transactionStats.sales
-                  : transactionStats.purchases}
-              </p>
-              <p className="text-xs text-purple-600">
-                {isCreator ? "Ventes" : "Achats"}
-              </p>
-            </div>
-          </div>
-        )} */}
       </header>
 
       {/* ✅ CARTE DE SOLDE POUR CRÉATEURS */}
