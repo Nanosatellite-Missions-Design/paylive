@@ -1,3 +1,4 @@
+// lib/pawapaypolling.ts
 export const pollTransactionStatus = async (
   depositId: string,
   intervalMs = 5000,
@@ -13,16 +14,16 @@ export const pollTransactionStatus = async (
 
       console.log(`🔄 Polling #${attempt} pour depositId=${depositId}`, responseData);
 
-      // ✅ CORRECTION : Accéder au statut réel de la transaction
+      // ✅ CORRECTION : Accéder au statut réel de la transaction DANS data
       const transactionStatus = responseData?.data?.status;
 
       if (!transactionStatus) {
-        console.warn("⚠️ Pas de statut de transaction reçu");
+        console.warn("⚠️ Pas de statut de transaction reçu dans responseData.data");
         await new Promise((r) => setTimeout(r, intervalMs));
         continue;
       }
 
-      console.log(`📊 Statut transaction: ${transactionStatus}`);
+      console.log(`📊 Statut transaction réel: ${transactionStatus}`);
 
       // ✅ Transaction confirmée
       if (transactionStatus === "SUCCESSFUL" || transactionStatus === "COMPLETED") {
@@ -31,13 +32,13 @@ export const pollTransactionStatus = async (
       }
 
       // ❌ Transaction échouée
-      if (transactionStatus === "FAILED" || transactionStatus === "DECLINED") {
+      if (transactionStatus === "FAILED" || transactionStatus === "DECLINED" || transactionStatus === "REJECTED") {
         console.log("❌ Transaction échouée");
-        return { ok: false, data: responseData };
+        return { ok: false, data: responseData, error: `Transaction échouée: ${transactionStatus}` };
       }
 
       // Statuts intermédiaires - continuer le polling
-      if (transactionStatus === "PROCESSING" || transactionStatus === "PENDING" || transactionStatus === "INITIATED") {
+      if (transactionStatus === "PROCESSING" || transactionStatus === "PENDING" || transactionStatus === "INITIATED" || transactionStatus === "ACCEPTED") {
         console.log(`⏳ Transaction en cours: ${transactionStatus}`);
         await new Promise((r) => setTimeout(r, intervalMs));
         continue;

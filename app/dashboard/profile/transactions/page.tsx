@@ -185,20 +185,22 @@ export default function TransactionsPage() {
     }
   };
 
-  // ✅ BADGES DE STATUT CORRIGÉS - NE PLUS AFFICHER "COMPLÉTÉ" POUR LES ÉCHECS
+  // ✅ BADGES DE STATUT CORRIGÉS - BASÉS SUR LES VRAIS STATUTS PAWAPAY
   const getStatusBadge = (status: string) => {
     const statusText = status?.toLowerCase() || "pending";
 
     switch (statusText) {
-      case "completed":
-      case "accepted":
       case "successful":
+      case "completed":
         return (
           <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
             Complété
           </Badge>
         );
+      case "processing":
       case "pending":
+      case "initiated":
+      case "accepted":
         return (
           <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
             <Clock className="h-3 w-3 mr-1" />
@@ -206,6 +208,7 @@ export default function TransactionsPage() {
           </Badge>
         );
       case "failed":
+      case "declined":
       case "rejected":
       case "cancelled":
         return (

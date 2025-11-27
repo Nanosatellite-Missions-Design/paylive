@@ -247,21 +247,13 @@ export function PaymentDialog({
     };
 
     try {
-      // 6. Appeler votre API Backend
       setIsProcessing(true);
 
-      // ✅ CORRECTION : Notifier le parent que le paiement est en cours
       if (onPaymentComplete) {
         onPaymentComplete("pending");
       }
 
-      console.log("🔹 REQUÊTE PAWAPAY - DEVISE LOCALE:", {
-        country: selectedCountry,
-        currency: targetCurrency,
-        amountLocal: localAmount,
-        amountXAF: amountNumber,
-        paymentData,
-      });
+      console.log("🔹 REQUÊTE PAWAPAY - DEVISE LOCALE:", paymentData);
 
       const response = await fetch("/api/pawapay/deposits", {
         method: "POST",
@@ -272,7 +264,6 @@ export function PaymentDialog({
 
       if (!response.ok) {
         console.error("❌ Erreur API:", result);
-        // ✅ CORRECTION : Notifier le parent de l'échec
         if (onPaymentComplete) {
           onPaymentComplete("failed");
         }
@@ -287,67 +278,62 @@ export function PaymentDialog({
 
       if (!pollResult.ok) {
         console.warn("⚠️ Transaction non confirmée:", pollResult);
+
+        // ✅ CORRECTION : Enregistrer la transaction comme ÉCHEC dans Firebase
+        if (userInfo?.uid) {
+          const failedTransactionRecord = {
+            id: result.depositId,
+            depositId: result.depositId,
+            amount: amountNumber,
+            currency: "XAF",
+            localAmount: localAmount,
+            localCurrency: targetCurrency,
+            type: "deposit",
+            status: "FAILED", // ✅ Statut d'échec
+            phoneNumber: finalPhoneNumber,
+            provider: mobileProvider,
+            country: selectedCountry,
+            product: product,
+            user: {
+              uid: userInfo.uid,
+              name: userInfo.name || "Unknown",
+              phone: userInfo.phone || "Unknown",
+            },
+            error: pollResult.error || "Timeout du polling",
+            createdAt: new Date(),
+            timestamp: new Date().toISOString(),
+          };
+
+          console.log(
+            "📝 Enregistrement transaction ÉCHOUÉE Firebase:",
+            failedTransactionRecord
+          );
+
+          await addToSubCollection(
+            failedTransactionRecord,
+            "users",
+            userInfo.uid,
+            "transactions"
+          );
+
+          console.log("✅ Transaction échouée enregistrée dans Firebase");
+        }
+
         if (onPaymentComplete) onPaymentComplete("failed");
         return alert("Le paiement n'a pas été confirmé par Pawapay");
       }
 
       // ✅ Transaction confirmée → mise à jour Firebase et solde
-      // if (userInfo?.uid) {
-      //   const transactionRecord = {
-      //     amount: amountNumber, // Montant original en XAF
-      //     currency: "XAF", // Toujours stocker en XAF pour référence
-      //     localAmount: localAmount, // Montant dans la devise locale
-      //     localCurrency: targetCurrency, // Devise utilisée pour le paiement
-      //     depositId: result.depositId, // ID de la transaction Pawapay
-      //     status: "SUCCESSFUL",
-      //     phoneNumber: finalPhoneNumber,
-      //     provider: mobileProvider,
-      //     country: selectedCountry,
-      //     product,
-      //     user: {
-      //       uid: userInfo.uid,
-      //       name: userInfo.name || "Unknown",
-      //       phone: userInfo.phone || "Unknown",
-      //     },
-      //     timestamp: new Date().toISOString(),
-      //     type: "deposit",
-      //   };
-
-      //   console.log(
-      //     "📝 Enregistrement transaction Firebase:",
-      //     transactionRecord
-      //   );
-
-      //   await addToSubCollection(
-      //     transactionRecord,
-      //     "users",
-      //     userInfo.uid,
-      //     "transactions"
-      //   );
-
-      //   await updateDocument("users", userInfo.uid, {
-      //     lastTransaction: new Date().toISOString(),
-      //     // ⚡ ici tu peux mettre à jour le solde réel
-      //   });
-
-      //   console.log("✅ Transaction enregistrée et solde mis à jour");
-
-      //   if (onPaymentComplete) onPaymentComplete(result.depositId);
-      // } else {
-      //   if (onPaymentComplete) onPaymentComplete(result.depositId);
-      // }
-      // ✅ ANCIENNE STRUCTURE DE TRANSACTION (comme avant)
       if (userInfo?.uid) {
         const transactionRecord = {
-          // ✅ STRUCTURE PROPRE AVEC ID UNIQUE
-          id: result.depositId, // Utiliser le depositId comme ID
+          id: result.depositId,
           depositId: result.depositId,
           amount: amountNumber,
           currency: "XAF",
           localAmount: localAmount,
           localCurrency: targetCurrency,
           type: "deposit",
-          status: "SUCCESSFUL",
+          status: "SUCCESSFUL", // ✅ Statut de succès
           phoneNumber: finalPhoneNumber,
           provider: mobileProvider,
           country: selectedCountry,
@@ -362,7 +348,7 @@ export function PaymentDialog({
         };
 
         console.log(
-          "📝 Enregistrement transaction Firebase:",
+          "📝 Enregistrement transaction RÉUSSIE Firebase:",
           transactionRecord
         );
 
@@ -382,7 +368,9 @@ export function PaymentDialog({
           updatedAt: new Date(),
         });
 
-        console.log("✅ Transaction enregistrée et balance mise à jour");
+        console.log(
+          "✅ Transaction réussie enregistrée et balance mise à jour"
+        );
 
         if (onPaymentComplete) onPaymentComplete(result.depositId);
       } else {
@@ -390,7 +378,39 @@ export function PaymentDialog({
       }
     } catch (error) {
       console.error("❌ Erreur lors du paiement:", error);
-      // ✅ CORRECTION : Notifier le parent de l'échec
+
+      // ✅ CORRECTION : Enregistrer l'erreur dans Firebase
+      if (userInfo?.uid) {
+        const errorTransactionRecord = {
+          id: `error_${Date.now()}`,
+          amount: amountNumber,
+          currency: "XAF",
+          localAmount: localAmount,
+          localCurrency: targetCurrency,
+          type: "deposit",
+          status: "FAILED",
+          phoneNumber: finalPhoneNumber,
+          provider: mobileProvider,
+          country: selectedCountry,
+          product: product,
+          user: {
+            uid: userInfo.uid,
+            name: userInfo.name || "Unknown",
+            phone: userInfo.phone || "Unknown",
+          },
+          error: error instanceof Error ? error.message : "Erreur inconnue",
+          createdAt: new Date(),
+          timestamp: new Date().toISOString(),
+        };
+
+        await addToSubCollection(
+          errorTransactionRecord,
+          "users",
+          userInfo.uid,
+          "transactions"
+        );
+      }
+
       if (onPaymentComplete) {
         onPaymentComplete("failed");
       }
