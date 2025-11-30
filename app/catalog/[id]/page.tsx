@@ -23,7 +23,8 @@ import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { PaymentDialog } from "@/components/payment-dialog"; // ← AJOUTEZ CET IMPORT
+import { PaymentDialog } from "@/components/payment-dialog";
+import FloatingCart from "@/components/cart";
 
 export default function CatalogPage() {
   const params = useParams();
@@ -41,12 +42,16 @@ export default function CatalogPage() {
   const { toast } = useToast();
   const t = useTranslations("CatalogPage");
 
-  // AJOUT: États pour gérer le paiement direct depuis le catalogue
+  // SUPPRESSION: États pour le paiement direct (remplacés par le système de checkout)
   const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
   const [productToBuy, setProductToBuy] = useState<any>({});
   const [paymentState, setPaymentState] = useState("selecting");
   const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
   const [depositId, setDepositId] = useState("");
+
+  // AJOUT: États pour gérer le produit à acheter directement via le checkout
+  const [productForBuyNow, setProductForBuyNow] =
+    useState<CatalogProduct | null>(null);
 
   const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     if (!userProducts || userProducts.length === 0) return catalogProducts;
@@ -115,100 +120,23 @@ export default function CatalogPage() {
     });
   };
 
-  // AJOUT: Fonction pour acheter directement depuis le catalogue
+  // MODIFICATION COMPLÈTE: Fonction pour acheter directement via le checkout
   const handleBuyNow = (product: CatalogProduct) => {
-    setProductToBuy({
-      ...product,
-      totalPrice: product.price.toString(),
+    // Ajouter le produit au panier avec quantité 1
+    addToCart(product, 1);
+
+    // Stocker le produit pour l'achat direct
+    setProductForBuyNow(product);
+
+    toast({
+      title: "Produit ajouté au panier",
+      description: `${product.name} a été ajouté. Remplissez vos informations pour finaliser l'achat.`,
     });
-    setShowSelectPaymentNumber(true);
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
   };
 
-  // AJOUT: Gestion du callback de paiement
-  const handlePaymentComplete = (result: string) => {
-    console.log("🔄 Catalog: handlePaymentComplete appelé avec:", result);
-
-    if (result === "pending") {
-      setPaymentState("pending");
-      setIsPaymentProcessing(true);
-      toast({
-        title: "Paiement en cours",
-        description: "Veuillez confirmer le paiement sur votre téléphone.",
-      });
-    } else if (result === "failed") {
-      setPaymentState("failed");
-      setIsPaymentProcessing(false);
-      toast({
-        variant: "destructive",
-        title: "Paiement échoué",
-        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
-      });
-    } else {
-      // C'est un depositId - transaction réussie
-      setPaymentState("success");
-      setDepositId(result);
-      setIsPaymentProcessing(false);
-
-      // Enregistrer la transaction dans Firebase du côté vendeur
-      if (productToBuy && productToBuy.creatorId) {
-        const newTransaction = {
-          type: "purchase",
-          buyerId: "userInfo.uid", // À remplacer par l'ID réel de l'utilisateur connecté
-          sellerId: productToBuy.creatorId,
-          productId: productToBuy.id,
-          productName: productToBuy.name,
-          counterpartyId: productToBuy.creatorId,
-          amount: productToBuy.price,
-          quantity: 1,
-          paymentMethod: "mobile_money",
-          status: "completed",
-          depositId: result,
-          timestamp: new Date().toISOString(),
-        };
-
-        // Utiliser votre fonction setToSubCollection ici
-        // setToSubCollection(
-        //   result,
-        //   newTransaction,
-        //   "users",
-        //   productToBuy.creatorId,
-        //   "transactions"
-        // )
-        //   .then(() => {
-        //     console.log("✅ Transaction enregistrée chez le vendeur");
-        //   })
-        //   .catch((error) => {
-        //     console.error("❌ Erreur enregistrement vendeur:", error);
-        //   });
-      }
-
-      toast({
-        title: "Paiement réussi !",
-        description: `Votre achat de ${productToBuy?.name} a été confirmé.`,
-      });
-
-      // Fermer automatiquement après un délai en cas de succès
-      setTimeout(() => {
-        setShowSelectPaymentNumber(false);
-      }, 3000);
-    }
-  };
-
-  // AJOUT: Gestion de l'annulation du paiement
-  const handleCancelPaymentDialog = () => {
-    console.log("❌ Catalog: Annulation du paiement");
-    setShowSelectPaymentNumber(false);
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
-
-    if (isPaymentProcessing) {
-      toast({
-        title: "Paiement annulé",
-        description: "Le processus de paiement a été interrompu.",
-      });
-    }
+  // AJOUT: Fonction pour reset le processus Buy Now
+  const handleBuyNowProcessed = () => {
+    setProductForBuyNow(null);
   };
 
   const handleProductClick = (productId: string) => {
@@ -496,15 +424,9 @@ export default function CatalogPage() {
         )}
       </div>
 
-      {/* AJOUT: PaymentDialog pour les achats directs depuis le catalogue */}
-      <PaymentDialog
-        open={showSelectPaymentNumber}
-        onOpenChange={setShowSelectPaymentNumber}
-        amount={productToBuy.totalPrice || productToBuy.price || "0"}
-        product={productToBuy.name || ""}
-        onPaymentComplete={handlePaymentComplete}
-        paymentState={paymentState}
-        handleCancel={handleCancelPaymentDialog}
+      <FloatingCart
+        productToBuy={productForBuyNow}
+        onBuyNowProcessed={handleBuyNowProcessed}
       />
 
       <style jsx>{`

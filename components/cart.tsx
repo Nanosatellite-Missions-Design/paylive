@@ -32,12 +32,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslations } from "@/lib/useTranslations";
 import { PaymentDialog } from "@/components/payment-dialog";
 import { setToCollection } from "@/functions/add-to-collection";
+import type { CatalogProduct } from "@/types/catalog";
 
+// AJOUT: Interface pour les props avec support Buy Now
 interface FloatingCartProps {
-  catalogId: string;
+  productToBuy?: CatalogProduct | null;
+  onBuyNowProcessed?: () => void;
 }
 
-export default function FloatingCart() {
+export default function FloatingCart({
+  productToBuy,
+  onBuyNowProcessed,
+}: FloatingCartProps) {
   const {
     cart,
     updateQuantity,
@@ -66,6 +72,31 @@ export default function FloatingCart() {
   });
 
   const t = useTranslations("CatalogPage.Cart");
+
+  // AJOUT: Effet pour gérer l'ouverture automatique du checkout pour Buy Now
+  useEffect(() => {
+    if (productToBuy) {
+      console.log("🛒 Buy Now détecté, ouverture automatique du checkout");
+
+      // S'assurer que le produit est dans le panier
+      const isInCart = cart?.items.some(
+        (item) => item.productId === productToBuy.id
+      );
+      if (!isInCart) {
+        console.log("🛒 Ajout du produit Buy Now au panier");
+        // Le produit devrait déjà être ajouté via handleBuyNow, mais on double la vérification
+      }
+
+      // Ouvrir automatiquement le panier et aller au checkout
+      setIsOpen(true);
+      setShowCheckout(true);
+
+      toast({
+        title: "Produit ajouté",
+        description: "Remplissez vos informations pour finaliser l'achat.",
+      });
+    }
+  }, [productToBuy, cart, toast]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -99,6 +130,7 @@ export default function FloatingCart() {
     setShowPaymentDialog(true);
   };
 
+  // MODIFICATION: handlePaymentComplete avec gestion du callback Buy Now
   const handlePaymentComplete = async (result: string) => {
     console.log("🔄 FloatingCart: handlePaymentComplete appelé avec:", result);
 
@@ -135,6 +167,12 @@ export default function FloatingCart() {
           setShowCheckout(false);
           setIsOpen(false);
           clearCart();
+
+          // AJOUT: Appeler le callback si c'est un achat Buy Now
+          if (productToBuy && onBuyNowProcessed) {
+            console.log("✅ Buy Now terminé, appel du callback");
+            onBuyNowProcessed();
+          }
         }, 2000);
       } catch (error) {
         console.error("❌ Erreur création commande:", error);
@@ -246,15 +284,32 @@ export default function FloatingCart() {
     setIsSubmitting(false);
   };
 
+  // AJOUT: Gestion améliorée de la fermeture du dialogue
+  const handleDialogClose = (open: boolean) => {
+    setIsOpen(open);
+
+    // Si le dialogue se ferme et qu'on a un produit Buy Now, reset l'état
+    if (!open && productToBuy && onBuyNowProcessed) {
+      console.log("🛒 Fermeture du panier, reset du Buy Now");
+      onBuyNowProcessed();
+    }
+
+    // Réinitialiser le checkout si on ferme le dialogue
+    if (!open) {
+      setShowCheckout(false);
+    }
+  };
+
   const cartItemCount = getCartItemCount();
 
-  if (cartItemCount === 0) {
+  // MODIFICATION: Ne pas rendre null si cartItemCount === 0 mais qu'on a un produit Buy Now
+  if (cartItemCount === 0 && !productToBuy) {
     return null;
   }
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={handleDialogClose}>
         <DialogTrigger asChild>
           <Button
             className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-110 z-50"
@@ -277,11 +332,23 @@ export default function FloatingCart() {
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-2xl font-bold text-gray-900">
                     {t("checkout")}
+                    {/* AJOUT: Indicateur Buy Now */}
+                    {productToBuy && (
+                      <Badge className="ml-2 bg-green-500 text-white text-xs">
+                        Achat direct
+                      </Badge>
+                    )}
                   </DialogTitle>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowCheckout(false)}
+                    onClick={() => {
+                      setShowCheckout(false);
+                      // Si c'est un Buy Now et qu'on revient en arrière, reset l'état
+                      if (productToBuy && onBuyNowProcessed) {
+                        onBuyNowProcessed();
+                      }
+                    }}
                     className="rounded-full hover:bg-white/50"
                   >
                     <X className="h-4 w-4" />
@@ -452,7 +519,11 @@ export default function FloatingCart() {
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5 mr-3" />
-                      Proceed to Payment - XAF{getCartTotal().toFixed(2)}
+                      {/* AJOUT: Texte adapté pour Buy Now */}
+                      {productToBuy
+                        ? "Finaliser l'achat"
+                        : "Proceed to Payment"}{" "}
+                      - XAF{getCartTotal().toFixed(2)}
                     </>
                   )}
                 </Button>

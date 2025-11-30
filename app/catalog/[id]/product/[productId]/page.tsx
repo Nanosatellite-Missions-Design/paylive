@@ -53,6 +53,8 @@ import {
   PAWAPAY_COUNTRIES,
   getAllCountries,
 } from "@/lib/countries";
+import FloatingCart from "@/components/cart";
+// AJOUT: Import du FloatingCart
 
 export default function ProductPage() {
   const params = useParams();
@@ -66,6 +68,8 @@ export default function ProductPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
+
+  // SUPPRESSION: États pour le paiement direct (remplacés par le système de checkout)
   const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
   const [productToBuy, setProductToBuy] = useState<any>({});
   const [paymentState, setPaymentState] = useState("selecting");
@@ -77,6 +81,10 @@ export default function ProductPage() {
   const [lastTransactionStatus, setLastTransactionStatus] = useState<
     string | null
   >(null);
+
+  // AJOUT: États pour gérer le produit à acheter directement via le checkout
+  const [productForBuyNow, setProductForBuyNow] =
+    useState<CatalogProduct | null>(null);
 
   // new states - conservés pour référence mais maintenant gérés dans PaymentDialog
   const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
@@ -137,18 +145,6 @@ export default function ProductPage() {
     fetchProduct();
   }, [catalog?.creatorId, productId]);
 
-  // ✅ CORRECTION : Effet pour réinitialiser l'état de paiement quand le dialogue se ferme
-  useEffect(() => {
-    if (!showSelectPaymentNumber) {
-      // Réinitialiser l'état après un délai pour permettre les animations
-      const timer = setTimeout(() => {
-        setPaymentState("selecting");
-        setIsPaymentProcessing(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [showSelectPaymentNumber]);
-
   const handleAddToCart = () => {
     if (product) {
       addToCart(product, quantity);
@@ -184,106 +180,25 @@ export default function ProductPage() {
     }
   };
 
+  // MODIFICATION COMPLÈTE: Fonction pour acheter directement via le checkout
   const handleBuyNow = () => {
     if (!product) return;
 
-    setProductToBuy({
-      ...product,
-      totalPrice: (product.price * quantity).toString(),
+    // Ajouter au panier avec la quantité sélectionnée
+    addToCart(product, quantity);
+
+    // Stocker le produit pour l'achat direct
+    setProductForBuyNow(product);
+
+    toast({
+      title: "Produit ajouté au panier",
+      description: `${product.name} a été ajouté. Remplissez vos informations pour finaliser l'achat.`,
     });
-    setShowSelectPaymentNumber(true);
-    setPaymentState("selecting"); // ✅ CORRECTION : Réinitialiser l'état à chaque ouverture
-    setIsPaymentProcessing(false);
   };
 
-  // ✅ CORRECTION COMPLÈTE : Nouvelle gestion du callback de paiement
-  const handlePaymentComplete = (result: string) => {
-    console.log("🔄 Parent: handlePaymentComplete appelé avec:", result);
-
-    if (result === "pending") {
-      setPaymentState("pending");
-      setIsPaymentProcessing(true);
-      toast({
-        title: "Paiement en cours",
-        description: "Veuillez confirmer le paiement sur votre téléphone.",
-      });
-    } else if (result === "failed") {
-      setPaymentState("failed");
-      setIsPaymentProcessing(false);
-      toast({
-        variant: "destructive",
-        title: "Paiement échoué",
-        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
-      });
-    } else {
-      // C'est un depositId - transaction réussie
-      setPaymentState("success");
-      setDepositId(result);
-      setIsPaymentProcessing(false);
-
-      // ✅ CORRECTION : Enregistrer la transaction dans Firebase du côté vendeur
-      if (product && product.creatorId) {
-        const newTransaction = {
-          type: "purchase",
-          buyerId: "userInfo.uid", // À remplacer par l'ID réel de l'utilisateur connecté
-          sellerId: product.creatorId,
-          productId: product.id,
-          productName: product.name,
-          counterpartyId: product.creatorId,
-          amount: product.price * quantity,
-          quantity: quantity,
-          paymentMethod: "mobile_money",
-          status: "completed",
-          depositId: result,
-          timestamp: new Date().toISOString(),
-        };
-
-        setToSubCollection(
-          result, // Utiliser le depositId comme ID de document
-          newTransaction,
-          "users",
-          product.creatorId,
-          "transactions"
-        )
-          .then(() => {
-            console.log("✅ Transaction enregistrée chez le vendeur");
-          })
-          .catch((error) => {
-            console.error("❌ Erreur enregistrement vendeur:", error);
-          });
-      }
-
-      toast({
-        title: "Paiement réussi !",
-        description: `Votre achat de ${product?.name} a été confirmé.`,
-      });
-
-      // ✅ CORRECTION : Fermer automatiquement après un délai en cas de succès
-      setTimeout(() => {
-        setShowSelectPaymentNumber(false);
-        // Optionnel : Rediriger ou recharger les données
-      }, 3000);
-    }
-  };
-
-  const handleCancelPaymentDialog = () => {
-    console.log("❌ Parent: Annulation du paiement");
-    setShowSelectPaymentNumber(false);
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
-
-    if (isPaymentProcessing) {
-      toast({
-        title: "Paiement annulé",
-        description: "Le processus de paiement a été interrompu.",
-      });
-    }
-  };
-
-  // ✅ CORRECTION : Fonction pour réessayer le paiement
-  const handleRetryPayment = () => {
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
+  // AJOUT: Fonction pour reset le processus Buy Now
+  const handleBuyNowProcessed = () => {
+    setProductForBuyNow(null);
   };
 
   if (isLoading) {
@@ -578,7 +493,7 @@ export default function ProductPage() {
                       </span>
                     </div>
 
-                    {/* Bouton Buy Now principal */}
+                    {/* MODIFICATION: Bouton Buy Now qui utilise maintenant le checkout */}
                     <Button
                       onClick={handleBuyNow}
                       disabled={isPaymentProcessing}
@@ -592,6 +507,16 @@ export default function ProductPage() {
                       ) : (
                         t("buyNow")
                       )}
+                    </Button>
+
+                    {/* AJOUT: Bouton Add to Cart pour cohérence */}
+                    <Button
+                      onClick={handleAddToCart}
+                      variant="outline"
+                      className="w-full h-10 font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {t("addToCart")}
                     </Button>
                   </div>
                 </CardContent>
@@ -632,15 +557,10 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* ✅ CORRECTION : PaymentDialog avec la bonne gestion des états */}
-      <PaymentDialog
-        open={showSelectPaymentNumber}
-        onOpenChange={setShowSelectPaymentNumber}
-        amount={productToBuy.totalPrice || productToBuy.price || "0"}
-        product={productToBuy.name || ""}
-        onPaymentComplete={handlePaymentComplete}
-        paymentState={paymentState}
-        handleCancel={handleCancelPaymentDialog}
+      {/* AJOUT: FloatingCart avec support pour Buy Now */}
+      <FloatingCart
+        productToBuy={productForBuyNow}
+        onBuyNowProcessed={handleBuyNowProcessed}
       />
 
       <style jsx>{`
