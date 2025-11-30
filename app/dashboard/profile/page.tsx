@@ -26,7 +26,6 @@ export default function ProfilePage() {
   const isCreator = userInfo?.role === "user" || false;
 
   const calculateStats = () => {
-    // ✅ UTILISER DIRECTEMENT LE BALANCE DE USERINFO
     const currentBalance = userInfo?.balance || 0;
 
     if (!userTransactions || userTransactions.length === 0) {
@@ -34,7 +33,7 @@ export default function ProfilePage() {
         totalSales: 0,
         totalEarnings: 0,
         monthlyEarnings: 0,
-        currentBalance, // ✅ SOLDE DIRECT DEPUIS USERINFO
+        currentBalance,
       };
     }
 
@@ -42,8 +41,21 @@ export default function ProfilePage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // ✅ CALCUL DES GAINS MENSUELS (dépôts + ventes)
-    const monthlyTransactions = userTransactions.filter((transaction) => {
+    // 🔥 1. Filtrer les transactions valides
+    const validTransactions = userTransactions.filter(
+      (t) =>
+        (t.type === "deposit" || t.type === "sale") &&
+        (t.status === "SUCCESSFUL" || t.status === "COMPLETED")
+    );
+
+    // 🔥 2. Calcul des gains totaux
+    const totalEarnings = validTransactions.reduce(
+      (sum, t) => sum + (t.amount || 0),
+      0
+    );
+
+    // 🔥 3. Transactions du mois
+    const monthlyTransactions = validTransactions.filter((transaction) => {
       if (!transaction.createdAt) return false;
       const transactionDate =
         transaction.createdAt instanceof Date
@@ -55,28 +67,22 @@ export default function ProfilePage() {
       );
     });
 
-    const monthlyEarnings = monthlyTransactions
-      .filter((t) => t.type === "deposit" || t.type === "sale")
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
+    // 🔥 4. Gains du mois
+    const monthlyEarnings = monthlyTransactions.reduce(
+      (sum, t) => sum + (t.amount || 0),
+      0
+    );
 
-    // ✅ CALCUL DES GAINS TOTAUX (dépôts + ventes)
-    const totalEarnings = userTransactions
-      .filter((t) => t.type === "deposit" || t.type === "sale")
-      .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-    // ✅ CALCUL DES ACHATS TOTAUX
-    const totalPurchases = userTransactions.filter(
-      (t) => t.type === "purchase"
+    // 🔥 5. Nombre de ventes valides
+    const totalSales = validTransactions.filter(
+      (t) => t.type === "sale"
     ).length;
 
-    // ✅ CALCUL DES VENTES TOTALES (pour les créateurs)
-    const totalSales = userTransactions.filter((t) => t.type === "sale").length;
-
     return {
-      totalSales: isCreator ? totalSales : totalPurchases,
+      totalSales,
       totalEarnings,
       monthlyEarnings,
-      currentBalance, // ✅ SOLDE DIRECT DEPUIS USERINFO
+      currentBalance,
     };
   };
 
