@@ -30,6 +30,8 @@ import {
   User,
   Wallet,
   MapPin,
+  Smartphone,
+  Lock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -55,6 +57,13 @@ import {
   formatLocalDisplay,
 } from "@/lib/allocate";
 import { updateSubcollectionDocument } from "@/functions/update-doc-in-sub-collection";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface WithdrawDialogProps {
   currentBalance: number;
@@ -285,6 +294,23 @@ export default function WithdrawDialog({
     return formatLocalDisplay(amountNumber, countryCode);
   };
 
+  // Formater le numéro de téléphone pour l'affichage
+  const formatPhoneDisplay = (phone: string): string => {
+    const cleanPhone = phone.replace(/[^\d]/g, "");
+    if (cleanPhone.length <= 3) return cleanPhone;
+    if (cleanPhone.length <= 6)
+      return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3)}`;
+    return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(
+      3,
+      6
+    )} ${cleanPhone.slice(6, 9)}`;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const formatted = formatPhoneDisplay(value);
+    setAccountDetails(formatted);
+  };
+
   // Calcul du solde actuel
   const calculateCurrentBalance = () => {
     if (!userTransactions || userTransactions.length === 0) return 0;
@@ -368,12 +394,25 @@ export default function WithdrawDialog({
     if (countryData?.providers?.[0]) {
       setMethod(countryData.providers[0].id as WithdrawRequest["method"]);
     }
+
+    // Réinitialiser le numéro de téléphone
+    setAccountDetails("");
   };
 
   const handleMethodSubmit = () => {
     let isValid = true;
-    if (!accountDetails) {
-      setError("Veuillez saisir votre numéro de téléphone");
+
+    // Vérifier si le numéro a au moins 5 caractères (après nettoyage)
+    const cleanPhone = accountDetails.replace(/[^\d]/g, "");
+    if (cleanPhone.length < 5) {
+      setError(
+        "Veuillez saisir un numéro de téléphone valide (minimum 5 chiffres)"
+      );
+      isValid = false;
+    }
+
+    if (!method) {
+      setError("Veuillez sélectionner un fournisseur");
       isValid = false;
     }
 
@@ -408,7 +447,8 @@ export default function WithdrawDialog({
       validationErrors.push("Le fournisseur est requis");
     }
 
-    if (!accountDetails || accountDetails.length < 8) {
+    const cleanPhone = accountDetails.replace(/[^\d]/g, "");
+    if (!accountDetails || cleanPhone.length < 5) {
       validationErrors.push("Le numéro de téléphone est invalide");
     }
 
@@ -442,7 +482,7 @@ export default function WithdrawDialog({
       withdrawAmountXAF * PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE;
     const netAmountXAF = Math.max(0, withdrawAmountXAF - withdrawalFeeXAF);
 
-    // ✅ FORMATAGE DU NUMÉRO DE TÉLÉPHONE
+    // ✅ FORMATAGE DU NUMÉRO DE TÉLÉPHONE - SIMPLIFIÉ
     let cleanPhoneNumber = accountDetails.replace(/[^\d]/g, "");
 
     if (cleanPhoneNumber.startsWith("0")) {
@@ -482,7 +522,9 @@ export default function WithdrawDialog({
         paymentMethod: method,
         providerName: countryProvider.name,
         phoneNumber: fullPhoneNumber,
-        formattedPhoneNumber: country.dialCode + " " + accountDetails,
+        formattedPhoneNumber: `${country.dialCode} ${formatPhoneDisplay(
+          cleanPhoneNumber
+        )}`,
 
         // Informations géographiques
         country: {
@@ -663,7 +705,9 @@ export default function WithdrawDialog({
             title: "✅ Retrait réussi",
             description: `Votre retrait de ${getLocalAmountDisplay(
               selectedCountry
-            )} a été envoyé à ${country.dialCode} ${accountDetails}`,
+            )} a été envoyé à ${country.dialCode} ${formatPhoneDisplay(
+              cleanPhoneNumber
+            )}`,
           });
         } else if (finalStatus === "pending") {
           toast({
@@ -745,17 +789,29 @@ export default function WithdrawDialog({
     resetForm();
   };
 
-  const getMethodDetails = () => {
+  // MODIFICATION PRINCIPALE : Nouvelle UI pour le champ téléphone
+  const getPhoneInputField = () => {
     return (
       <div className="space-y-2">
-        <Label htmlFor="account-details">{t("WithdrawDialog.2.phone")}</Label>
-        <Input
-          id="phoneNumber"
-          value={accountDetails}
-          onChange={(e) => setAccountDetails(e.target.value)}
-          placeholder={t("WithdrawDialog.2.phonePlaceholder")}
-          required
-        />
+        <Label htmlFor="phone-number">{t("WithdrawDialog.2.phone")} *</Label>
+        <div className="flex gap-2">
+          {/* Indicateur de pays déjà intégré */}
+          <div className="flex items-center px-3 border rounded-md bg-muted text-muted-foreground min-w-[80px] justify-center">
+            {currentCountry?.dialCode}
+          </div>
+          <Input
+            id="phone-number"
+            type="tel"
+            value={accountDetails}
+            onChange={(e) => handlePhoneChange(e.target.value)}
+            placeholder="6XX XXX XXX"
+            required
+            className="flex-1"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Vous recevrez un SMS de confirmation sur ce numéro
+        </p>
       </div>
     );
   };
@@ -781,33 +837,61 @@ export default function WithdrawDialog({
             </DialogHeader>
 
             <div className="space-y-4">
-              {/* Sélection du pays */}
-              <div className="space-y-2">
-                <Label htmlFor="country">Pays de Retrait</Label>
-                <select
-                  id="country"
-                  value={selectedCountry}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                >
-                  {PAWAPAY_COUNTRIES.map((country) => {
-                    const amountNumber = getSafeAmount();
-                    const displayAmount =
-                      amountNumber > 0
-                        ? formatLocalDisplay(amountNumber, country.code)
-                        : "";
+              {/* Localisation détectée */}
+              {userLocation && (
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>Localisation détectée: {userLocation.country}</span>
+                </div>
+              )}
 
-                    return (
-                      <option key={country.code} value={country.code}>
-                        {country.name} ({getCurrencyForCountry(country.code)})
-                        {getCurrencyForCountry(country.code) !== "XAF" &&
-                          displayAmount && <span> • ≈ {displayAmount}</span>}
-                      </option>
-                    );
-                  })}
-                </select>
+              {/* Sélection du pays - UI améliorée */}
+              <div className="space-y-2">
+                <Label htmlFor="country">Pays de Retrait *</Label>
+                <Select
+                  value={selectedCountry}
+                  onValueChange={handleCountryChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionnez votre pays" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAWAPAY_COUNTRIES.map((country) => {
+                      const amountNumber = getSafeAmount();
+                      const displayAmount =
+                        amountNumber > 0
+                          ? formatLocalDisplay(amountNumber, country.code)
+                          : "";
+
+                      return (
+                        <SelectItem key={country.code} value={country.code}>
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={country.flag}
+                              alt={`${country.name} flag`}
+                              className="w-6 h-4 object-cover rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium">{country.name}</div>
+                              <div className="text-xs text-gray-500">
+                                {country.dialCode} •{" "}
+                                {getCurrencyForCountry(country.code)}
+                                {getCurrencyForCountry(country.code) !==
+                                  "XAF" &&
+                                  displayAmount && (
+                                    <span> • ≈ {displayAmount}</span>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
 
+              {/* Solde disponible */}
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">
                   {t("WithdrawDialog.1.availableBalance")}
@@ -817,6 +901,7 @@ export default function WithdrawDialog({
                 </span>
               </div>
 
+              {/* Montant du retrait */}
               <div className="space-y-2">
                 <Label htmlFor="amount">
                   {t("WithdrawDialog.1.withdrawalAmount")} (
@@ -855,6 +940,7 @@ export default function WithdrawDialog({
                   )}
               </div>
 
+              {/* Récapitulatif des frais */}
               {getSafeAmount() > 0 && (
                 <div className="p-3 border rounded-md space-y-2">
                   <div className="flex justify-between text-sm">
@@ -862,7 +948,7 @@ export default function WithdrawDialog({
                     <span>{getLocalAmountDisplay(selectedCountry)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
-                    <span>{t("WithdrawDialog.1.processingFee")}</span>
+                    <span>{t("WithdrawDialog.1.processingFee")} (1%)</span>
                     <span>
                       -
                       {formatCurrencyWithSymbol(
@@ -881,13 +967,12 @@ export default function WithdrawDialog({
                       )}
                     </span>
                   </div>
-                  <hr />
-                  <div className="flex items-start gap-2 mt-2 p-2 bg-yellow-50 rounded">
-                    <Shield className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-yellow-700">
-                      <strong>Frais de service :</strong> PawaPay prélève{" "}
-                      {PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE * 100}% sur chaque
-                      retrait pour couvrir les coûts de traitement.
+                  <div className="flex items-start gap-2 mt-2 p-2 bg-blue-50 rounded">
+                    <Shield className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-700">
+                      <strong>Note importante:</strong> Le montant sera envoyé
+                      en {getCurrencyForCountry(selectedCountry)} sur votre
+                      compte mobile.
                     </p>
                   </div>
                 </div>
@@ -919,61 +1004,71 @@ export default function WithdrawDialog({
           </>
         );
 
-      // ... (les autres cas method, confirm, success restent identiques)
       case "method":
         return (
           <>
             <DialogHeader>
-              <DialogTitle>{t("WithdrawDialog.2.title")}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5" />
+                {t("WithdrawDialog.2.title")}
+              </DialogTitle>
               <DialogDescription>
                 {t("WithdrawDialog.2.description")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Récapitulatif du montant */}
               <div className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">
                   {t("WithdrawDialog.2.withdrawalAmount")}
                 </span>
-                <span className="text-lg font-semibold">
-                  {getLocalAmountDisplay(selectedCountry)}
-                </span>
-                {getCurrencyForCountry(selectedCountry) !== "XAF" && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    ({getSafeAmount().toLocaleString()} XAF)
+                <div className="text-right">
+                  <span className="text-lg font-semibold">
+                    {getLocalAmountDisplay(selectedCountry)}
                   </span>
-                )}
+                  {getCurrencyForCountry(selectedCountry) !== "XAF" && (
+                    <span className="text-sm text-gray-500 ml-2 block">
+                      ({getSafeAmount().toLocaleString()} XAF)
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <RadioGroup
-                value={method}
-                onValueChange={(value: WithdrawRequest["method"]) =>
-                  setMethod(value)
-                }
-              >
-                {availableProviders.map((provider) => (
-                  <div
-                    key={provider.id}
-                    className="flex items-center space-x-2 border rounded-md p-3"
-                  >
-                    <RadioGroupItem value={provider.id} id={provider.id} />
-                    <Label
-                      htmlFor={provider.id}
-                      className="flex-1 flex items-center cursor-pointer"
+              {/* Sélection du fournisseur */}
+              <div className="space-y-2">
+                <Label>Fournisseur Mobile *</Label>
+                <RadioGroup
+                  value={method}
+                  onValueChange={(value: WithdrawRequest["method"]) =>
+                    setMethod(value)
+                  }
+                  className="space-y-3"
+                >
+                  {availableProviders.map((provider) => (
+                    <div
+                      key={provider.id}
+                      className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50 transition-colors"
                     >
-                      <Phone className="h-4 w-4 mr-2" />
-                      <div>
-                        <div>{provider.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {/* Estimation du temps */}
+                      <RadioGroupItem value={provider.id} id={provider.id} />
+                      <Label
+                        htmlFor={provider.id}
+                        className="flex-1 flex items-center cursor-pointer"
+                      >
+                        <div className="ml-2">
+                          <div className="font-medium">{provider.name}</div>
+                          <div className="text-xs text-gray-500">
+                            Retrait instantané • Pays: {currentCountry?.name}
+                          </div>
                         </div>
-                      </div>
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
 
-              <div className="pt-2">{getMethodDetails()}</div>
+              {/* Champ téléphone amélioré */}
+              <div className="pt-2">{getPhoneInputField()}</div>
 
               {error && (
                 <Alert variant="destructive">
@@ -988,7 +1083,12 @@ export default function WithdrawDialog({
               <Button variant="outline" onClick={() => setStep("amount")}>
                 {t("WithdrawDialog.back")}
               </Button>
-              <Button onClick={handleMethodSubmit}>
+              <Button
+                onClick={handleMethodSubmit}
+                disabled={
+                  !method || accountDetails.replace(/[^\d]/g, "").length < 5
+                }
+              >
                 {t("WithdrawDialog.continue")}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -1000,24 +1100,36 @@ export default function WithdrawDialog({
         return (
           <>
             <DialogHeader>
-              <DialogTitle>{t("WithdrawDialog.3.title")}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-green-600" />
+                {t("WithdrawDialog.3.title")}
+              </DialogTitle>
               <DialogDescription>
                 {t("WithdrawDialog.3.description")}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Récapitulatif détaillé */}
               <div className="space-y-3 p-4 border rounded-md">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.amount")}
                   </span>
-                  <span className="font-medium">
-                    {getLocalAmountDisplay(selectedCountry)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">
+                      {getLocalAmountDisplay(selectedCountry)}
+                    </span>
+                    {getCurrencyForCountry(selectedCountry) !== "XAF" && (
+                      <span className="text-sm text-gray-500 block">
+                        ({getSafeAmount().toLocaleString()} XAF)
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Frais</span>
+                  <span className="text-gray-600">Frais de service (1%)</span>
                   <span className="text-gray-600">
                     -
                     {formatCurrencyWithSymbol(
@@ -1026,42 +1138,50 @@ export default function WithdrawDialog({
                     )}
                   </span>
                 </div>
+
+                <hr />
+
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.youReceive")}
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-green-600">
                     {formatCurrencyWithSymbol(
                       localNetAmount,
                       getCurrencyForCountry(selectedCountry)
                     )}
                   </span>
                 </div>
-                {getCurrencyForCountry(selectedCountry) !== "XAF" && (
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Montant référence:</span>
-                    <span>{getSafeAmount().toLocaleString()} XAF</span>
-                  </div>
-                )}
+
                 <hr />
+
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.method")}
                   </span>
-                  <span className="font-medium capitalize">{method}</span>
+                  <span className="font-medium capitalize">
+                    {availableProviders.find((p) => p.id === method)?.name ||
+                      method}
+                  </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.3.phone")}
                   </span>
-                  <span>{accountDetails}</span>
+                  <span className="font-medium">
+                    {currentCountry?.dialCode}{" "}
+                    {formatPhoneDisplay(accountDetails.replace(/[^\d]/g, ""))}
+                  </span>
                 </div>
+
                 <div className="flex justify-between">
                   <span className="text-gray-600">Pays</span>
                   <span>{currentCountry?.name}</span>
                 </div>
               </div>
 
+              {/* Avertissement */}
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>{t("WithdrawDialog.3.Notice.title")}</AlertTitle>
@@ -1083,7 +1203,11 @@ export default function WithdrawDialog({
               <Button variant="outline" onClick={() => setStep("method")}>
                 {t("WithdrawDialog.back")}
               </Button>
-              <Button onClick={handleConfirmWithdrawal} disabled={isLoading}>
+              <Button
+                onClick={handleConfirmWithdrawal}
+                disabled={isLoading}
+                className="bg-green-600 hover:bg-green-700"
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1102,6 +1226,7 @@ export default function WithdrawDialog({
           <>
             <DialogHeader>
               <DialogTitle className="text-center text-green-600">
+                <Check className="h-6 w-6 inline-block mr-2" />
                 Retrait réussi
               </DialogTitle>
               <DialogDescription className="text-center">
@@ -1125,7 +1250,7 @@ export default function WithdrawDialog({
                   {t("WithdrawDialog.4.willBeSent")}
                 </p>
                 {getCurrencyForCountry(selectedCountry) !== "XAF" && (
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-400 mt-1">
                     ({getSafeAmount().toLocaleString()} XAF)
                   </p>
                 )}
@@ -1133,17 +1258,18 @@ export default function WithdrawDialog({
 
               <div className="p-4 bg-gray-50 rounded-md">
                 <div className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">Numéro bénéficiaire</span>
+                  <span className="font-medium">
+                    {currentCountry?.dialCode}{" "}
+                    {formatPhoneDisplay(accountDetails.replace(/[^\d]/g, ""))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
                     {t("WithdrawDialog.4.withdrawalID")}
                   </span>
-                  <span className="font-mono">{withdrawalId}</span>
+                  <span className="font-mono text-xs">{withdrawalId}</span>
                 </div>
-                {/* <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    {t("WithdrawDialog.3.estimatedArrival")}
-                  </span>
-                  <span>{estimatedDays}</span>
-                </div> */}
               </div>
 
               <p className="text-sm text-gray-500">
@@ -1152,7 +1278,10 @@ export default function WithdrawDialog({
             </div>
 
             <DialogFooter>
-              <Button className="w-full" onClick={handleSuccessClose}>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={handleSuccessClose}
+              >
                 {t("WithdrawDialog.4.done")}
               </Button>
             </DialogFooter>
