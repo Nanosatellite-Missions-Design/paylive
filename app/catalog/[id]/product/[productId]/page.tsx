@@ -69,6 +69,9 @@ export default function ProductPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
 
+  // AJOUT: État pour gérer le cas où le catalogue n'est pas encore chargé
+  const [isCatalogLoading, setIsCatalogLoading] = useState(true);
+
   // SUPPRESSION: États pour le paiement direct (remplacés par le système de checkout)
   const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
   const [productToBuy, setProductToBuy] = useState<any>({});
@@ -121,13 +124,23 @@ export default function ProductPage() {
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Mock data - replace with actual API call
+  // MODIFICATION: Attendre que le catalogue soit chargé avant de chercher le produit
   useEffect(() => {
+    // Si le catalogue n'est pas encore disponible, on attend
+    if (!catalog) {
+      // AJOUT: Petit délai pour permettre au contexte de se charger
+      const timer = setTimeout(() => {
+        setIsCatalogLoading(false);
+      }, 1500); // 1.5 secondes pour charger le contexte
+
+      return () => clearTimeout(timer);
+    }
+
+    // Une fois que le catalogue est disponible
+    setIsCatalogLoading(false);
+
     const fetchProduct = async () => {
       setIsLoading(true);
-      // const unsubscribeUser = getADocument(catalogId, "users", (data) => {
-      //     setCatalogData(data);
-      // });
       const unsubscribeProduct = getASubDocument(
         catalog?.creatorId ?? "",
         "products",
@@ -136,14 +149,12 @@ export default function ProductPage() {
       );
       setIsLoading(false);
       return () => {
-        // Safe to call even if undefined due to nullish coalescing
-        // if (unsubscribeUser) unsubscribeUser();
         if (unsubscribeProduct) unsubscribeProduct();
       };
     };
 
     fetchProduct();
-  }, [catalog?.creatorId, productId]);
+  }, [catalog?.creatorId, productId, catalog]);
 
   const handleAddToCart = () => {
     if (product) {
@@ -201,7 +212,10 @@ export default function ProductPage() {
     setProductForBuyNow(null);
   };
 
-  if (isLoading) {
+  // AJOUT: États de chargement combinés
+  const isOverallLoading = isCatalogLoading || isLoading;
+
+  if (isOverallLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
@@ -210,7 +224,9 @@ export default function ProductPage() {
             <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto animate-spin animation-delay-150"></div>
           </div>
           <p className="text-gray-600 font-medium">
-            Loading product details...
+            {isCatalogLoading
+              ? "Loading catalog..."
+              : "Loading product details..."}
           </p>
         </div>
       </div>
@@ -230,12 +246,21 @@ export default function ProductPage() {
           <p className="text-gray-600 mb-6 leading-relaxed">
             The product you're looking for doesn't exist or has been removed.
           </p>
-          <Button
-            onClick={() => router.push(`/catalog/${catalog?.id}`)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
-          >
-            Back to Catalog
-          </Button>
+          {catalog?.id ? (
+            <Button
+              onClick={() => router.push(`/catalog/${catalog?.id}`)}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
+            >
+              Back to Catalog
+            </Button>
+          ) : (
+            <Button
+              onClick={() => router.push("/")}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
+            >
+              Go to Home
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -256,7 +281,9 @@ export default function ProductPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/catalog/${catalog?.id}`)}
+                onClick={() =>
+                  router.push(catalog?.id ? `/catalog/${catalog?.id}` : "/")
+                }
                 className="hover:bg-blue-50 rounded-xl p-2 h-9 w-9"
               >
                 <ChevronsLeft className="h-4 w-4" />
