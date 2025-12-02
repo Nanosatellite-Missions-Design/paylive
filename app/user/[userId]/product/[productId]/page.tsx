@@ -21,9 +21,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-// AJOUT: Import du contexte du panier et du FloatingCart
 import { useCart } from "@/contexts/cart-context";
 import FloatingCart from "@/components/cart";
+import { getProductImages } from "@/lib/product-utils";
 
 export default function DirectProductPage() {
   const params = useParams();
@@ -39,26 +39,23 @@ export default function DirectProductPage() {
   const [showShareSuccess, setShowShareSuccess] = useState(false);
   const { toast } = useToast();
 
-  // AJOUT: Utilisation du contexte du panier
   const { addToCart } = useCart();
-
-  // AJOUT: État pour gérer l'achat direct via le checkout
   const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
 
-  // Fonctions de navigation des images
+  // Fonctions de navigation des images avec gestion robuste
   const goToNextImage = () => {
     if (!product) return;
-    const images = product.images || product.image || [];
+    const images = getProductImages(product);
     setSelectedImage((prev) => (prev + 1 >= images.length ? 0 : prev + 1));
   };
 
   const goToPrevImage = () => {
     if (!product) return;
-    const images = product.images || product.image || [];
+    const images = getProductImages(product);
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Récupérer le produit directement - VERSION SIMPLIFIÉE ET CORRIGÉE
+  // Récupérer le produit directement
   useEffect(() => {
     const fetchProduct = async () => {
       if (!userId || !productId) {
@@ -67,7 +64,6 @@ export default function DirectProductPage() {
       }
 
       setIsLoading(true);
-      console.log("Fetching product:", { userId, productId });
 
       try {
         const unsubscribe = getASubDocument(
@@ -77,7 +73,22 @@ export default function DirectProductPage() {
           (fetchedProduct) => {
             console.log("Product fetched:", fetchedProduct);
             if (fetchedProduct) {
-              setProduct(fetchedProduct);
+              // Normaliser les données du produit
+              const normalizedProduct = {
+                ...fetchedProduct,
+                // S'assurer que les champs essentiels existent
+                price: fetchedProduct.price || 0,
+                inStock: fetchedProduct.inStock || 0,
+                creatorName: fetchedProduct.creatorName || "Vendeur",
+                category: fetchedProduct.category || "other",
+                description: fetchedProduct.description || "",
+              };
+
+              setProduct(normalizedProduct);
+              console.log(
+                "Product images:",
+                getProductImages(normalizedProduct)
+              );
             } else {
               console.log("Product not found");
               setProduct(null);
@@ -86,7 +97,6 @@ export default function DirectProductPage() {
           }
         );
 
-        // Retourner la fonction de nettoyage
         return () => {
           if (unsubscribe && typeof unsubscribe === "function") {
             unsubscribe();
@@ -128,7 +138,6 @@ export default function DirectProductPage() {
     }
   };
 
-  // MODIFICATION: Remplacer handleBuyNow pour utiliser le checkout via le panier
   const handleBuyNow = () => {
     if (!product) return;
 
@@ -153,7 +162,6 @@ export default function DirectProductPage() {
     });
   };
 
-  // AJOUT: Fonction pour ajouter au panier sans acheter immédiatement
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -171,7 +179,6 @@ export default function DirectProductPage() {
     });
   };
 
-  // AJOUT: Fonction pour reset le processus Buy Now
   const handleBuyNowProcessed = () => {
     setProductForBuyNow(null);
   };
@@ -213,7 +220,8 @@ export default function DirectProductPage() {
     );
   }
 
-  const productImages = product.images || product.image || [];
+  // Utilisation de la fonction utilitaire pour récupérer les images
+  const productImages = getProductImages(product);
   const hasMultipleImages = productImages.length > 1;
 
   return (
@@ -238,6 +246,9 @@ export default function DirectProductPage() {
                   <AvatarImage
                     src={product.creatorAvatar || "/placeholder.svg"}
                     alt={product.creatorName}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
                     {product.creatorName?.charAt(0) || "U"}
@@ -279,6 +290,13 @@ export default function DirectProductPage() {
                   src={productImages[selectedImage] || "/placeholder.jpg"}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.jpg";
+                    console.error(
+                      "Image failed to load:",
+                      productImages[selectedImage]
+                    );
+                  }}
                 />
 
                 {hasMultipleImages && (
@@ -354,6 +372,9 @@ export default function DirectProductPage() {
                       src={image || "/placeholder.jpg"}
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.jpg";
+                      }}
                     />
                   </button>
                 ))}
@@ -373,7 +394,6 @@ export default function DirectProductPage() {
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
                 {product.name}
               </h1>
-              {/* CORRECTION: Utiliser whitespace-pre-wrap pour conserver les sauts de ligne */}
               <p className="text-gray-600 text-lg leading-relaxed whitespace-pre-wrap">
                 {product.description}
               </p>
@@ -456,7 +476,6 @@ export default function DirectProductPage() {
                     </div>
 
                     <div className="flex flex-col space-y-4">
-                      {/* MODIFICATION: Bouton Buy Now qui utilise maintenant le checkout via le panier */}
                       <Button
                         onClick={handleBuyNow}
                         className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
@@ -464,7 +483,6 @@ export default function DirectProductPage() {
                         Buy Now
                       </Button>
 
-                      {/* AJOUT: Bouton Add to Cart */}
                       {/* <Button
                         onClick={handleAddToCart}
                         variant="outline"
@@ -490,6 +508,9 @@ export default function DirectProductPage() {
                     <AvatarImage
                       src={product.creatorAvatar || "/placeholder.svg"}
                       alt={product.creatorName}
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">
                       {product.creatorName?.charAt(0) || "U"}
@@ -513,7 +534,6 @@ export default function DirectProductPage() {
         </div>
       </div>
 
-      {/* AJOUT: FloatingCart avec support pour Buy Now */}
       <FloatingCart
         productToBuy={productForBuyNow}
         onBuyNowProcessed={handleBuyNowProcessed}

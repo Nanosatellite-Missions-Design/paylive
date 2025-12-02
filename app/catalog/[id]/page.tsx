@@ -1,30 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  ShoppingCart,
-  Search,
-  Star,
-  MapPin,
-  Clock,
-  Heart,
-  Zap,
-} from "lucide-react";
+import { ShoppingCart, Search, Heart, Zap } from "lucide-react";
 import type { Catalog, CatalogProduct } from "@/types/catalog";
-import { getADocument } from "@/functions/get-a-document";
-import { listenToSubCollection } from "@/functions/get-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { PaymentDialog } from "@/components/payment-dialog";
 import FloatingCart from "@/components/cart";
+
+// Fonction utilitaire pour générer une clé de cache unique pour les images
+const generateImageCacheKey = (
+  product: CatalogProduct,
+  updatedAt?: any
+): string => {
+  const baseKey = product.id;
+  const imageUrl = product.image?.[0] || "";
+
+  // Utiliser l'URL de l'image et la date de mise à jour pour créer une clé unique
+  const timestamp = updatedAt
+    ? typeof updatedAt === "object" && updatedAt.toDate
+      ? updatedAt.toDate().getTime()
+      : new Date(updatedAt).getTime()
+    : Date.now();
+
+  return `${baseKey}-${imageUrl.split("/").pop()}-${timestamp}`;
+};
 
 export default function CatalogPage() {
   const params = useParams();
@@ -35,54 +42,89 @@ export default function CatalogPage() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(true);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const { addToCart, catalog, products, setProducts, setCatalog } = useCart();
+  const { addToCart, catalog, products, setProducts } = useCart();
   const { userProducts } = useAuth();
   const { toast } = useToast();
   const t = useTranslations("CatalogPage");
 
-  // SUPPRESSION: États pour le paiement direct (remplacés par le système de checkout)
-  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
-  const [productToBuy, setProductToBuy] = useState<any>({});
-  const [paymentState, setPaymentState] = useState("selecting");
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-  const [depositId, setDepositId] = useState("");
+  // Références pour éviter les re-rendus inutiles
+  const imageCacheRef = useRef<Map<string, string>>(new Map());
+  const lastProductUpdateRef = useRef<string>("");
 
-  // AJOUT: États pour gérer le produit à acheter directement via le checkout
+  // État pour gérer le produit à acheter directement via le checkout
   const [productForBuyNow, setProductForBuyNow] =
     useState<CatalogProduct | null>(null);
 
+  // Fonction optimisée pour mettre à jour les produits avec cache d'images
   const getProductsWithUpdatedPrices = (catalogProducts: CatalogProduct[]) => {
     if (!userProducts || userProducts.length === 0) return catalogProducts;
 
-    return catalogProducts.map((catalogProduct) => {
+    const updatedProducts = catalogProducts.map((catalogProduct) => {
       const updatedProduct = userProducts.find(
         (up) => up.id === catalogProduct.id
       );
-      return updatedProduct
-        ? { ...catalogProduct, price: updatedProduct.price }
-        : catalogProduct;
+
+      if (!updatedProduct) return catalogProduct;
+
+      // Vérifier si le produit a changé
+      const productChanged =
+        updatedProduct.price !== catalogProduct.price ||
+        updatedProduct.image?.[0] !== catalogProduct.image?.[0] ||
+        updatedProduct.updatedAt !== catalogProduct.updatedAt;
+
+      if (!productChanged) return catalogProduct;
+
+      // Créer un nouveau produit avec les mises à jour
+      const newProduct = {
+        ...catalogProduct,
+        price: updatedProduct.price,
+        image: updatedProduct.image || catalogProduct.image,
+        updatedAt: updatedProduct.updatedAt || catalogProduct.updatedAt,
+      };
+
+      // Générer une clé de cache pour l'image
+      if (updatedProduct.image?.[0] !== catalogProduct.image?.[0]) {
+        const cacheKey = generateImageCacheKey(
+          newProduct,
+          updatedProduct.updatedAt
+        );
+        (newProduct as any)._cacheKey = cacheKey;
+        imageCacheRef.current.set(catalogProduct.id, cacheKey);
+      }
+
+      return newProduct;
     });
+
+    return updatedProducts;
   };
 
-  // MODIFICATION: Ajouter cet useEffect pour mettre à jour les prix
+  // Effet optimisé pour les mises à jour de produits
   useEffect(() => {
-    if (
-      products &&
-      products.length > 0 &&
-      userProducts &&
-      userProducts.length > 0
-    ) {
-      const updatedProducts = getProductsWithUpdatedPrices(products);
-      if (JSON.stringify(updatedProducts) !== JSON.stringify(products)) {
-        setProducts(updatedProducts);
-      }
-    }
-  }, [products, userProducts, setProducts]);
+    if (!userProducts || !products || products.length === 0) return;
 
+    const updatedProducts = getProductsWithUpdatedPrices(products);
+
+    // Vérifier s'il y a des changements significatifs
+    const hasSignificantChanges = updatedProducts.some((newProd, index) => {
+      const oldProd = products[index];
+      return (
+        newProd.price !== oldProd?.price ||
+        newProd.image?.[0] !== oldProd?.image?.[0] ||
+        (newProd as any)._cacheKey !== (oldProd as any)._cacheKey
+      );
+    });
+
+    if (hasSignificantChanges) {
+      setProducts(updatedProducts);
+      // Mettre à jour la référence du dernier update
+      lastProductUpdateRef.current = Date.now().toString();
+    }
+  }, [userProducts, products, setProducts]);
+
+  // Filtrage des produits
   useEffect(() => {
-    if (!catalog) return;
+    if (!catalog || !products) return;
 
     let filtered = [...products];
 
@@ -104,15 +146,14 @@ export default function CatalogPage() {
   }, [catalog, searchQuery, selectedCategory, products]);
 
   const categories =
-    products.reduce((cats, product) => {
-      if (!cats.includes(product.category)) {
+    products?.reduce((cats, product) => {
+      if (product.category && !cats.includes(product.category)) {
         cats.push(product.category);
       }
       return cats;
     }, [] as string[]) || [];
 
   const handleAddToCart = (product: CatalogProduct) => {
-    console.log("testing");
     addToCart(product, 1);
     toast({
       title: "Produit ajouté au panier",
@@ -120,21 +161,15 @@ export default function CatalogPage() {
     });
   };
 
-  // MODIFICATION COMPLÈTE: Fonction pour acheter directement via le checkout
   const handleBuyNow = (product: CatalogProduct) => {
-    // Ajouter le produit au panier avec quantité 1
     addToCart(product, 1);
-
-    // Stocker le produit pour l'achat direct
     setProductForBuyNow(product);
-
     toast({
       title: "Produit ajouté au panier",
       description: `${product.name} a été ajouté. Remplissez vos informations pour finaliser l'achat.`,
     });
   };
 
-  // AJOUT: Fonction pour reset le processus Buy Now
   const handleBuyNowProcessed = () => {
     setProductForBuyNow(null);
   };
@@ -153,6 +188,47 @@ export default function CatalogPage() {
     setFavorites(newFavorites);
   };
 
+  // Fonction optimisée pour obtenir l'URL de l'image
+  const getImageUrl = (product: CatalogProduct) => {
+    const baseUrl = product?.image?.[0];
+    if (!baseUrl) return "/placeholder.jpg";
+
+    // Si nous avons une clé de cache, l'utiliser
+    const cacheKey =
+      (product as any)._cacheKey || imageCacheRef.current.get(product.id);
+    if (cacheKey) {
+      // Pour les URLs locales, ajouter la clé de cache
+      if (
+        baseUrl.includes("localhost") ||
+        baseUrl.includes("127.0.0.1") ||
+        baseUrl.startsWith("/")
+      ) {
+        return `${baseUrl}${
+          baseUrl.includes("?") ? "&" : "?"
+        }cache=${cacheKey}`;
+      }
+    }
+
+    return baseUrl;
+  };
+
+  // Gestion d'erreur simple pour les images
+  const handleImageError = (
+    e: React.SyntheticEvent<HTMLImageElement>,
+    productId: string
+  ) => {
+    const img = e.target as HTMLImageElement;
+    // Essayer de recharger sans cache
+    const currentSrc = img.src;
+    if (!currentSrc.includes("?")) {
+      img.src = `${currentSrc}?retry=${Date.now()}`;
+    } else if (!currentSrc.includes("retry=")) {
+      img.src = `${currentSrc}&retry=${Date.now()}`;
+    } else {
+      img.src = "/placeholder.jpg";
+    }
+  };
+
   if (!catalog) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -161,24 +237,8 @@ export default function CatalogPage() {
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
             <div className="absolute inset-0 rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto animate-spin animation-delay-150"></div>
           </div>
-          <p className="text-gray-600 font-medium">Loading your catalog...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!catalog) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingCart className="h-12 w-12 text-gray-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            Catalog Not Found
-          </h1>
-          <p className="text-gray-600 leading-relaxed">
-            The catalog you're looking for doesn't exist or has been removed.
+          <p className="text-gray-600 font-medium">
+            Chargement du catalogue...
           </p>
         </div>
       </div>
@@ -210,12 +270,6 @@ export default function CatalogPage() {
                   <p className="text-lg text-gray-700 font-medium">
                     {catalog.creatorName}
                   </p>
-                </div>
-                <div className="flex items-center space-x-6 mt-4 text-sm text-gray-500">
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{catalog.creatorPhone}</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -275,8 +329,8 @@ export default function CatalogPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <p className="text-gray-600">
-            {t("showing")} {filteredProducts.length} {t("of")} {products.length}{" "}
-            {t("products")}
+            {t("showing")} {filteredProducts.length} {t("of")}{" "}
+            {products?.length || 0} {t("products")}
             {selectedCategory !== "all" && ` in ${selectedCategory}`}
           </p>
         </div>
@@ -284,11 +338,10 @@ export default function CatalogPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product, index) => (
             <Card
-              key={product.id}
+              key={`${product.id}-${(product as any)._cacheKey || ""}`}
               className="group overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-white rounded-2xl border-0 shadow-lg"
               style={{
                 animationDelay: `${index * 100}ms`,
-                animation: "fadeInUp 0.6s ease-out forwards",
               }}
             >
               <div className="relative">
@@ -297,9 +350,20 @@ export default function CatalogPage() {
                   onClick={() => handleProductClick(product.id)}
                 >
                   <img
-                    src={product?.image?.[0] || "/placeholder.jpg"}
+                    src={getImageUrl(product)}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onError={(e) => handleImageError(e, product.id)}
+                    loading="lazy"
+                    // Important: Ajouter un style pour éviter le flash
+                    style={{
+                      opacity: 1,
+                      transition: "opacity 0.2s ease-in-out",
+                    }}
+                    onLoad={(e) => {
+                      // S'assurer que l'image est immédiatement visible
+                      (e.target as HTMLImageElement).style.opacity = "1";
+                    }}
                   />
                   {!product.inStock && (
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -347,7 +411,7 @@ export default function CatalogPage() {
                   </p>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      XAF{product.price} {/* ← MAINTENANT AVEC PRIX À JOUR ! */}
+                      XAF{product.price}
                     </span>
                     {product.inStock && (
                       <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
@@ -356,7 +420,6 @@ export default function CatalogPage() {
                     )}
                   </div>
 
-                  {/* MODIFICATION: Ajout des deux boutons côte à côte */}
                   <div className="flex gap-2">
                     <Button
                       onClick={(e) => {
@@ -366,7 +429,7 @@ export default function CatalogPage() {
                       disabled={!product.inStock}
                       className={`flex-1 rounded-xl font-semibold transition-all duration-200 ${
                         product.inStock
-                          ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl"
                           : "bg-gray-100 text-gray-400 cursor-not-allowed"
                       }`}
                     >
@@ -388,7 +451,7 @@ export default function CatalogPage() {
                       disabled={!product.inStock}
                       className={`flex-1 rounded-xl font-semibold transition-all duration-200 ${
                         product.inStock
-                          ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105"
+                          ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl"
                           : "bg-gray-100 text-gray-400 cursor-not-allowed"
                       }`}
                     >
@@ -428,30 +491,6 @@ export default function CatalogPage() {
         productToBuy={productForBuyNow}
         onBuyNowProcessed={handleBuyNowProcessed}
       />
-
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animation-delay-150 {
-          animation-delay: 150ms;
-        }
-
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   );
 }

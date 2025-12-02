@@ -84,7 +84,6 @@ export default function FloatingCart({
       );
       if (!isInCart) {
         console.log("🛒 Ajout du produit Buy Now au panier");
-        // Le produit devrait déjà être ajouté via handleBuyNow, mais on double la vérification
       }
 
       // Ouvrir automatiquement le panier et aller au checkout
@@ -167,6 +166,7 @@ export default function FloatingCart({
           setShowCheckout(false);
           setIsOpen(false);
           clearCart();
+          resetCustomerInfo();
 
           // AJOUT: Appeler le callback si c'est un achat Buy Now
           if (productToBuy && onBuyNowProcessed) {
@@ -230,21 +230,18 @@ export default function FloatingCart({
     console.log("📦 Création commande:", orderData);
 
     try {
-      // ✅ CORRECTION : Utilisez setToCollection pour la collection principale
       await setToCollection("orders", orderData.id, orderData);
 
-      // ✅ SAUVEGARDE DANS LA SOUS-COLLECTION DE L'UTILISATEUR (acheteur)
       await setToSubCollection(
-        orderData.id, // ID du document
+        orderData.id,
         orderData,
         "users",
         userInfo.uid,
         "orders"
       );
 
-      // ✅ SAUVEGARDE DANS LA SOUS-COLLECTION DU VENDEUR
       await setToSubCollection(
-        orderData.id, // ID du document
+        orderData.id,
         orderData,
         "users",
         catalog.creatorId,
@@ -253,14 +250,12 @@ export default function FloatingCart({
 
       console.log("✅ Commande créée avec succès dans Firebase");
 
-      // Rafraîchir les commandes de l'utilisateur
       if (refreshUserOrders) {
         await refreshUserOrders();
       }
 
-      // Envoyer un SMS au vendeur
       try {
-        const res = await fetch("/api/send-sms", {
+        await fetch("/api/send-sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -284,19 +279,33 @@ export default function FloatingCart({
     setIsSubmitting(false);
   };
 
-  // AJOUT: Gestion améliorée de la fermeture du dialogue
+  // AJOUT: Fonction pour réinitialiser les informations client
+  const resetCustomerInfo = () => {
+    setCustomerInfo({
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      notes: "",
+    });
+  };
+
+  // CORRECTION SIMPLIFIÉE: Gestion de la fermeture du dialogue
   const handleDialogClose = (open: boolean) => {
     setIsOpen(open);
 
-    // Si le dialogue se ferme et qu'on a un produit Buy Now, reset l'état
-    if (!open && productToBuy && onBuyNowProcessed) {
-      console.log("🛒 Fermeture du panier, reset du Buy Now");
-      onBuyNowProcessed();
-    }
-
-    // Réinitialiser le checkout si on ferme le dialogue
+    // CORRECTION: Vider le panier seulement quand le dialogue se ferme
     if (!open) {
+      console.log("🛒 Dialogue fermé - nettoyage du panier");
+      clearCart();
+      resetCustomerInfo();
       setShowCheckout(false);
+
+      // Réinitialiser l'état Buy Now si présent
+      if (productToBuy && onBuyNowProcessed) {
+        console.log("🛒 Reset de l'état Buy Now");
+        onBuyNowProcessed();
+      }
     }
   };
 

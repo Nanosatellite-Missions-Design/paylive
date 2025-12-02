@@ -9,52 +9,25 @@ import {
   ShoppingCart,
   Plus,
   Minus,
-  Star,
   Share2,
   Heart,
   Shield,
   Truck,
-  RotateCcw,
   ChevronsLeft,
   Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import type { Catalog, CatalogProduct } from "@/types/catalog";
 import { getASubDocument } from "@/functions/get-a-document";
-import { PaymentDialog } from "@/components/payment-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useCart } from "@/contexts/cart-context";
 import { useTranslations } from "@/lib/useTranslations";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  CountryProvider,
-  getCountryByCode,
-  PAWAPAY_COUNTRIES,
-  getAllCountries,
-} from "@/lib/countries";
+import { Card, CardContent } from "@/components/ui/card";
 import FloatingCart from "@/components/cart";
-// AJOUT: Import du FloatingCart
+// AJOUT: Import de la fonction utilitaire pour les images
+import { getProductImages } from "@/lib/product-utils";
 
 export default function ProductPage() {
   const params = useParams();
@@ -62,7 +35,7 @@ export default function ProductPage() {
   const productId = params.productId as string;
 
   const { catalog, addToCart } = useCart();
-  const [product, setProduct] = useState<CatalogProduct | null>(null);
+  const [product, setProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,55 +45,23 @@ export default function ProductPage() {
   // AJOUT: État pour gérer le cas où le catalogue n'est pas encore chargé
   const [isCatalogLoading, setIsCatalogLoading] = useState(true);
 
-  // SUPPRESSION: États pour le paiement direct (remplacés par le système de checkout)
-  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
-  const [productToBuy, setProductToBuy] = useState<any>({});
-  const [paymentState, setPaymentState] = useState("selecting");
   const { toast } = useToast();
-  const [depositId, setDepositId] = useState("");
-
-  // ✅ CORRECTION : États pour gérer correctement le flux de paiement
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-  const [lastTransactionStatus, setLastTransactionStatus] = useState<
-    string | null
-  >(null);
 
   // AJOUT: États pour gérer le produit à acheter directement via le checkout
-  const [productForBuyNow, setProductForBuyNow] =
-    useState<CatalogProduct | null>(null);
+  const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
 
-  // new states - conservés pour référence mais maintenant gérés dans PaymentDialog
-  const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
-    "pawapay"
-  );
-  const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
-    undefined
-  );
-  const [mobileProvider, setMobileProvider] = useState<string | undefined>(
-    undefined
-  );
-  const [phoneNumber, setPhoneNumber] = useState<string>("");
-
-  // ✅ CORRECTION : Utiliser selectedImage au lieu de currentImageIndices pour la page produit
-  // (car on n'a qu'un seul produit sur cette page)
-
-  // Pour déterminer les fournisseurs disponibles
-  const currentCountry = PAWAPAY_COUNTRIES.find(
-    (c) => c.code === selectedCountry
-  );
-  const availableProviders = currentCountry?.providers || [];
   const t = useTranslations("CatalogPage.ProductPage");
 
-  // ✅ CORRECTION : Fonctions de navigation simplifiées pour un seul produit
+  // CORRECTION: Fonctions de navigation utilisant getProductImages
   const goToNextImage = () => {
     if (!product) return;
-    const images = product.images || product.image || [];
+    const images = getProductImages(product);
     setSelectedImage((prev) => (prev + 1 >= images.length ? 0 : prev + 1));
   };
 
   const goToPrevImage = () => {
     if (!product) return;
-    const images = product.images || product.image || [];
+    const images = getProductImages(product);
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
@@ -131,7 +72,7 @@ export default function ProductPage() {
       // AJOUT: Petit délai pour permettre au contexte de se charger
       const timer = setTimeout(() => {
         setIsCatalogLoading(false);
-      }, 1500); // 1.5 secondes pour charger le contexte
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -145,11 +86,34 @@ export default function ProductPage() {
         catalog?.creatorId ?? "",
         "products",
         productId,
-        setProduct
+        (fetchedProduct) => {
+          console.log("Product fetched:", fetchedProduct);
+          if (fetchedProduct) {
+            // Normaliser les données du produit
+            const normalizedProduct = {
+              ...fetchedProduct,
+              // S'assurer que les champs essentiels existent
+              price: fetchedProduct.price || 0,
+              inStock: fetchedProduct.inStock || 0,
+              creatorName: fetchedProduct.creatorName || "Vendeur",
+              creatorAvatar: fetchedProduct.creatorAvatar || "/placeholder.svg",
+              category: fetchedProduct.category || "other",
+              description: fetchedProduct.description || "",
+            };
+            setProduct(normalizedProduct);
+          } else {
+            console.log("Product not found");
+            setProduct(null);
+          }
+          setIsLoading(false);
+        }
       );
-      setIsLoading(false);
+
+      // Retourner la fonction de nettoyage
       return () => {
-        if (unsubscribeProduct) unsubscribeProduct();
+        if (unsubscribeProduct && typeof unsubscribeProduct === "function") {
+          unsubscribeProduct();
+        }
       };
     };
 
@@ -173,11 +137,13 @@ export default function ProductPage() {
   };
 
   const handleShare = async () => {
+    if (!product) return;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: product?.name,
-          text: product?.description,
+          title: product.name,
+          text: product.description,
           url: window.location.href,
         });
       } catch (error) {
@@ -225,49 +191,49 @@ export default function ProductPage() {
           </div>
           <p className="text-gray-600 font-medium">
             {isCatalogLoading
-              ? "Loading catalog..."
-              : "Loading product details..."}
+              ? "Chargement du catalogue..."
+              : "Chargement des détails du produit..."}
           </p>
         </div>
       </div>
     );
   }
 
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShoppingCart className="h-12 w-12 text-gray-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            Product Not Found
-          </h1>
-          <p className="text-gray-600 mb-6 leading-relaxed">
-            The product you're looking for doesn't exist or has been removed.
-          </p>
-          {catalog?.id ? (
-            <Button
-              onClick={() => router.push(`/catalog/${catalog?.id}`)}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
-            >
-              Back to Catalog
-            </Button>
-          ) : (
-            <Button
-              onClick={() => router.push("/")}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
-            >
-              Go to Home
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // if (!product) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+  //       <div className="text-center max-w-md mx-auto px-4">
+  //         <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+  //           <ShoppingCart className="h-12 w-12 text-gray-400" />
+  //         </div>
+  //         <h1 className="text-3xl font-bold text-gray-900 mb-3">
+  //           Produit non trouvé
+  //         </h1>
+  //         <p className="text-gray-600 mb-6 leading-relaxed">
+  //           Le produit que vous recherchez n'existe pas ou a été supprimé.
+  //         </p>
+  //         {catalog?.id ? (
+  //           <Button
+  //             onClick={() => router.push(`/catalog/${catalog?.id}`)}
+  //             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
+  //           >
+  //             Retour au catalogue
+  //           </Button>
+  //         ) : (
+  //           <Button
+  //             onClick={() => router.push("/")}
+  //             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl px-6 py-3"
+  //           >
+  //             Retour à l'accueil
+  //           </Button>
+  //         )}
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
-  // ✅ CORRECTION : Récupérer les images de façon cohérente
-  const productImages = product.images || product.image || [];
+  // CORRECTION: Utiliser getProductImages pour récupérer les images de manière cohérente
+  const productImages = getProductImages(product);
   const hasMultipleImages = productImages.length > 1;
 
   return (
@@ -291,11 +257,14 @@ export default function ProductPage() {
               <div className="flex items-center space-x-2">
                 <Avatar className="h-7 w-7 ring-1 ring-white shadow-sm">
                   <AvatarImage
-                    src={product.creatorName || "/placeholder.svg"}
+                    src={product.creatorAvatar || "/placeholder.svg"}
                     alt={product.creatorName}
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
-                    {product.creatorName.charAt(0)}
+                    {product.creatorName?.charAt(0) || "V"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-sm text-gray-600">
@@ -311,10 +280,10 @@ export default function ProductPage() {
                 className="rounded-xl hover:bg-blue-50 border-blue-200 relative bg-transparent h-9 px-3"
               >
                 <Share2 className="h-4 w-4 mr-1" />
-                {t("share")}
+                {t("share") || "Partager"}
                 {showShareSuccess && (
                   <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                    Copied!
+                    Copié!
                   </div>
                 )}
               </Button>
@@ -334,6 +303,13 @@ export default function ProductPage() {
                   src={productImages[selectedImage] || "/placeholder.jpg"}
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder.jpg";
+                    console.error(
+                      "Image failed to load:",
+                      productImages[selectedImage]
+                    );
+                  }}
                 />
 
                 {/* Boutons de navigation */}
@@ -412,6 +388,9 @@ export default function ProductPage() {
                       src={image || "/placeholder.jpg"}
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.jpg";
+                      }}
                     />
                   </button>
                 ))}
@@ -440,7 +419,10 @@ export default function ProductPage() {
             {/* Prix et stock sur une ligne */}
             <div className="flex items-center justify-between">
               <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                XAF{product.price}
+                XAF
+                {typeof product.price === "number"
+                  ? product.price.toFixed(2)
+                  : "0.00"}
               </span>
               {product.inStock ? (
                 <Badge className="bg-green-100 text-green-800 border-green-200 px-2 py-0.5 rounded-full text-xs">
@@ -451,7 +433,7 @@ export default function ProductPage() {
                   variant="destructive"
                   className="px-2 py-0.5 rounded-full text-xs"
                 >
-                  Out of Stock
+                  Rupture de stock
                 </Badge>
               )}
             </div>
@@ -460,11 +442,11 @@ export default function ProductPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="flex items-center space-x-1 text-xs text-gray-600">
                 <Shield className="h-3 w-3 text-green-500" />
-                <span>{t("securePayment")}</span>
+                <span>{t("securePayment") || "Paiement sécurisé"}</span>
               </div>
               <div className="flex items-center space-x-1 text-xs text-gray-600">
                 <Truck className="h-3 w-3 text-blue-500" />
-                <span>{t("fastShipping")}</span>
+                <span>{t("fastShipping") || "Livraison rapide"}</span>
               </div>
             </div>
 
@@ -476,7 +458,7 @@ export default function ProductPage() {
                     {/* Quantité compacte */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-2">
-                        {t("quantity")}
+                        {t("quantity") || "Quantité"}
                       </label>
                       <div className="flex items-center space-x-3">
                         <Button
@@ -514,26 +496,18 @@ export default function ProductPage() {
 
                     {/* Total compact */}
                     <div className="flex items-center justify-between text-lg font-bold border-t pt-3">
-                      <span className="text-gray-700">Total:</span>
+                      <span className="text-gray-700">Total</span>
                       <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        XAF{(product.price * quantity).toFixed(2)}
+                        XAF{((product.price || 0) * quantity).toFixed(2)}
                       </span>
                     </div>
 
                     {/* MODIFICATION: Bouton Buy Now qui utilise maintenant le checkout */}
                     <Button
                       onClick={handleBuyNow}
-                      disabled={isPaymentProcessing}
-                      className="w-full h-12 font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-12 font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
                     >
-                      {isPaymentProcessing ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Processing...
-                        </div>
-                      ) : (
-                        t("buyNow")
-                      )}
+                      {t("buyNow") || "Acheter maintenant"}
                     </Button>
 
                     {/* AJOUT: Bouton Add to Cart pour cohérence */}
@@ -543,7 +517,7 @@ export default function ProductPage() {
                       className="w-full h-10 font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
                     >
                       <ShoppingCart className="h-4 w-4 mr-2" />
-                      {t("addToCart")}
+                      {t("addToCart") || "Ajouter au panier"}
                     </Button>
                   </div>
                 </CardContent>
@@ -554,16 +528,19 @@ export default function ProductPage() {
             <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
               <CardContent className="p-4">
                 <h3 className="font-bold text-lg mb-3 text-gray-900">
-                  {t("sellerInformation")}
+                  {t("sellerInformation") || "Informations du vendeur"}
                 </h3>
                 <div className="flex items-start space-x-3">
                   <Avatar className="h-10 w-10 ring-2 ring-white shadow-md">
                     <AvatarImage
-                      src={product.creatorName || "/placeholder.svg"}
+                      src={product.creatorAvatar || "/placeholder.svg"}
                       alt={product.creatorName}
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
-                      {product.creatorName.charAt(0)}
+                      {product.creatorName?.charAt(0) || "V"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
@@ -572,9 +549,11 @@ export default function ProductPage() {
                     </p>
                     <div className="mt-1 text-xs bg-blue-50 p-2 rounded-lg">
                       <p className="font-semibold text-blue-900">
-                        Response Time
+                        Temps de réponse
                       </p>
-                      <p className="text-blue-700">Usually within 2 hours</p>
+                      <p className="text-blue-700">
+                        Habituellement sous 2 heures
+                      </p>
                     </div>
                   </div>
                 </div>
