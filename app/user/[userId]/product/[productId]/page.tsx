@@ -465,14 +465,14 @@ export default function DirectProductPage() {
                       </Button>
 
                       {/* AJOUT: Bouton Add to Cart */}
-                      <Button
+                      {/* <Button
                         onClick={handleAddToCart}
                         variant="outline"
                         className="w-full h-12 font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
                       >
                         <ShoppingCart className="h-5 w-5 mr-2" />
                         Add to Cart
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
                 </CardContent>
