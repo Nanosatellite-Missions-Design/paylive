@@ -422,6 +422,7 @@ export default function ProductsPage() {
                   id="name"
                   placeholder="Enter product name"
                   onChange={(e) => setNewProductName(e.target.value)}
+                  className="whitespace-pre-wrap"
                 />
               </div>
               <div className="space-y-2">
@@ -571,6 +572,7 @@ export default function ProductsPage() {
                         name: e.target.value,
                       })
                     }
+                    className="whitespace-pre-wrap"
                   />
                 </div>
                 <div className="space-y-2">

@@ -45,6 +45,8 @@ export default function DirectProductPage() {
 
   // AJOUT: État pour gérer l'achat direct via le checkout
   const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
+  // AJOUT: État pour gérer les erreurs de chargement
+  const [error, setError] = useState<string | null>(null);
 
   // Fonctions de navigation des images
   const goToNextImage = () => {
@@ -59,24 +61,59 @@ export default function DirectProductPage() {
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Récupérer le produit directement
+  // Récupérer le produit directement - VERSION CORRIGÉE
   useEffect(() => {
     const fetchProduct = async () => {
       setIsLoading(true);
-      const unsubscribeProduct = getASubDocument(
-        userId,
-        "products",
-        productId,
-        setProduct
-      );
-      setIsLoading(false);
-      return () => {
-        if (unsubscribeProduct) unsubscribeProduct();
-      };
+      setError(null);
+
+      try {
+        console.log(
+          "Fetching product for userId:",
+          userId,
+          "productId:",
+          productId
+        );
+
+        const unsubscribeProduct = getASubDocument(
+          userId,
+          "products",
+          productId,
+          (fetchedProduct) => {
+            console.log("Received product data:", fetchedProduct);
+            if (fetchedProduct) {
+              setProduct(fetchedProduct);
+              setError(null);
+            } else {
+              console.log("Product not found or is null");
+              setError("Product not found");
+            }
+            setIsLoading(false);
+          }
+        );
+
+        if (unsubscribeProduct) {
+          // Retourner la fonction de nettoyage
+          return () => {
+            if (typeof unsubscribeProduct === "function") {
+              unsubscribeProduct();
+            }
+          };
+        }
+
+        return undefined;
+      } catch (err) {
+        console.error("Error in fetchProduct:", err);
+        setError("Error loading product");
+        setIsLoading(false);
+      }
     };
 
     if (userId && productId) {
       fetchProduct();
+    } else {
+      setIsLoading(false);
+      setError("Missing information");
     }
   }, [userId, productId]);
 
@@ -87,11 +124,13 @@ export default function DirectProductPage() {
   };
 
   const handleShare = async () => {
+    if (!product) return;
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: product?.name,
-          text: product?.description,
+          title: product.name,
+          text: product.description,
           url: window.location.href,
         });
       } catch (error) {
@@ -165,7 +204,7 @@ export default function DirectProductPage() {
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -173,10 +212,12 @@ export default function DirectProductPage() {
             <ShoppingCart className="h-12 w-12 text-gray-400" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            Product Not Found
+            {error || "Product Not Found"}
           </h1>
           <p className="text-gray-600 mb-6 leading-relaxed">
-            The product you're looking for doesn't exist or has been removed.
+            {error === "Product not found"
+              ? "The product you're looking for doesn't exist or has been removed."
+              : "There was an error loading the product details."}
           </p>
           <Button
             onClick={() => router.push("/")}
@@ -212,7 +253,7 @@ export default function DirectProductPage() {
               <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-md">
                   <AvatarImage
-                    src={product.creatorName || "/placeholder.svg"}
+                    src={product.creatorAvatar || "/placeholder.svg"}
                     alt={product.creatorName}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-sm">
@@ -349,7 +390,8 @@ export default function DirectProductPage() {
               <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
                 {product.name}
               </h1>
-              <p className="text-gray-600 text-lg leading-relaxed">
+              {/* CORRECTION: Utiliser whitespace-pre-wrap pour conserver les sauts de ligne */}
+              <p className="text-gray-600 text-lg leading-relaxed whitespace-pre-wrap">
                 {product.description}
               </p>
             </div>
@@ -463,7 +505,7 @@ export default function DirectProductPage() {
                 <div className="flex items-start space-x-4 mb-6">
                   <Avatar className="h-16 w-16 ring-4 ring-white shadow-lg">
                     <AvatarImage
-                      src={product.creatorName || "/placeholder.svg"}
+                      src={product.creatorAvatar || "/placeholder.svg"}
                       alt={product.creatorName}
                     />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xl">

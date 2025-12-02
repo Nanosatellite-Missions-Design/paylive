@@ -432,7 +432,7 @@ export default function ProductPage() {
               <h1 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
                 {product.name}
               </h1>
-              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 whitespace-pre-wrap">
                 {product.description}
               </p>
             </div>
