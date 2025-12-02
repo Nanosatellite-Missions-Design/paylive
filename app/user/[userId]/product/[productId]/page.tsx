@@ -37,7 +37,6 @@ export default function DirectProductPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
-  // SUPPRESSION: États liés au paiement direct
   const { toast } = useToast();
 
   // AJOUT: Utilisation du contexte du panier
@@ -45,8 +44,6 @@ export default function DirectProductPage() {
 
   // AJOUT: État pour gérer l'achat direct via le checkout
   const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
-  // AJOUT: État pour gérer les erreurs de chargement
-  const [error, setError] = useState<string | null>(null);
 
   // Fonctions de navigation des images
   const goToNextImage = () => {
@@ -61,60 +58,48 @@ export default function DirectProductPage() {
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Récupérer le produit directement - VERSION CORRIGÉE
+  // Récupérer le produit directement - VERSION SIMPLIFIÉE ET CORRIGÉE
   useEffect(() => {
     const fetchProduct = async () => {
+      if (!userId || !productId) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
-      setError(null);
+      console.log("Fetching product:", { userId, productId });
 
       try {
-        console.log(
-          "Fetching product for userId:",
-          userId,
-          "productId:",
-          productId
-        );
-
-        const unsubscribeProduct = getASubDocument(
+        const unsubscribe = getASubDocument(
           userId,
           "products",
           productId,
           (fetchedProduct) => {
-            console.log("Received product data:", fetchedProduct);
+            console.log("Product fetched:", fetchedProduct);
             if (fetchedProduct) {
               setProduct(fetchedProduct);
-              setError(null);
             } else {
-              console.log("Product not found or is null");
-              setError("Product not found");
+              console.log("Product not found");
+              setProduct(null);
             }
             setIsLoading(false);
           }
         );
 
-        if (unsubscribeProduct) {
-          // Retourner la fonction de nettoyage
-          return () => {
-            if (typeof unsubscribeProduct === "function") {
-              unsubscribeProduct();
-            }
-          };
-        }
-
-        return undefined;
-      } catch (err) {
-        console.error("Error in fetchProduct:", err);
-        setError("Error loading product");
+        // Retourner la fonction de nettoyage
+        return () => {
+          if (unsubscribe && typeof unsubscribe === "function") {
+            unsubscribe();
+          }
+        };
+      } catch (error) {
+        console.error("Error in fetchProduct:", error);
+        setProduct(null);
         setIsLoading(false);
       }
     };
 
-    if (userId && productId) {
-      fetchProduct();
-    } else {
-      setIsLoading(false);
-      setError("Missing information");
-    }
+    fetchProduct();
   }, [userId, productId]);
 
   const handleQuantityChange = (newQuantity: number) => {
@@ -151,7 +136,7 @@ export default function DirectProductPage() {
     addToCart(
       {
         ...product,
-        creatorId: userId, // S'assurer que le creatorId est inclus
+        creatorId: userId,
       },
       quantity
     );
@@ -204,7 +189,7 @@ export default function DirectProductPage() {
     );
   }
 
-  if (error || !product) {
+  if (!product) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -212,12 +197,10 @@ export default function DirectProductPage() {
             <ShoppingCart className="h-12 w-12 text-gray-400" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            {error || "Product Not Found"}
+            Product Not Found
           </h1>
           <p className="text-gray-600 mb-6 leading-relaxed">
-            {error === "Product not found"
-              ? "The product you're looking for doesn't exist or has been removed."
-              : "There was an error loading the product details."}
+            The product you're looking for doesn't exist or has been removed.
           </p>
           <Button
             onClick={() => router.push("/")}

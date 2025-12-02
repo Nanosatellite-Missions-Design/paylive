@@ -84,7 +84,7 @@ export default function ProductsPage() {
   useEffect(() => {
     console.log(userProducts);
   }, [user, userProducts]);
-  //  const baseUrl =https://www.paylivecm.shop;
+  //  const baseUrl =http://localhost:3001/;
 
   // AJOUT: Fonction pour partager le produit
   const handleShare = async (product: any) => {

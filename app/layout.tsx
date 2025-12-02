@@ -2,6 +2,7 @@ import type React from "react";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/auth-context";
+import { CartProvider } from "@/contexts/cart-context"; // AJOUT: Import du CartProvider
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import type { Metadata } from "next";
@@ -28,7 +29,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light">
           <NextIntlClientProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              {/* AJOUT: CartProvider */}
+              <CartProvider>{children}</CartProvider>
+            </AuthProvider>
             <Toaster />
           </NextIntlClientProvider>
         </ThemeProvider>
