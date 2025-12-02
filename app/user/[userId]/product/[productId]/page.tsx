@@ -17,12 +17,13 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { getASubDocument } from "@/functions/get-a-document";
-import { PaymentDialog } from "@/components/payment-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+// AJOUT: Import du contexte du panier et du FloatingCart
+import { useCart } from "@/contexts/cart-context";
+import FloatingCart from "@/components/cart";
 
 export default function DirectProductPage() {
   const params = useParams();
@@ -36,12 +37,14 @@ export default function DirectProductPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
-  const [showSelectPaymentNumber, setShowSelectPaymentNumber] = useState(false);
-  const [productToBuy, setProductToBuy] = useState<any>({});
-  const [paymentState, setPaymentState] = useState("selecting");
-  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
-  const [depositId, setDepositId] = useState("");
+  // SUPPRESSION: États liés au paiement direct
   const { toast } = useToast();
+
+  // AJOUT: Utilisation du contexte du panier
+  const { addToCart } = useCart();
+
+  // AJOUT: État pour gérer l'achat direct via le checkout
+  const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
 
   // Fonctions de navigation des images
   const goToNextImage = () => {
@@ -77,17 +80,6 @@ export default function DirectProductPage() {
     }
   }, [userId, productId]);
 
-  // Réinitialiser l'état de paiement
-  useEffect(() => {
-    if (!showSelectPaymentNumber) {
-      const timer = setTimeout(() => {
-        setPaymentState("selecting");
-        setIsPaymentProcessing(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [showSelectPaymentNumber]);
-
   const handleQuantityChange = (newQuantity: number) => {
     if (newQuantity >= 1 && newQuantity <= (product?.inStock || 1)) {
       setQuantity(newQuantity);
@@ -112,95 +104,52 @@ export default function DirectProductPage() {
     }
   };
 
+  // MODIFICATION: Remplacer handleBuyNow pour utiliser le checkout via le panier
   const handleBuyNow = () => {
     if (!product) return;
 
-    setProductToBuy({
+    // Ajouter au panier avec la quantité sélectionnée
+    addToCart(
+      {
+        ...product,
+        creatorId: userId, // S'assurer que le creatorId est inclus
+      },
+      quantity
+    );
+
+    // Stocker le produit pour l'achat direct via le checkout
+    setProductForBuyNow({
       ...product,
-      totalPrice: (product.price * quantity).toString(),
+      creatorId: userId,
     });
-    setShowSelectPaymentNumber(true);
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
+
+    toast({
+      title: "Produit ajouté au panier",
+      description: `${product.name} a été ajouté. Remplissez vos informations pour finaliser l'achat.`,
+    });
   };
 
-  const handlePaymentComplete = (result: string) => {
-    console.log("Payment complete:", result);
+  // AJOUT: Fonction pour ajouter au panier sans acheter immédiatement
+  const handleAddToCart = () => {
+    if (!product) return;
 
-    if (result === "pending") {
-      setPaymentState("pending");
-      setIsPaymentProcessing(true);
-      toast({
-        title: "Paiement en cours",
-        description: "Veuillez confirmer le paiement sur votre téléphone.",
-      });
-    } else if (result === "failed") {
-      setPaymentState("failed");
-      setIsPaymentProcessing(false);
-      toast({
-        variant: "destructive",
-        title: "Paiement échoué",
-        description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
-      });
-    } else {
-      setPaymentState("success");
-      setDepositId(result);
-      setIsPaymentProcessing(false);
+    addToCart(
+      {
+        ...product,
+        creatorId: userId,
+      },
+      quantity
+    );
 
-      // Enregistrer la transaction
-      if (product && product.creatorId) {
-        const newTransaction = {
-          type: "purchase",
-          buyerId: "userInfo.uid", // À remplacer par l'ID réel de l'utilisateur connecté
-          sellerId: product.creatorId,
-          productId: product.id,
-          productName: product.name,
-          counterpartyId: product.creatorId,
-          amount: product.price * quantity,
-          quantity: quantity,
-          paymentMethod: "mobile_money",
-          status: "completed",
-          depositId: result,
-          timestamp: new Date().toISOString(),
-        };
-
-        setToSubCollection(
-          result,
-          newTransaction,
-          "users",
-          product.creatorId,
-          "transactions"
-        )
-          .then(() => {
-            console.log("✅ Transaction enregistrée");
-          })
-          .catch((error) => {
-            console.error("❌ Erreur enregistrement:", error);
-          });
-      }
-
-      toast({
-        title: "Paiement réussi !",
-        description: `Votre achat de ${product?.name} a été confirmé.`,
-      });
-
-      setTimeout(() => {
-        setShowSelectPaymentNumber(false);
-      }, 3000);
-    }
+    toast({
+      title: "Produit ajouté au panier",
+      description: `${product.name} a été ajouté à votre panier.`,
+    });
   };
 
-  const handleCancelPaymentDialog = () => {
-    setShowSelectPaymentNumber(false);
-    setPaymentState("selecting");
-    setIsPaymentProcessing(false);
-
-    if (isPaymentProcessing) {
-      toast({
-        title: "Paiement annulé",
-        description: "Le processus de paiement a été interrompu.",
-      });
-    }
+  // AJOUT: Fonction pour reset le processus Buy Now
+  const handleBuyNowProcessed = () => {
+    setProductForBuyNow(null);
   };
 
   if (isLoading) {
@@ -481,20 +430,23 @@ export default function DirectProductPage() {
                       </span>
                     </div>
 
-                    <div className="flex space-x-4">
+                    <div className="flex flex-col space-y-4">
+                      {/* MODIFICATION: Bouton Buy Now qui utilise maintenant le checkout via le panier */}
                       <Button
                         onClick={handleBuyNow}
-                        disabled={isPaymentProcessing}
-                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                       >
-                        {isPaymentProcessing ? (
-                          <div className="flex items-center gap-2">
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Processing...
-                          </div>
-                        ) : (
-                          "Buy Now"
-                        )}
+                        Buy Now
+                      </Button>
+
+                      {/* AJOUT: Bouton Add to Cart */}
+                      <Button
+                        onClick={handleAddToCart}
+                        variant="outline"
+                        className="w-full h-12 font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+                      >
+                        <ShoppingCart className="h-5 w-5 mr-2" />
+                        Add to Cart
                       </Button>
                     </div>
                   </div>
@@ -536,14 +488,10 @@ export default function DirectProductPage() {
         </div>
       </div>
 
-      <PaymentDialog
-        open={showSelectPaymentNumber}
-        onOpenChange={setShowSelectPaymentNumber}
-        amount={productToBuy.totalPrice || productToBuy.price || "0"}
-        product={productToBuy.name || ""}
-        onPaymentComplete={handlePaymentComplete}
-        paymentState={paymentState}
-        handleCancel={handleCancelPaymentDialog}
+      {/* AJOUT: FloatingCart avec support pour Buy Now */}
+      <FloatingCart
+        productToBuy={productForBuyNow}
+        onBuyNowProcessed={handleBuyNowProcessed}
       />
     </div>
   );
