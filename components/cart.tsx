@@ -281,34 +281,42 @@ export default function FloatingCart({
     }
   };
 
-  // Fonction pour créer une transaction propre sans champs inutiles
-  const createUserTransaction = async (
+  // Fonction pour créer une transaction UNIQUE de type "sales"
+  const createTransaction = async (
     userId: string,
-    type: "deposit" | "withdrawal" | "purchase" | "sale",
+    type: "sales" | "withdrawal" | "purchase",
     depositId: string,
     amount: number,
     customerData: any,
-    productName?: string
+    productName?: string,
+    transactionContext: "deposit" | "sale" = "sale"
   ) => {
     const transactionId = `trans_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Structure SIMPLIFIÉE et PROPRE - pas de champs inutiles
+    // Toujours type "sales" pour tout argent qui entre
+    const transactionType = transactionContext === "deposit" ? "sales" : "sales";
+    
     const transactionData = {
       id: transactionId,
-      type: type,
+      type: transactionType, // Toujours "sales" pour tout argent qui entre
       amount: amount,
       currency: "XAF",
       status: "completed",
       createdAt: new Date().toISOString(),
-      product: productName || cart?.items[0]?.product?.name || "Commande",
+      product: productName || cart?.items[0]?.product?.name || 
+               (transactionContext === "deposit" ? "Dépôt mobile" : "Commande"),
       phoneNumber: customerData.phone,
       provider: "MTN_MOMO_CMR",
       country: "CM",
       depositId: depositId,
-      pawapayStatus: "successful"
+      pawapayStatus: "successful",
+      // Ajouter un champ pour distinguer le contexte si besoin
+      context: transactionContext,
+      // Pour les dépôts, on peut préciser que c'est un dépôt
+      transactionType: transactionContext === "deposit" ? "mobile_deposit" : "product_sale"
     };
 
-    console.log(`📊 Création transaction ${type} pour ${userId}:`, transactionData);
+    console.log(`📊 Création transaction ${transactionType} (${transactionContext}) pour ${userId}:`, transactionData);
 
     try {
       await setToSubCollection(
@@ -327,29 +335,38 @@ export default function FloatingCart({
     }
   };
 
-  // Fonction pour mettre à jour le solde du vendeur
-  const updateSellerBalance = async (sellerId: string, amount: number) => {
+  // Fonction pour mettre à jour le solde de l'utilisateur
+  const updateUserBalance = async (userId: string, amount: number, isDeposit: boolean = false) => {
     try {
-      // Récupérer le solde actuel du vendeur
-      const sellerRef = doc(db, "users", sellerId);
-      const sellerDoc = await getDoc(sellerRef);
+      const userRef = doc(db, "users", userId);
+      const userDoc = await getDoc(userRef);
       
-      if (sellerDoc.exists()) {
-        const currentBalance = sellerDoc.data().balance || 0;
-        const newBalance = currentBalance + amount;
+      if (userDoc.exists()) {
+        const currentBalance = userDoc.data().balance || 0;
+        let newBalance = currentBalance;
+        
+        if (isDeposit) {
+          newBalance = currentBalance + amount;
+        } else {
+          // Pour une vente, c'est aussi une addition (argent qui entre)
+          newBalance = currentBalance + amount;
+        }
         
         // Mettre à jour le solde
-        await updateDoc(sellerRef, {
+        await updateDoc(userRef, {
           balance: newBalance,
           lastTransaction: new Date().toISOString(),
-          lifetimeSales: (sellerDoc.data().lifetimeSales || 0) + amount
+          // Mettre à jour lifetimeSales seulement pour les ventes
+          ...(isDeposit ? {} : {
+            lifetimeSales: (userDoc.data().lifetimeSales || 0) + amount
+          })
         });
         
-        console.log(`💰 Solde du vendeur ${sellerId} mis à jour: ${currentBalance} → ${newBalance}`);
+        console.log(`💰 Solde de ${userId} mis à jour: ${currentBalance} → ${newBalance}`);
       }
     } catch (error) {
-      console.error("❌ Erreur mise à jour solde vendeur:", error);
-      // Ne pas bloquer la commande si cette mise à jour échoue
+      console.error("❌ Erreur mise à jour solde:", error);
+      // Ne pas bloquer si cette mise à jour échoue
     }
   };
 
@@ -424,14 +441,13 @@ export default function FloatingCart({
     console.log("📦 Création commande:", orderData);
 
     try {
-      // Sauvegarder la commande principale
+      // 1. Sauvegarder la commande principale
       await setToCollection("orders", orderData.id, orderData);
 
       const customerUserId = userInfo?.uid;
       
-      // Si l'utilisateur est connecté, sauvegarder dans ses commandes ET créer sa transaction
+      // 2. Si l'utilisateur est connecté, sauvegarder dans ses commandes
       if (customerUserId) {
-        // Sauvegarder la commande dans les commandes de l'utilisateur
         await setToSubCollection(
           orderData.id,
           orderData,
@@ -439,20 +455,11 @@ export default function FloatingCart({
           customerUserId,
           "orders"
         );
-
-        // Créer une transaction SIMPLE pour l'acheteur
-        console.log(`🔄 Création transaction pour l'acheteur: ${customerUserId}`);
-        await createUserTransaction(
-          customerUserId,
-          "deposit",
-          depositId,
-          getCartTotal(),
-          customerInfo,
-          cart.items[0]?.product?.name
-        );
+        
+        console.log(`📝 Commande enregistrée pour l'acheteur: ${customerUserId}`);
       }
 
-      // Sauvegarder dans les commandes du vendeur
+      // 3. Sauvegarder dans les commandes du vendeur
       await setToSubCollection(
         orderData.id,
         orderData,
@@ -461,28 +468,37 @@ export default function FloatingCart({
         "orders"
       );
 
-      // Créer une transaction SIMPLE pour le vendeur
-      console.log(`🔄 Création transaction pour le vendeur: ${sellerId}`);
-      await createUserTransaction(
+      // 4. CRITIQUE : Créer UNE SEULE transaction pour le vendeur
+      // Transaction de type "sales" car l'argent entre dans son compte
+      console.log(`🔄 Création transaction de vente pour le vendeur: ${sellerId}`);
+      await createTransaction(
         sellerId,
-        "sale",
+        "sales",
         depositId,
         getCartTotal(),
         customerInfo,
-        cart.items[0]?.product?.name
+        cart.items[0]?.product?.name,
+        "sale"
       );
 
-      // Mettre à jour le solde du vendeur
-      await updateSellerBalance(sellerId, getCartTotal());
+      // 5. Mettre à jour le solde du vendeur
+      await updateUserBalance(sellerId, getCartTotal(), false);
 
-      console.log("✅ Commande et transactions créées avec succès");
+      // 6. Pour l'acheteur connecté : créer aussi une transaction "sales" s'il est le vendeur
+      // (cas où l'utilisateur achète son propre produit)
+      if (customerUserId && customerUserId === sellerId) {
+        console.log(`⚠️ L'acheteur est aussi le vendeur (auto-achat)`);
+        // Pas besoin de créer une autre transaction, déjà fait
+      }
 
-      // Rafraîchir les commandes de l'utilisateur s'il est connecté
+      console.log("✅ Commande et transaction créées avec succès");
+
+      // 7. Rafraîchir les commandes de l'utilisateur s'il est connecté
       if (customerUserId && refreshUserOrders) {
         await refreshUserOrders();
       }
 
-      // Envoyer un SMS au vendeur si on a son numéro
+      // 8. Envoyer un SMS au vendeur si on a son numéro
       if (sellerPhone) {
         try {
           await fetch("/api/send-sms", {
