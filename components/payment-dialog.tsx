@@ -33,7 +33,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslations } from "@/lib/useTranslations";
-//
 import {
   Select,
   SelectContent,
@@ -55,28 +54,8 @@ import {
   PAWAPAY_COUNTRIES,
   getAllCountries,
 } from "@/lib/countries";
-import { addToSubCollection } from "@/functions/add-to-a-sub-collection";
-import { updateDocument } from "@/functions/update-doc-in-collection";
-import { getCurrencyByCountry } from "@/lib/currencies";
+import { getCurrencyForCountry, formatLocalDisplay } from "@/lib/allocate";
 import { pollTransactionStatus } from "@/lib/pawapaypolling";
-
-// Importez les fonctions de conversion depuis votre autre projet
-import {
-  getCurrencyForCountry,
-  convertXAFToCurrency,
-  formatCurrencyWithSymbol,
-  formatLocalDisplay,
-} from "@/lib/allocate";
-
-interface PaymentMethod {
-  id: string;
-  type: "card" | "bank" | "digital";
-  name: string;
-  details: string;
-  isDefault: boolean;
-  lastUsed?: string;
-  icon: React.ReactNode;
-}
 
 interface PaymentDialogProps {
   open: boolean;
@@ -164,28 +143,12 @@ export function PaymentDialog({
   const getSafeAmount = (): number => {
     if (!amount) return 0;
     try {
-      // Supprimer tous les caractères non numériques sauf le point décimal
       const cleanAmount = amount.replace(/[^\d.]/g, "");
       return parseFloat(cleanAmount) || 0;
     } catch (error) {
       console.error("Error parsing amount:", error);
       return 0;
     }
-  };
-
-  // Fonction pour obtenir le montant dans la devise locale
-  const getLocalAmount = (countryCode: string): number => {
-    const targetCurrency = getCurrencyForCountry(countryCode);
-    // Convertir le montant XAF en devise locale
-    const amountNumber = getSafeAmount();
-    return convertXAFToCurrency(amountNumber, targetCurrency);
-  };
-
-  // Fonction pour formater l'affichage du montant local
-  const getLocalAmountDisplay = (countryCode: string): string => {
-    const amountNumber = getSafeAmount();
-    if (amountNumber === 0) return "0";
-    return formatLocalDisplay(amountNumber, countryCode);
   };
 
   const handleAddPaymentMethod = () => {
@@ -214,15 +177,15 @@ export function PaymentDialog({
       return;
     }
 
-    // 2. ✅ CORRECTION CRITIQUE : Nettoyage COMPLET du numéro
-    let cleanPhoneNumber = phoneNumber.replace(/[^\d]/g, ""); // Supprime TOUT sauf les chiffres
+    // 2. Nettoyage du numéro de téléphone
+    let cleanPhoneNumber = phoneNumber.replace(/[^\d]/g, "");
 
-    // 3. Supprimer le préfixe '0' si présent (ex: "0682374552" → "682374552")
+    // 3. Supprimer le préfixe '0' si présent
     if (cleanPhoneNumber.startsWith("0")) {
       cleanPhoneNumber = cleanPhoneNumber.substring(1);
     }
 
-    // 4. Ajouter l'indicatif pays SANS le '+'
+    // 4. Ajouter l'indicatif pays
     const country = PAWAPAY_COUNTRIES.find((c) => c.code === selectedCountry);
     if (!country) {
       alert("Pays non supporté");
@@ -232,18 +195,13 @@ export function PaymentDialog({
     const countryCodeDigits = country.dialCode.replace("+", "");
     const finalPhoneNumber = countryCodeDigits + cleanPhoneNumber;
 
-    // 5. ✅ CORRECTION : Utiliser le montant converti dans la devise locale
-    const localAmount = getLocalAmount(selectedCountry);
-    const targetCurrency = getCurrencyForCountry(selectedCountry);
-
-    // Préparer les données de la transaction
+    // 5. Préparer les données de la transaction
     const paymentData = {
-      amount: localAmount.toString(), // ✅ Montant dans la devise locale
+      amount: amountNumber.toString(),
       countryCode: selectedCountry,
       mobileProviderId: mobileProvider,
       phoneNumber: finalPhoneNumber,
-      currency: targetCurrency, // ✅ Devise locale
-      originalAmountXAF: amountNumber.toString(), // Garder une trace du montant original
+      currency: getCurrencyForCountry(selectedCountry),
     };
 
     try {
@@ -253,7 +211,7 @@ export function PaymentDialog({
         onPaymentComplete("pending");
       }
 
-      console.log("🔹 REQUÊTE PAWAPAY - DEVISE LOCALE:", paymentData);
+      console.log("🔹 REQUÊTE PAWAPAY:", paymentData);
 
       const response = await fetch("/api/pawapay/deposits", {
         method: "POST",
@@ -271,146 +229,26 @@ export function PaymentDialog({
         return;
       }
 
-      console.log("📩 Transaction Pawapay créée, depositId:", result.depositId);
+      console.log("✅ Transaction Pawapay créée, depositId:", result.depositId);
 
-      // ⏳ POLLING : Attendre la confirmation SUCCESSFUL
+      // POLLING : Attendre la confirmation
       const pollResult = await pollTransactionStatus(result.depositId);
 
       if (!pollResult.ok) {
         console.warn("⚠️ Transaction non confirmée:", pollResult);
-
-        // ✅ CORRECTION : Enregistrer la transaction comme ÉCHEC dans Firebase
-        if (userInfo?.uid) {
-          const failedTransactionRecord = {
-            id: result.depositId,
-            depositId: result.depositId,
-            amount: amountNumber,
-            currency: "XAF",
-            localAmount: localAmount,
-            localCurrency: targetCurrency,
-            type: "deposit",
-            status: "FAILED", // ✅ Statut d'échec
-            phoneNumber: finalPhoneNumber,
-            provider: mobileProvider,
-            country: selectedCountry,
-            product: product,
-            user: {
-              uid: userInfo.uid,
-              name: userInfo.name || "Unknown",
-              phone: userInfo.phone || "Unknown",
-            },
-            error: pollResult.error || "Timeout du polling",
-            createdAt: new Date(),
-            timestamp: new Date().toISOString(),
-          };
-
-          console.log(
-            "📝 Enregistrement transaction ÉCHOUÉE Firebase:",
-            failedTransactionRecord
-          );
-
-          await addToSubCollection(
-            failedTransactionRecord,
-            "users",
-            userInfo.uid,
-            "transactions"
-          );
-
-          console.log("✅ Transaction échouée enregistrée dans Firebase");
-        }
-
+        
         if (onPaymentComplete) onPaymentComplete("failed");
         return alert("Le paiement n'a pas été confirmé par Pawapay");
       }
 
-      // ✅ Transaction confirmée → mise à jour Firebase et solde
-      if (userInfo?.uid) {
-        const transactionRecord = {
-          id: result.depositId,
-          depositId: result.depositId,
-          amount: amountNumber,
-          currency: "XAF",
-          localAmount: localAmount,
-          localCurrency: targetCurrency,
-          type: "deposit",
-          status: "SUCCESSFUL", // ✅ Statut de succès
-          phoneNumber: finalPhoneNumber,
-          provider: mobileProvider,
-          country: selectedCountry,
-          product: product,
-          user: {
-            uid: userInfo.uid,
-            name: userInfo.name || "Unknown",
-            phone: userInfo.phone || "Unknown",
-          },
-          createdAt: new Date(),
-          timestamp: new Date().toISOString(),
-        };
+      // ✅ Transaction confirmée
+      console.log("✅ Paiement confirmé avec succès");
+      
+      // Retourner le depositId au parent (cart.tsx) qui se chargera de créer la transaction
+      if (onPaymentComplete) onPaymentComplete(result.depositId);
 
-        console.log(
-          "📝 Enregistrement transaction RÉUSSIE Firebase:",
-          transactionRecord
-        );
-
-        // ✅ AJOUTER À LA SOUS-COLLECTION TRANSACTIONS
-        await addToSubCollection(
-          transactionRecord,
-          "users",
-          userInfo.uid,
-          "transactions"
-        );
-
-        // ✅ METTRE À JOUR LE BALANCE DE L'UTILISATEUR
-        const newBalance = (userInfo.balance || 0) + amountNumber;
-        await updateDocument("users", userInfo.uid, {
-          balance: newBalance,
-          lastTransaction: new Date(),
-          updatedAt: new Date(),
-        });
-
-        console.log(
-          "✅ Transaction réussie enregistrée et balance mise à jour"
-        );
-
-        if (onPaymentComplete) onPaymentComplete(result.depositId);
-      } else {
-        if (onPaymentComplete) onPaymentComplete(result.depositId);
-      }
     } catch (error) {
       console.error("❌ Erreur lors du paiement:", error);
-
-      // ✅ CORRECTION : Enregistrer l'erreur dans Firebase
-      if (userInfo?.uid) {
-        const errorTransactionRecord = {
-          id: `error_${Date.now()}`,
-          amount: amountNumber,
-          currency: "XAF",
-          localAmount: localAmount,
-          localCurrency: targetCurrency,
-          type: "deposit",
-          status: "FAILED",
-          phoneNumber: finalPhoneNumber,
-          provider: mobileProvider,
-          country: selectedCountry,
-          product: product,
-          user: {
-            uid: userInfo.uid,
-            name: userInfo.name || "Unknown",
-            phone: userInfo.phone || "Unknown",
-          },
-          error: error instanceof Error ? error.message : "Erreur inconnue",
-          createdAt: new Date(),
-          timestamp: new Date().toISOString(),
-        };
-
-        await addToSubCollection(
-          errorTransactionRecord,
-          "users",
-          userInfo.uid,
-          "transactions"
-        );
-      }
-
       if (onPaymentComplete) {
         onPaymentComplete("failed");
       }
@@ -421,12 +259,8 @@ export function PaymentDialog({
   };
 
   const handleCountryChange = (newCountryCode: string) => {
-    // Mettre à jour le pays
     setSelectedCountry(newCountryCode);
-
-    // Réinitialiser le fournisseur car il peut ne pas exister dans le nouveau pays
     setMobileProvider(undefined);
-
     setPhoneNumber("");
   };
 
@@ -447,8 +281,6 @@ export function PaymentDialog({
     setPhoneNumber(formatted);
   };
 
-  // ✅ CORRECTION : Utiliser directement paymentState du parent sans état local
-
   // Pending State
   if (paymentState === "pending") {
     return (
@@ -457,7 +289,7 @@ export function PaymentDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2">
               <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
-              Processing Payment
+              Paiement en cours
             </DialogTitle>
           </DialogHeader>
 
@@ -469,23 +301,14 @@ export function PaymentDialog({
 
             <div className="text-center space-y-2">
               <h3 className="text-lg font-semibold">
-                Waiting for you to complete the payment
+                En attente de confirmation
               </h3>
               <p className="text-sm text-muted-foreground">
-                Please complete the payment process in your payment provider's
-                window
+                Veuillez compléter le paiement dans l'interface de votre opérateur mobile
               </p>
               <p className="text-lg font-bold text-blue-600">
-                {selectedCountry
-                  ? getLocalAmountDisplay(selectedCountry)
-                  : amount}
+                {amount} XAF
               </p>
-              {selectedCountry &&
-                getCurrencyForCountry(selectedCountry) !== "XAF" && (
-                  <p className="text-sm text-gray-500">
-                    Reference: {amount} XAF
-                  </p>
-                )}
             </div>
 
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -498,7 +321,7 @@ export function PaymentDialog({
 
           <DialogFooter>
             <Button variant="outline" onClick={handleCancel} className="w-full">
-              Cancel Payment
+              Annuler le paiement
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -514,7 +337,7 @@ export function PaymentDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2">
               <CheckCircle className="h-6 w-6 text-green-600" />
-              Payment Completed
+              Paiement réussi
             </DialogTitle>
           </DialogHeader>
 
@@ -526,30 +349,18 @@ export function PaymentDialog({
 
             <div className="text-center space-y-2">
               <h3 className="text-lg font-semibold text-green-800">
-                Payment Successful!
+                Paiement effectué !
               </h3>
               <p className="text-sm text-muted-foreground">
-                Your payment has been processed successfully
+                Votre paiement a été traité avec succès
               </p>
               <div className="bg-green-50 p-3 rounded-lg">
                 <p className="text-sm text-green-700">
-                  <strong>Amount Paid:</strong>{" "}
-                  {selectedCountry
-                    ? getLocalAmountDisplay(selectedCountry)
-                    : amount}
+                  <strong>Montant:</strong> {amount} XAF
                 </p>
                 <p className="text-sm text-green-700">
-                  <strong>Product:</strong> {product}
+                  <strong>Produit:</strong> {product}
                 </p>
-                <p className="text-sm text-green-700">
-                  <strong>Payment Method:</strong> Mobile Money
-                </p>
-                {selectedCountry &&
-                  getCurrencyForCountry(selectedCountry) !== "XAF" && (
-                    <p className="text-sm text-green-700">
-                      <strong>Reference:</strong> {amount} XAF
-                    </p>
-                  )}
               </div>
             </div>
           </div>
@@ -559,7 +370,7 @@ export function PaymentDialog({
               onClick={handleCancel}
               className="w-full bg-green-600 hover:bg-green-700"
             >
-              Continue
+              Continuer
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -575,7 +386,7 @@ export function PaymentDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center justify-center gap-2">
               <XCircle className="h-6 w-6 text-red-600" />
-              Payment Failed
+              Paiement échoué
             </DialogTitle>
           </DialogHeader>
 
@@ -587,18 +398,14 @@ export function PaymentDialog({
 
             <div className="text-center space-y-2">
               <h3 className="text-lg font-semibold text-red-800">
-                Payment Not Completed
+                Paiement non complété
               </h3>
               <p className="text-sm text-muted-foreground">
-                We couldn't process your payment
+                Nous n'avons pas pu traiter votre paiement
               </p>
               <div className="bg-red-50 p-3 rounded-lg">
                 <p className="text-sm text-red-700">
-                  <strong>Error:</strong> Payment was declined by your payment
-                  provider
-                </p>
-                <p className="text-sm text-red-700">
-                  Please check your payment method or try a different one
+                  <strong>Erreur:</strong> Le paiement a été refusé par votre opérateur
                 </p>
               </div>
             </div>
@@ -610,7 +417,7 @@ export function PaymentDialog({
               onClick={handleCancel}
               className="w-full sm:w-auto"
             >
-              Cancel
+              Annuler
             </Button>
             <Button
               onClick={() => {
@@ -624,7 +431,7 @@ export function PaymentDialog({
               }}
               className="w-full sm:w-auto"
             >
-              Try Again
+              Réessayer
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -639,10 +446,10 @@ export function PaymentDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-green-600" />
-            {t("BuyDialog.securePayment")}
+            Paiement sécurisé
           </DialogTitle>
           <DialogDescription>
-            {t("BuyDialog.description")} {product}
+            Finalisez votre achat de {product}
           </DialogDescription>
         </DialogHeader>
 
@@ -654,22 +461,13 @@ export function PaymentDialog({
                 <div>
                   <p className="font-medium">{product}</p>
                   <p className="text-sm text-muted-foreground">
-                    Payment due immediately
+                    Paiement à effectuer immédiatement
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">
-                    {selectedCountry && amount
-                      ? getLocalAmountDisplay(selectedCountry)
-                      : amount || "0"}
-                  </p>
-                  {selectedCountry &&
-                    getCurrencyForCountry(selectedCountry) !== "XAF" &&
-                    amount && (
-                      <p className="text-sm text-gray-500 mt-1">{amount} XAF</p>
-                    )}
+                  <p className="text-2xl font-bold">{amount} XAF</p>
                   <Badge variant="secondary" className="text-xs">
-                    {t("BuyDialog.secure")}
+                    Sécurisé
                   </Badge>
                 </div>
               </div>
@@ -691,30 +489,23 @@ export function PaymentDialog({
                   {userLocation && (
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                       <MapPin className="h-4 w-4" />
-                      <span>Detected location: {userLocation.country}</span>
+                      <span>Localisation détectée: {userLocation.country}</span>
                     </div>
                   )}
 
                   {/* 1. Country Selection */}
                   <div className="space-y-2 w-full">
-                    <Label>Country *</Label>
+                    <Label>Pays *</Label>
                     <Select
                       value={selectedCountry}
                       onValueChange={handleCountryChange}
                       disabled={isProcessing}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select your country" />
+                        <SelectValue placeholder="Sélectionnez votre pays" />
                       </SelectTrigger>
                       <SelectContent>
                         {PAWAPAY_COUNTRIES.map((country: CountryProvider) => {
-                          // Gestion sécurisée du montant pour l'affichage
-                          const amountNumber = getSafeAmount();
-                          const displayAmount =
-                            amountNumber > 0
-                              ? formatLocalDisplay(amountNumber, country.code)
-                              : "";
-
                           return (
                             <SelectItem key={country.code} value={country.code}>
                               <div className="flex items-center gap-2">
@@ -728,13 +519,7 @@ export function PaymentDialog({
                                     {country.name}
                                   </div>
                                   <div className="text-xs text-gray-500">
-                                    {country.dialCode} •{" "}
-                                    {getCurrencyForCountry(country.code)}
-                                    {getCurrencyForCountry(country.code) !==
-                                      "XAF" &&
-                                      displayAmount && (
-                                        <span> • ≈ {displayAmount}</span>
-                                      )}
+                                    {country.dialCode}
                                   </div>
                                 </div>
                               </div>
@@ -750,7 +535,7 @@ export function PaymentDialog({
                     <>
                       {/* 2. Mobile Provider RadioGroup */}
                       <div className="space-y-2">
-                        <Label>Mobile Provider *</Label>
+                        <Label>Opérateur mobile *</Label>
                         <RadioGroup
                           value={mobileProvider}
                           onValueChange={setMobileProvider}
@@ -779,7 +564,7 @@ export function PaymentDialog({
 
                       {/* 3. Phone Number Input */}
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Label htmlFor="phone">Numéro de téléphone *</Label>
                         <div className="flex gap-2">
                           <div className="flex items-center px-3 border rounded-md bg-muted text-muted-foreground min-w-[80px] justify-center">
                             {currentCountry?.dialCode}
@@ -795,8 +580,7 @@ export function PaymentDialog({
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          You will receive a prompt on your phone to confirm the
-                          payment
+                          Vous recevrez une notification sur votre téléphone pour confirmer le paiement
                         </p>
                       </div>
 
@@ -816,14 +600,10 @@ export function PaymentDialog({
                         {isProcessing ? (
                           <div className="flex items-center gap-2">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                            Processing Payment...
+                            Traitement en cours...
                           </div>
                         ) : (
-                          `Pay ${
-                            selectedCountry && amount
-                              ? getLocalAmountDisplay(selectedCountry)
-                              : amount || "0"
-                          } with Mobile Money`
+                          `Payer ${amount} XAF avec Mobile Money`
                         )}
                       </Button>
                     </>
@@ -854,18 +634,13 @@ export function PaymentDialog({
                           <p className="font-medium">{method.network}</p>
                           {method.isDefault && (
                             <Badge variant="secondary" className="text-xs">
-                              Default
+                              Par défaut
                             </Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {method.number}
                         </p>
-                        {method.lastUsed && (
-                          <p className="text-xs text-muted-foreground">
-                            Last used {method.lastUsed}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -883,18 +658,14 @@ export function PaymentDialog({
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-blue-900">
-                {t("BuyDialog.securePayment")}
+                Paiement 100% sécurisé
               </p>
               <p className="text-blue-700">
-                {t("BuyDialog.footerDescription")}
+                Vos informations de paiement sont chiffrées et protégées
               </p>
             </div>
           </div>
         </div>
-
-        <DialogFooter className="flex-col sm:flex-row gap-3">
-          {/* Les boutons du footer peuvent être réactivés si nécessaire */}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

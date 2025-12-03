@@ -17,6 +17,7 @@ interface CartContextType {
   setProducts: React.Dispatch<React.SetStateAction<CatalogProduct[]>>;
   getCartItemCount: () => number;
   getCartTotal: () => number;
+  isInitialized: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -25,6 +26,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [catalog, setCatalogData] = useState<Catalog | null>(null);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
   // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem("cart");
@@ -33,8 +36,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setCart(JSON.parse(savedCart));
       } catch (error) {
         console.error("Error loading cart from localStorage:", error);
+        // Créer un panier vide en cas d'erreur
+        const newCart: Cart = {
+          catalogId: "default",
+          catalogTitle: "Panier d'achat",
+          sellerName: "Vendeur",
+          items: [],
+          total: 0,
+        };
+        setCart(newCart);
       }
+    } else {
+      // Initialiser un panier vide si rien dans localStorage
+      const newCart: Cart = {
+        catalogId: "default",
+        catalogTitle: "Panier d'achat",
+        sellerName: "Vendeur",
+        items: [],
+        total: 0,
+      };
+      setCart(newCart);
     }
+    setIsInitialized(true);
   }, []);
 
   // Save cart to localStorage whenever it changes
@@ -44,23 +67,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart]);
 
-  const setCatalog = (catalog: any) => {
-    // console.log(catalog)
-    // If switching to a different catalog, clear the cart
-    setCatalogData(catalog);
-    if (cart && cart.catalogId !== catalog.id) {
-      setCart({
-        catalogId: catalog.id,
-        catalogTitle: catalog.name,
-        sellerName: catalog.name,
+  const setCatalog = (catalogData: any) => {
+    setCatalogData(catalogData);
+
+    if (!cart) {
+      const newCart: Cart = {
+        catalogId: catalogData.id,
+        catalogTitle: catalogData.title || catalogData.name,
+        sellerName: catalogData.creatorName,
         items: [],
         total: 0,
-      });
-    } else if (!cart) {
+      };
+      setCart(newCart);
+    } else if (cart.catalogId !== catalogData.id) {
       setCart({
-        catalogId: catalog.id,
-        catalogTitle: catalog.name,
-        sellerName: catalog.name,
+        catalogId: catalogData.id,
+        catalogTitle: catalogData.title || catalogData.name,
+        sellerName: catalogData.creatorName,
         items: [],
         total: 0,
       });
@@ -68,7 +91,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addToCart = (product: CatalogProduct, quantity: number) => {
-    if (!cart) return;
+    console.log("🛒 addToCart appelé avec:", product.name, quantity);
+
+    if (!cart) {
+      console.log("📦 Création d'un nouveau panier...");
+      const newCart: Cart = {
+        catalogId: product.creatorId || "default-catalog",
+        catalogTitle: "Panier d'achat",
+        sellerName: product.creatorName || "Vendeur",
+        items: [{ productId: product.id, product, quantity }],
+        total: product.price * quantity,
+      };
+      setCart(newCart);
+      console.log("✅ Nouveau panier créé:", newCart);
+      return;
+    }
 
     const existingItemIndex = cart.items.findIndex(
       (item) => item.productId === product.id
@@ -76,14 +113,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     let newItems: CartItem[];
     if (existingItemIndex >= 0) {
-      // Update existing item
       newItems = cart.items.map((item, index) =>
         index === existingItemIndex
           ? { ...item, quantity: item.quantity + quantity }
           : item
       );
     } else {
-      // Add new item
       newItems = [...cart.items, { productId: product.id, product, quantity }];
     }
 
@@ -91,13 +126,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       (total, item) => total + item.product.price * item.quantity,
       0
     );
-    console.log(newTotal);
-    console.log(newItems);
-    setCart({
+
+    const updatedCart = {
       ...cart,
       items: newItems,
       total: newTotal,
-    });
+    };
+
+    setCart(updatedCart);
+    console.log("🛒 Panier mis à jour:", updatedCart);
   };
 
   const removeFromCart = (productId: string) => {
@@ -141,7 +178,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         items: [],
         total: 0,
       });
-      localStorage.removeItem("catalog-cart");
+      localStorage.removeItem("cart");
     }
   };
 
@@ -168,6 +205,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         getCartItemCount,
         getCartTotal,
+        isInitialized,
       }}
     >
       {children}

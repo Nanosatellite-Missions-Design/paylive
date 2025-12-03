@@ -42,7 +42,6 @@ export default function DirectProductPage() {
   const { addToCart } = useCart();
   const [productForBuyNow, setProductForBuyNow] = useState<any>(null);
 
-  // Fonctions de navigation des images avec gestion robuste
   const goToNextImage = () => {
     if (!product) return;
     const images = getProductImages(product);
@@ -55,7 +54,6 @@ export default function DirectProductPage() {
     setSelectedImage((prev) => (prev - 1 < 0 ? images.length - 1 : prev - 1));
   };
 
-  // Récupérer le produit directement
   useEffect(() => {
     const fetchProduct = async () => {
       if (!userId || !productId) {
@@ -73,15 +71,16 @@ export default function DirectProductPage() {
           (fetchedProduct) => {
             console.log("Product fetched:", fetchedProduct);
             if (fetchedProduct) {
-              // Normaliser les données du produit
               const normalizedProduct = {
                 ...fetchedProduct,
-                // S'assurer que les champs essentiels existent
                 price: fetchedProduct.price || 0,
                 inStock: fetchedProduct.inStock || 0,
                 creatorName: fetchedProduct.creatorName || "Vendeur",
                 category: fetchedProduct.category || "other",
                 description: fetchedProduct.description || "",
+                // AJOUT CRITIQUE: Inclure les infos du vendeur pour la commande
+                creatorId: userId,
+                creatorPhone: fetchedProduct.creatorPhone || "",
               };
 
               setProduct(normalizedProduct);
@@ -141,20 +140,17 @@ export default function DirectProductPage() {
   const handleBuyNow = () => {
     if (!product) return;
 
-    // Ajouter au panier avec la quantité sélectionnée
-    addToCart(
-      {
-        ...product,
-        creatorId: userId,
-      },
-      quantity
-    );
-
-    // Stocker le produit pour l'achat direct via le checkout
-    setProductForBuyNow({
+    // AJOUT CRITIQUE: Inclure toutes les infos nécessaires pour la commande
+    const productWithSellerInfo = {
       ...product,
       creatorId: userId,
-    });
+      creatorName: product.creatorName || "Vendeur",
+      creatorPhone: product.creatorPhone || "",
+    };
+
+    addToCart(productWithSellerInfo, quantity);
+
+    setProductForBuyNow(productWithSellerInfo);
 
     toast({
       title: "Produit ajouté au panier",
@@ -165,13 +161,14 @@ export default function DirectProductPage() {
   const handleAddToCart = () => {
     if (!product) return;
 
-    addToCart(
-      {
-        ...product,
-        creatorId: userId,
-      },
-      quantity
-    );
+    const productWithSellerInfo = {
+      ...product,
+      creatorId: userId,
+      creatorName: product.creatorName || "Vendeur",
+      creatorPhone: product.creatorPhone || "",
+    };
+
+    addToCart(productWithSellerInfo, quantity);
 
     toast({
       title: "Produit ajouté au panier",
@@ -220,13 +217,11 @@ export default function DirectProductPage() {
     );
   }
 
-  // Utilisation de la fonction utilitaire pour récupérer les images
   const productImages = getProductImages(product);
   const hasMultipleImages = productImages.length > 1;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
       <div className="bg-white shadow-lg border-b relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -279,10 +274,8 @@ export default function DirectProductPage() {
         </div>
       </div>
 
-      {/* Product Details */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
           <div className="space-y-6">
             <div className="relative aspect-square bg-white rounded-2xl overflow-hidden shadow-xl">
               <div className="relative w-full h-full">
@@ -292,10 +285,6 @@ export default function DirectProductPage() {
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.src = "/placeholder.jpg";
-                    console.error(
-                      "Image failed to load:",
-                      productImages[selectedImage]
-                    );
                   }}
                 />
 
@@ -382,7 +371,6 @@ export default function DirectProductPage() {
             )}
           </div>
 
-          {/* Product Info */}
           <div className="space-y-8">
             <div>
               <Badge
@@ -414,7 +402,6 @@ export default function DirectProductPage() {
               )}
             </div>
 
-            {/* Trust Badges */}
             <div className="grid grid-cols-3 gap-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Shield className="h-5 w-5 text-green-500" />
@@ -482,22 +469,12 @@ export default function DirectProductPage() {
                       >
                         Buy Now
                       </Button>
-
-                      {/* <Button
-                        onClick={handleAddToCart}
-                        variant="outline"
-                        className="w-full h-12 font-semibold border-2 border-blue-600 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
-                      >
-                        <ShoppingCart className="h-5 w-5 mr-2" />
-                        Add to Cart
-                      </Button> */}
                     </div>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Seller Info */}
             <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-gray-50">
               <CardContent className="p-8">
                 <h3 className="font-bold text-xl mb-6 text-gray-900">

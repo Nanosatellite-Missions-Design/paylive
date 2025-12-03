@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,6 +26,7 @@ import {
   Mail,
   MapPin,
   MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { setToSubCollection } from "@/functions/add-to-a-sub-collection";
 import { useToast } from "@/hooks/use-toast";
@@ -33,8 +34,9 @@ import { useTranslations } from "@/lib/useTranslations";
 import { PaymentDialog } from "@/components/payment-dialog";
 import { setToCollection } from "@/functions/add-to-collection";
 import type { CatalogProduct } from "@/types/catalog";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "@/functions/firebase";
 
-// AJOUT: Interface pour les props avec support Buy Now
 interface FloatingCartProps {
   productToBuy?: CatalogProduct | null;
   onBuyNowProcessed?: () => void;
@@ -52,6 +54,7 @@ export default function FloatingCart({
     clearCart,
     getCartItemCount,
     getCartTotal,
+    isInitialized,
   } = useCart();
 
   const { userInfo, refreshUserOrders } = useAuth();
@@ -62,6 +65,7 @@ export default function FloatingCart({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentState, setPaymentState] = useState("selecting");
+  const [isLoadingCart, setIsLoadingCart] = useState(!isInitialized);
 
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -73,29 +77,87 @@ export default function FloatingCart({
 
   const t = useTranslations("CatalogPage.Cart");
 
-  // AJOUT: Effet pour gérer l'ouverture automatique du checkout pour Buy Now
-  useEffect(() => {
-    if (productToBuy) {
-      console.log("🛒 Buy Now détecté, ouverture automatique du checkout");
+  // Référence pour suivre si l'ouverture a déjà été tentée
+  const hasOpenedRef = useRef(false);
 
-      // S'assurer que le produit est dans le panier
-      const isInCart = cart?.items.some(
-        (item) => item.productId === productToBuy.id
-      );
-      if (!isInCart) {
-        console.log("🛒 Ajout du produit Buy Now au panier");
+  // Effet pour gérer l'ouverture automatique du checkout pour Buy Now
+  useEffect(() => {
+    if (productToBuy && !hasOpenedRef.current) {
+      console.log("🛒 Buy Now détecté, vérification du panier...");
+      hasOpenedRef.current = true;
+
+      const checkProductInCart = () => {
+        const isInCart = cart?.items?.some(
+          (item) => item.productId === productToBuy.id
+        );
+
+        if (isInCart) {
+          console.log("✅ Produit trouvé dans le panier immédiatement");
+          setIsOpen(true);
+          setShowCheckout(true);
+          hasOpenedRef.current = false;
+
+          toast({
+            title: "Produit ajouté",
+            description: "Remplissez vos informations pour finaliser l'achat.",
+          });
+          return true;
+        }
+        return false;
+      };
+
+      // Premier essai immédiat
+      if (checkProductInCart()) {
+        return;
       }
 
-      // Ouvrir automatiquement le panier et aller au checkout
-      setIsOpen(true);
-      setShowCheckout(true);
+      // Si pas trouvé, réessayer plusieurs fois
+      let attempts = 0;
+      const maxAttempts = 15;
+      const interval = 300;
 
-      toast({
-        title: "Produit ajouté",
-        description: "Remplissez vos informations pour finaliser l'achat.",
-      });
+      const retryInterval = setInterval(() => {
+        attempts++;
+        console.log(
+          `🔍 Tentative ${attempts}/${maxAttempts} de trouver le produit dans le panier`
+        );
+
+        if (checkProductInCart()) {
+          clearInterval(retryInterval);
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          console.error("❌ Échec après", maxAttempts, "tentatives");
+          clearInterval(retryInterval);
+          hasOpenedRef.current = false;
+
+          toast({
+            variant: "destructive",
+            title: "Problème d'ajout au panier",
+            description:
+              "Le produit n'a pas pu être ajouté. Essayez de cliquer à nouveau sur 'Buy Now'.",
+          });
+        }
+      }, interval);
+
+      return () => {
+        clearInterval(retryInterval);
+      };
     }
   }, [productToBuy, cart, toast]);
+
+  // Réinitialiser le flag quand le produit change
+  useEffect(() => {
+    hasOpenedRef.current = false;
+  }, [productToBuy]);
+
+  // Effet pour suivre l'initialisation
+  useEffect(() => {
+    if (isInitialized) {
+      setIsLoadingCart(false);
+    }
+  }, [isInitialized]);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -117,11 +179,26 @@ export default function FloatingCart({
       return;
     }
 
-    if (!cart || cart.items.length === 0) {
+    if (!cart || !cart.items || cart.items.length === 0) {
       toast({
         variant: "destructive",
         title: "Panier vide",
-        description: "Votre panier est vide",
+        description: "Votre panier est vide. Veuillez ajouter des produits.",
+      });
+      return;
+    }
+
+    // Vérifier que tous les produits ont les informations nécessaires
+    const invalidItems = cart.items.filter(
+      (item) => !item.product || !item.product.id || !item.product.name
+    );
+
+    if (invalidItems.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Problème avec le panier",
+        description:
+          "Certains produits du panier ne sont pas valides. Veuillez réessayer.",
       });
       return;
     }
@@ -129,7 +206,6 @@ export default function FloatingCart({
     setShowPaymentDialog(true);
   };
 
-  // MODIFICATION: handlePaymentComplete avec gestion du callback Buy Now
   const handlePaymentComplete = async (result: string) => {
     console.log("🔄 FloatingCart: handlePaymentComplete appelé avec:", result);
 
@@ -149,18 +225,17 @@ export default function FloatingCart({
         description: "Le paiement n'a pas pu être traité. Veuillez réessayer.",
       });
     } else {
-      // Paiement réussi - créer la commande
       try {
         await createOrder(result);
         setPaymentState("success");
         setIsSubmitting(false);
 
         toast({
-          title: "Commande créée !",
-          description: "Votre commande a été créée avec succès.",
+          title: "Commande créée avec succès !",
+          description:
+            "Votre commande a été enregistrée et le paiement confirmé.",
         });
 
-        // Fermer les dialogues après un délai
         setTimeout(() => {
           setShowPaymentDialog(false);
           setShowCheckout(false);
@@ -168,7 +243,6 @@ export default function FloatingCart({
           clearCart();
           resetCustomerInfo();
 
-          // AJOUT: Appeler le callback si c'est un achat Buy Now
           if (productToBuy && onBuyNowProcessed) {
             console.log("✅ Buy Now terminé, appel du callback");
             onBuyNowProcessed();
@@ -178,28 +252,146 @@ export default function FloatingCart({
         console.error("❌ Erreur création commande:", error);
         setPaymentState("failed");
         setIsSubmitting(false);
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Erreur lors de la création de la commande",
-        });
+
+        const errorMessage =
+          error instanceof Error ? error.message : "Erreur inconnue";
+
+        if (errorMessage.includes("Cart missing")) {
+          toast({
+            variant: "destructive",
+            title: "Problème de panier",
+            description:
+              "Votre panier est vide ou a expiré. Veuillez réessayer.",
+          });
+        } else if (errorMessage.includes("No items in cart")) {
+          toast({
+            variant: "destructive",
+            title: "Panier vide",
+            description: "Votre panier est vide. Veuillez réessayer.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Erreur",
+            description:
+              "Le paiement a été effectué mais nous rencontrons un problème technique. Contactez le support.",
+          });
+        }
       }
     }
   };
 
+  // Fonction pour créer une transaction propre sans champs inutiles
+  const createUserTransaction = async (
+    userId: string,
+    type: "deposit" | "withdrawal" | "purchase" | "sale",
+    depositId: string,
+    amount: number,
+    customerData: any,
+    productName?: string
+  ) => {
+    const transactionId = `trans_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Structure SIMPLIFIÉE et PROPRE - pas de champs inutiles
+    const transactionData = {
+      id: transactionId,
+      type: type,
+      amount: amount,
+      currency: "XAF",
+      status: "completed",
+      createdAt: new Date().toISOString(),
+      product: productName || cart?.items[0]?.product?.name || "Commande",
+      phoneNumber: customerData.phone,
+      provider: "MTN_MOMO_CMR",
+      country: "CM",
+      depositId: depositId,
+      pawapayStatus: "successful"
+    };
+
+    console.log(`📊 Création transaction ${type} pour ${userId}:`, transactionData);
+
+    try {
+      await setToSubCollection(
+        transactionId,
+        transactionData,
+        "users",
+        userId,
+        "transactions"
+      );
+      
+      console.log(`✅ Transaction créée dans users/${userId}/transactions`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Erreur création transaction:`, error);
+      throw error;
+    }
+  };
+
+  // Fonction pour mettre à jour le solde du vendeur
+  const updateSellerBalance = async (sellerId: string, amount: number) => {
+    try {
+      // Récupérer le solde actuel du vendeur
+      const sellerRef = doc(db, "users", sellerId);
+      const sellerDoc = await getDoc(sellerRef);
+      
+      if (sellerDoc.exists()) {
+        const currentBalance = sellerDoc.data().balance || 0;
+        const newBalance = currentBalance + amount;
+        
+        // Mettre à jour le solde
+        await updateDoc(sellerRef, {
+          balance: newBalance,
+          lastTransaction: new Date().toISOString(),
+          lifetimeSales: (sellerDoc.data().lifetimeSales || 0) + amount
+        });
+        
+        console.log(`💰 Solde du vendeur ${sellerId} mis à jour: ${currentBalance} → ${newBalance}`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur mise à jour solde vendeur:", error);
+      // Ne pas bloquer la commande si cette mise à jour échoue
+    }
+  };
+
   const createOrder = async (depositId: string) => {
-    if (!cart || !userInfo || !catalog) {
-      throw new Error("Cart, user info or catalog missing");
+    if (!cart) {
+      throw new Error("Cart missing");
+    }
+
+    // Récupérer les informations du vendeur
+    let sellerId = "";
+    let sellerName = "";
+    let sellerPhone = "";
+    let catalogId = "";
+
+    // Si nous avons un catalogue, utilisons-le (page catalogue)
+    if (catalog) {
+      sellerId = catalog.creatorId;
+      sellerName = catalog.creatorName;
+      sellerPhone = catalog.creatorPhone || "";
+      catalogId = catalog.id;
+    } else {
+      // Sinon, c'est un produit direct - récupérer depuis le premier produit du panier
+      const firstItem = cart.items[0];
+      if (!firstItem) {
+        throw new Error("No items in cart");
+      }
+
+      sellerId = firstItem.product.creatorId || "unknown-seller";
+      sellerName = firstItem.product.creatorName || "Vendeur";
+      sellerPhone = firstItem.product.creatorPhone || "";
+      catalogId = `direct-${sellerId}`;
     }
 
     const orderData = {
       id: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      catalogId: catalog.id,
-      sellerId: catalog.creatorId,
-      sellerName: catalog.creatorName,
+      catalogId: catalogId,
+      sellerId: sellerId,
+      sellerName: sellerName,
       customer: {
         ...customerInfo,
-        userId: userInfo.uid,
+        // Utiliser userInfo si disponible, sinon utiliser les infos du formulaire
+        userId: userInfo?.uid || `guest_${Date.now()}`,
       },
       items: cart.items.map((item) => ({
         productId: item.productId,
@@ -210,6 +402,8 @@ export default function FloatingCart({
           image: item.product.images || item.product.image || [],
           description: item.product.description,
           category: item.product.category,
+          creatorId: item.product.creatorId || sellerId,
+          creatorName: item.product.creatorName || sellerName,
         },
         quantity: item.quantity,
         price: item.product.price,
@@ -230,42 +424,81 @@ export default function FloatingCart({
     console.log("📦 Création commande:", orderData);
 
     try {
+      // Sauvegarder la commande principale
       await setToCollection("orders", orderData.id, orderData);
 
+      const customerUserId = userInfo?.uid;
+      
+      // Si l'utilisateur est connecté, sauvegarder dans ses commandes ET créer sa transaction
+      if (customerUserId) {
+        // Sauvegarder la commande dans les commandes de l'utilisateur
+        await setToSubCollection(
+          orderData.id,
+          orderData,
+          "users",
+          customerUserId,
+          "orders"
+        );
+
+        // Créer une transaction SIMPLE pour l'acheteur
+        console.log(`🔄 Création transaction pour l'acheteur: ${customerUserId}`);
+        await createUserTransaction(
+          customerUserId,
+          "deposit",
+          depositId,
+          getCartTotal(),
+          customerInfo,
+          cart.items[0]?.product?.name
+        );
+      }
+
+      // Sauvegarder dans les commandes du vendeur
       await setToSubCollection(
         orderData.id,
         orderData,
         "users",
-        userInfo.uid,
+        sellerId,
         "orders"
       );
 
-      await setToSubCollection(
-        orderData.id,
-        orderData,
-        "users",
-        catalog.creatorId,
-        "orders"
+      // Créer une transaction SIMPLE pour le vendeur
+      console.log(`🔄 Création transaction pour le vendeur: ${sellerId}`);
+      await createUserTransaction(
+        sellerId,
+        "sale",
+        depositId,
+        getCartTotal(),
+        customerInfo,
+        cart.items[0]?.product?.name
       );
 
-      console.log("✅ Commande créée avec succès dans Firebase");
+      // Mettre à jour le solde du vendeur
+      await updateSellerBalance(sellerId, getCartTotal());
 
-      if (refreshUserOrders) {
+      console.log("✅ Commande et transactions créées avec succès");
+
+      // Rafraîchir les commandes de l'utilisateur s'il est connecté
+      if (customerUserId && refreshUserOrders) {
         await refreshUserOrders();
       }
 
-      try {
-        await fetch("/api/send-sms", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: catalog.creatorPhone,
-            body: "PayLive: Vous avez reçu une nouvelle commande paylive, veuillez vous connecter et voir les détails de la commande",
-          }),
-        });
-        console.log("✅ SMS envoyé au vendeur");
-      } catch (error) {
-        console.error("❌ Erreur envoi SMS:", error);
+      // Envoyer un SMS au vendeur si on a son numéro
+      if (sellerPhone) {
+        try {
+          await fetch("/api/send-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: sellerPhone,
+              body: `PayLive: Nouvelle commande de ${customerInfo.name} pour ${
+                orderData.items.length
+              } produit(s). Total: ${getCartTotal()} XAF`,
+            }),
+          });
+          console.log("✅ SMS envoyé au vendeur");
+        } catch (error) {
+          console.error("❌ Erreur envoi SMS:", error);
+        }
       }
     } catch (error) {
       console.error("❌ Erreur sauvegarde commande:", error);
@@ -279,7 +512,6 @@ export default function FloatingCart({
     setIsSubmitting(false);
   };
 
-  // AJOUT: Fonction pour réinitialiser les informations client
   const resetCustomerInfo = () => {
     setCustomerInfo({
       name: "",
@@ -290,18 +522,16 @@ export default function FloatingCart({
     });
   };
 
-  // CORRECTION SIMPLIFIÉE: Gestion de la fermeture du dialogue
   const handleDialogClose = (open: boolean) => {
     setIsOpen(open);
 
-    // CORRECTION: Vider le panier seulement quand le dialogue se ferme
     if (!open) {
       console.log("🛒 Dialogue fermé - nettoyage du panier");
       clearCart();
       resetCustomerInfo();
       setShowCheckout(false);
+      hasOpenedRef.current = false;
 
-      // Réinitialiser l'état Buy Now si présent
       if (productToBuy && onBuyNowProcessed) {
         console.log("🛒 Reset de l'état Buy Now");
         onBuyNowProcessed();
@@ -310,8 +540,23 @@ export default function FloatingCart({
   };
 
   const cartItemCount = getCartItemCount();
+  const cartTotal = getCartTotal();
 
-  // MODIFICATION: Ne pas rendre null si cartItemCount === 0 mais qu'on a un produit Buy Now
+  // Afficher un loader pendant le chargement initial
+  if (isLoadingCart && productToBuy) {
+    return (
+      <Button
+        className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-2xl z-50"
+        size="lg"
+        disabled
+      >
+        <div className="relative">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </Button>
+    );
+  }
+
   if (cartItemCount === 0 && !productToBuy) {
     return null;
   }
@@ -341,7 +586,6 @@ export default function FloatingCart({
                 <div className="flex items-center justify-between">
                   <DialogTitle className="text-2xl font-bold text-gray-900">
                     {t("checkout")}
-                    {/* AJOUT: Indicateur Buy Now */}
                     {productToBuy && (
                       <Badge className="ml-2 bg-green-500 text-white text-xs">
                         Achat direct
@@ -353,7 +597,6 @@ export default function FloatingCart({
                     size="sm"
                     onClick={() => {
                       setShowCheckout(false);
-                      // Si c'est un Buy Now et qu'on revient en arrière, reset l'état
                       if (productToBuy && onBuyNowProcessed) {
                         onBuyNowProcessed();
                       }
@@ -371,20 +614,44 @@ export default function FloatingCart({
                   <h3 className="font-semibold text-lg mb-3">
                     {t("orderSummary")}
                   </h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>
-                        {t("items")} ({cartItemCount}):
-                      </span>
-                      <span>XAF{getCartTotal().toFixed(2)}</span>
+                  {cart && cart.items && cart.items.length > 0 ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="space-y-1 mb-2">
+                        {cart.items.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex justify-between items-center py-1 border-b"
+                          >
+                            <span className="truncate max-w-[200px]">
+                              {item.product.name} × {item.quantity}
+                            </span>
+                            <span>
+                              XAF
+                              {(item.product.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-lg font-bold border-t pt-2">
+                        <span>{t("total")}:</span>
+                        <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                          XAF{cartTotal.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-lg font-bold border-t pt-2">
-                      <span>{t("total")}:</span>
-                      <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        XAF{getCartTotal().toFixed(2)}
-                      </span>
+                  ) : (
+                    <div className="text-center py-4">
+                      <ShoppingCart className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500">
+                        Aucun produit dans le panier
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {productToBuy
+                          ? "Le produit devrait s'afficher ici..."
+                          : "Ajoutez des produits pour continuer"}
+                      </p>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Customer Information Form */}
@@ -409,7 +676,7 @@ export default function FloatingCart({
                           name: e.target.value,
                         })
                       }
-                      placeholder="Enter your full name"
+                      placeholder="Entrez votre nom complet"
                       required
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
@@ -433,7 +700,7 @@ export default function FloatingCart({
                           phone: e.target.value,
                         })
                       }
-                      placeholder="Enter your phone number"
+                      placeholder="Entrez votre numéro de téléphone"
                       required
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
@@ -445,7 +712,7 @@ export default function FloatingCart({
                       className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2"
                     >
                       <Mail className="h-4 w-4" />
-                      <span>Email (Optional)</span>
+                      <span>Email (Optionnel)</span>
                     </Label>
                     <Input
                       id="checkout-email"
@@ -457,7 +724,7 @@ export default function FloatingCart({
                           email: e.target.value,
                         })
                       }
-                      placeholder="Enter your email"
+                      placeholder="Entrez votre email"
                       className="h-12 rounded-xl border-2 focus:border-blue-500"
                     />
                   </div>
@@ -479,7 +746,7 @@ export default function FloatingCart({
                           address: e.target.value,
                         })
                       }
-                      placeholder="Enter your delivery address"
+                      placeholder="Entrez votre adresse de livraison"
                       required
                       className="min-h-[80px] rounded-xl border-2 focus:border-blue-500 resize-none"
                     />
@@ -502,7 +769,7 @@ export default function FloatingCart({
                           notes: e.target.value,
                         })
                       }
-                      placeholder="Any special instructions..."
+                      placeholder="Instructions spéciales..."
                       className="min-h-[60px] rounded-xl border-2 focus:border-blue-500 resize-none"
                     />
                   </div>
@@ -516,29 +783,31 @@ export default function FloatingCart({
                     !customerInfo.name ||
                     !customerInfo.phone ||
                     !customerInfo.address ||
-                    isSubmitting
+                    isSubmitting ||
+                    !cart ||
+                    !cart.items ||
+                    cart.items.length === 0
                   }
-                  className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
+                  className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-3"></div>
-                      Processing...
+                      Traitement en cours...
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-5 w-5 mr-3" />
-                      {/* AJOUT: Texte adapté pour Buy Now */}
                       {productToBuy
                         ? "Finaliser l'achat"
-                        : "Proceed to Payment"}{" "}
-                      - XAF{getCartTotal().toFixed(2)}
+                        : "Procéder au paiement"}{" "}
+                      - XAF{cartTotal.toFixed(2)}
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-gray-600 text-center mt-3">
-                  You will need to complete the payment before your order is
-                  confirmed.
+                  Vous devrez compléter le paiement avant que votre commande
+                  soit confirmée.
                 </p>
               </div>
             </div>
@@ -548,26 +817,22 @@ export default function FloatingCart({
               <DialogHeader className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-b">
                 <DialogTitle className="text-2xl font-bold text-gray-900">
                   {t("title")} ({cartItemCount}{" "}
-                  {cartItemCount === 1 ? "item" : "items"})
+                  {cartItemCount === 1 ? "article" : "articles"})
                 </DialogTitle>
                 {cart && (
                   <p className="text-sm text-gray-600 mt-1">
-                    {cart.catalogTitle} by {cart.sellerName}
+                    {cart.catalogTitle} par {cart.sellerName}
                   </p>
                 )}
               </DialogHeader>
 
               <div className="flex-1 overflow-y-auto p-6">
-                {cart && cart.items.length > 0 ? (
+                {cart && cart.items && cart.items.length > 0 ? (
                   <div className="space-y-4">
-                    {cart?.items?.map((item: any, index: any) => (
+                    {cart.items.map((item: any, index: any) => (
                       <div
-                        key={item.productId}
+                        key={`${item.productId}-${index}`}
                         className="flex items-center space-x-4 p-4 bg-white rounded-xl border-2 border-gray-100 hover:border-blue-200 transition-colors duration-200"
-                        style={{
-                          animationDelay: `${index * 100}ms`,
-                          animation: "fadeInUp 0.6s ease-out forwards",
-                        }}
                       >
                         <img
                           src={
@@ -639,17 +904,17 @@ export default function FloatingCart({
                 ) : (
                   <div className="text-center py-8">
                     <ShoppingCart className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Your cart is empty</p>
+                    <p className="text-gray-500">Votre panier est vide</p>
                   </div>
                 )}
               </div>
 
-              {cart && cart.items.length > 0 && (
+              {cart && cart.items && cart.items.length > 0 && (
                 <div className="p-6 bg-gray-50 border-t space-y-4">
                   <div className="flex justify-between items-center text-xl font-bold">
                     <span className="text-gray-900">{t("title")}:</span>
                     <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      XAF{getCartTotal().toFixed(2)}
+                      XAF{cartTotal.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex space-x-3">
@@ -678,25 +943,12 @@ export default function FloatingCart({
       <PaymentDialog
         open={showPaymentDialog}
         onOpenChange={setShowPaymentDialog}
-        amount={getCartTotal().toString()}
-        product={`Order from ${cart?.sellerName || "Seller"}`}
+        amount={cartTotal.toString()}
+        product={`Commande de ${cart?.sellerName || "Vendeur"}`}
         onPaymentComplete={handlePaymentComplete}
         paymentState={paymentState}
         handleCancel={handleCancelPayment}
       />
-
-      <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </>
   );
 }
