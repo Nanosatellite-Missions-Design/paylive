@@ -1,19 +1,16 @@
-import { useAuth } from '@/contexts/auth-context';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 
-
 export async function POST(req: NextRequest) {
-
   try {
-    const { amount, currency,countryCode, mobileProviderId, phoneNumber } = await req.json();
-        const YOUR_EXISTING_BACKEND_DEPOSIT_URL = "https://bookhub-backend-production-64db.up.railway.app/api/deposits";
+    const { amount, currency, countryCode, mobileProviderId, phoneNumber } = await req.json();
+    const YOUR_EXISTING_BACKEND_DEPOSIT_URL = "https://bookhub-backend-production-64db.up.railway.app/api/deposits";
 
     console.log("📦 Données reçues du frontend:", { 
       amount, 
       countryCode, 
       mobileProviderId, 
-      phoneNumber ,
+      phoneNumber,
       currency
     });
 
@@ -47,7 +44,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${process.env.PAWAPAY_API_KEY}`,
-        'X-Project':"paylive",
+        'X-Project': "paylive",
       },
       body: JSON.stringify(payload)
     });
@@ -67,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    // console.log("✅ Réponse Pawapay réussie:", data);
+    console.log("✅ Réponse Pawapay réussie:", data);
 
     return NextResponse.json({ 
       success: true,

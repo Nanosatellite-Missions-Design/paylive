@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   ChevronLeft,
   Plus,
@@ -31,6 +32,10 @@ import {
   Loader2,
   Share2,
   Image as ImageIcon,
+  MessageSquare,
+  Users,
+  Globe,
+  CreditCard,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import QRCodeGenerator from "@/components/qr-code-generator";
@@ -69,6 +74,7 @@ export default function ProductsPage() {
     string[]
   >([]);
   const [showShareSuccess, setShowShareSuccess] = useState(false);
+  const [isTelegramProduct, setIsTelegramProduct] = useState(false);
 
   const editFileInputRef = useRef<HTMLInputElement | null>(null);
   const [newProductName, setNewProductName] = useState("");
@@ -78,14 +84,56 @@ export default function ProductsPage() {
   const [newProductStatus, setNewProductStatus] = useState("");
   const [newProductCategory, setNewProductCategory] = useState("");
   const [newProductImageFiles, setNewProductImageFiles] = useState<File[]>([]);
+  const [newProductImagePreviews, setNewProductImagePreviews] = useState<
+    string[]
+  >([]);
+
+  // Nouveaux champs pour Telegram
+  const [telegramGroupId, setTelegramGroupId] = useState("");
+  const [telegramWelcomeMessage, setTelegramWelcomeMessage] = useState(
+    "Bienvenue dans le groupe ! 👋"
+  );
+  const [telegramMaxMembers, setTelegramMaxMembers] = useState("100");
+  const [telegramSubscriptionType, setTelegramSubscriptionType] =
+    useState("mensuelle");
+
+  // COMMENTÉ: Upload d'image pour Telegram (désactivé temporairement)
+  // const [telegramGroupImageFile, setTelegramGroupImageFile] =
+  //   useState<File | null>(null);
+  // const [telegramGroupImagePreview, setTelegramGroupImagePreview] = useState<
+  //   string | null
+  // >(null);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // COMMENTÉ: Référence input file pour Telegram
+  // const telegramFileInputRef = useRef<HTMLInputElement | null>(null);
   const { toast } = useToast();
 
-  // CORRECTION: Fonction utilitaire pour obtenir la première image avec type explicite
+  // Fonction utilitaire pour obtenir la première image
   const getFirstImage = (product: any): string => {
     if (!product) return "/placeholder.svg";
 
-    // Vérifier d'abord product.images (tableau)
+    if (product.type === "telegram") {
+      if (
+        product.images &&
+        Array.isArray(product.images) &&
+        product.images.length > 0
+      ) {
+        return product.images[0];
+      }
+      if (product.image) {
+        if (Array.isArray(product.image) && product.image.length > 0) {
+          return product.image[0];
+        } else if (
+          typeof product.image === "string" &&
+          product.image.trim() !== ""
+        ) {
+          return product.image;
+        }
+      }
+      return "/telegram-group.png";
+    }
+
     if (
       product.images &&
       Array.isArray(product.images) &&
@@ -94,7 +142,6 @@ export default function ProductsPage() {
       return product.images[0];
     }
 
-    // Ensuite vérifier product.image (peut être un tableau ou une string)
     if (product.image) {
       if (Array.isArray(product.image) && product.image.length > 0) {
         return product.image[0];
@@ -109,20 +156,12 @@ export default function ProductsPage() {
     return "/placeholder.svg";
   };
 
-  // CORRECTION: Fonction utilitaire pour obtenir toutes les images avec type explicite
   const getAllImages = (product: any): string[] => {
     if (!product) return [];
 
-    // CORRECTION: Déclarer images avec le type string[]
     const images: string[] = [];
 
-    // Vérifier d'abord product.images
-    if (
-      product.images &&
-      Array.isArray(product.images) &&
-      product.images.length > 0
-    ) {
-      // CORRECTION: Utiliser forEach au lieu de spread operator pour plus de clarté
+    if (product.images && Array.isArray(product.images)) {
       product.images.forEach((img: any) => {
         if (img && typeof img === "string" && img.trim() !== "") {
           images.push(img);
@@ -130,10 +169,8 @@ export default function ProductsPage() {
       });
     }
 
-    // Ensuite vérifier product.image
     if (product.image) {
-      if (Array.isArray(product.image) && product.image.length > 0) {
-        // Fusionner en évitant les doublons
+      if (Array.isArray(product.image)) {
         product.image.forEach((img: any) => {
           if (
             img &&
@@ -158,7 +195,12 @@ export default function ProductsPage() {
 
   const handleShare = async (product: any) => {
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-    const productUrl = `${baseUrl}/user/${userInfo?.uid}/product/${product.id}`;
+    let productUrl = `${baseUrl}/user/${userInfo?.uid}/product/${product.id}`;
+
+    // Pour les groupes Telegram, utiliser le slug public
+    if (product.type === "telegram" && product.publicSlug) {
+      productUrl = `${baseUrl}/telegram/${product.publicSlug}`;
+    }
 
     if (navigator.share) {
       try {
@@ -194,59 +236,140 @@ export default function ProductsPage() {
     e.preventDefault();
     if (!user || !userInfo) return;
 
-    if (
-      !newProductName ||
-      !newProductPrice ||
-      !newProductDescription ||
-      !newProductCategory ||
-      newProductImageFiles.length === 0
-    ) {
-      toast({
-        title: "Champs manquants",
-        description:
-          "Veuillez remplir tous les champs et télécharger au moins une image.",
-        variant: "destructive",
-      });
-      return;
+    // Validation pour les produits normaux
+    if (!isTelegramProduct) {
+      if (
+        !newProductName ||
+        !newProductPrice ||
+        !newProductDescription ||
+        !newProductCategory ||
+        newProductImageFiles.length === 0
+      ) {
+        toast({
+          title: "Champs manquants",
+          description:
+            "Veuillez remplir tous les champs et télécharger au moins une image.",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Validation pour les produits Telegram
+      if (
+        !newProductName ||
+        !newProductPrice ||
+        !telegramGroupId ||
+        !telegramSubscriptionType
+      ) {
+        toast({
+          title: "Champs manquants",
+          description:
+            "Veuillez remplir tous les champs requis pour le groupe Telegram.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      // Upload all images
-      const uploadPromises = newProductImageFiles.map((file) => {
-        const uniqueName = `${Date.now()}-${Math.random()
-          .toString(36)
-          .substring(2, 15)}-${file.name}`;
-        const storageRef = ref(storage, `products/${user.uid}/${uniqueName}`);
-        return uploadBytes(storageRef, file).then((snapshot) =>
-          getDownloadURL(snapshot.ref)
-        );
-      });
+      if (isTelegramProduct) {
+        // COMMENTÉ: Upload d'image pour Telegram (utilise l'image par défaut)
+        // let telegramImageUrl = "";
+        //
+        // // Upload de l'image du groupe Telegram si elle existe
+        // if (telegramGroupImageFile) {
+        //   const uniqueName = `${Date.now()}-${Math.random()
+        //     .toString(36)
+        //     .substring(2, 15)}-${telegramGroupImageFile.name}`;
+        //   const storageRef = ref(
+        //     storage,
+        //     `telegram-groups/${user.uid}/${uniqueName}`
+        //   );
+        //   const snapshot = await uploadBytes(
+        //     storageRef,
+        //     telegramGroupImageFile
+        //   );
+        //   telegramImageUrl = await getDownloadURL(snapshot.ref);
+        // }
 
-      const imageUrls = await Promise.all(uploadPromises);
+        // Créer un groupe Telegram via l'API
+        const response = await fetch("/api/telegram/create-group", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: newProductName,
+            description:
+              newProductDescription || "Rejoignez notre groupe exclusif",
+            price: parseFloat(newProductPrice),
+            subscriptionType: telegramSubscriptionType,
+            telegramGroupId: telegramGroupId,
+            welcomeMessage: telegramWelcomeMessage,
+            maxMembers: telegramMaxMembers,
+            creatorUid: user.uid,
+            creatorName: userInfo.name || "Anonyme",
+            // COMMENTÉ: Image Telegram (utilisation de l'image par défaut)
+            image: "/telegram-group.png", // Utilise l'image par défaut
+            // image: telegramImageUrl || "/telegram-group.png", // Version originale
+          }),
+        });
 
-      const newProduct = {
-        name: newProductName,
-        creatorId: user.uid,
-        creatorName: userInfo.name || "Vendeur",
-        price: parseFloat(newProductPrice),
-        description: newProductDescription,
-        inStock: newProductQuantity ? parseInt(newProductQuantity) : 1,
-        images: imageUrls,
-        image: imageUrls,
-        category: newProductCategory,
-        status: "available",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+        const result = await response.json();
 
-      console.log("Nouveau produit:", newProduct);
-      await addToSubCollection(newProduct, "users", user.uid, "products");
+        if (!response.ok) {
+          throw new Error(
+            result.error || "Erreur lors de la création du groupe"
+          );
+        }
 
+        toast({
+          title: "Groupe créé !",
+          description: "Votre groupe Telegram payant a été créé avec succès.",
+        });
+      } else {
+        // Créer un produit normal
+        const uploadPromises = newProductImageFiles.map((file) => {
+          const uniqueName = `${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2, 15)}-${file.name}`;
+          const storageRef = ref(storage, `products/${user.uid}/${uniqueName}`);
+          return uploadBytes(storageRef, file).then((snapshot) =>
+            getDownloadURL(snapshot.ref)
+          );
+        });
+
+        const imageUrls = await Promise.all(uploadPromises);
+
+        const newProduct = {
+          name: newProductName,
+          creatorId: user.uid,
+          creatorName: userInfo.name || "Vendeur",
+          price: parseFloat(newProductPrice),
+          description: newProductDescription,
+          inStock: newProductQuantity ? parseInt(newProductQuantity) : 1,
+          images: imageUrls,
+          image: imageUrls,
+          category: newProductCategory,
+          status: "available",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          type: "normal",
+        };
+
+        await addToSubCollection(newProduct, "users", user.uid, "products");
+
+        toast({
+          title: "Produit ajouté",
+          description: "Votre nouveau produit a été ajouté avec succès.",
+        });
+      }
+
+      // Réinitialiser le formulaire
       setIsAddingProduct(false);
-
-      // Reset form
+      setIsTelegramProduct(false);
       setNewProductName("");
       setNewProductPrice("");
       setNewProductDescription("");
@@ -254,19 +377,23 @@ export default function ProductsPage() {
       setNewProductStatus("");
       setNewProductQuantity("");
       setNewProductImageFiles([]);
-      setLoading(false);
+      setNewProductImagePreviews([]);
+      setTelegramGroupId("");
+      setTelegramWelcomeMessage("Bienvenue dans le groupe ! 👋");
+      setTelegramMaxMembers("100");
+      setTelegramSubscriptionType("mensuelle");
+      // COMMENTÉ: Réinitialisation des états d'image Telegram
+      // setTelegramGroupImageFile(null);
+      // setTelegramGroupImagePreview(null);
+    } catch (error: any) {
+      console.error("Erreur:", error);
       toast({
-        title: "Produit ajouté",
-        description: "Votre nouveau produit a été ajouté avec succès.",
-      });
-    } catch (error) {
-      console.error("Erreur lors du téléchargement des images:", error);
-      setLoading(false);
-      toast({
-        title: "Échec du téléchargement",
-        description: "Impossible de télécharger une ou plusieurs images.",
+        title: "Erreur",
+        description: error.message || "Une erreur est survenue.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -322,8 +449,6 @@ export default function ProductsPage() {
         updatedAt: new Date().toISOString(),
       };
 
-      console.log("Produit mis à jour:", updatedProduct);
-
       await updateSubcollectionDocument(
         "users",
         user.uid,
@@ -337,7 +462,6 @@ export default function ProductsPage() {
         description: "Votre produit a été mis à jour avec succès.",
       });
 
-      setLoading(false);
       setIsEditing(false);
       setEditingProduct(null);
       setEditingExistingImages([]);
@@ -345,12 +469,13 @@ export default function ProductsPage() {
       setEditingNewImagePreviews([]);
     } catch (error) {
       console.error("Erreur lors de la mise à jour du produit:", error);
-      setLoading(false);
       toast({
         title: "Erreur",
         description: "Échec de la mise à jour du produit.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -376,17 +501,17 @@ export default function ProductsPage() {
         description: `${selectedProduct.name} a été supprimé.`,
       });
 
-      setLoading(false);
       setIsDeleting(false);
       setSelectedProduct(null);
     } catch (error) {
       console.error("Erreur lors de la suppression du produit:", error);
-      setLoading(false);
       toast({
         title: "Erreur",
         description: "Échec de la suppression du produit.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -394,6 +519,57 @@ export default function ProductsPage() {
     setSelectedProduct(product);
     setShowQRCode(true);
   };
+
+  // Gestion des images pour les produits normaux
+  const handleNormalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      if (newProductImageFiles.length + newFiles.length > 10) {
+        toast({
+          title: "Trop d'images",
+          description: "Vous ne pouvez télécharger que 10 images maximum.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setNewProductImageFiles((prev) => [...prev, ...newFiles]);
+
+      // Créer les previews
+      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+      setNewProductImagePreviews((prev) => [...prev, ...newPreviews]);
+    }
+  };
+
+  // COMMENTÉ: Gestion de l'image pour les groupes Telegram (désactivée)
+  /*
+  const handleTelegramImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setTelegramGroupImageFile(file);
+      setTelegramGroupImagePreview(URL.createObjectURL(file));
+    }
+  };
+  */
+
+  // Nettoyer les URLs d'objets quand le composant est démonté
+  useEffect(() => {
+    return () => {
+      newProductImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+      editingNewImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+      // COMMENTÉ: Libération URL preview Telegram
+      // if (telegramGroupImagePreview)
+      //   URL.revokeObjectURL(telegramGroupImagePreview);
+    };
+  }, [
+    newProductImagePreviews,
+    editingNewImagePreviews,
+    // telegramGroupImagePreview, // COMMENTÉ
+  ]);
 
   return (
     <div>
@@ -408,13 +584,16 @@ export default function ProductsPage() {
             <h1 className="text-2xl font-bold">Mes produits</h1>
           </div>
           <p className="text-gray-500">
-            Gérez vos produits pour les ventes en direct et les enchères
+            Gérez vos produits pour les ventes en direct, les enchères et les
+            groupes Telegram
           </p>
         </header>
 
         <div className="space-y-4 mb-6">
           {userProducts?.map((product: any) => {
             const firstImage = getFirstImage(product);
+            const isTelegram = product.type === "telegram";
+
             return (
               <Card key={product.id}>
                 <CardContent className="p-4">
@@ -429,13 +608,23 @@ export default function ProductsPage() {
                             e.currentTarget.src = "/placeholder.svg";
                           }}
                         />
+                      ) : isTelegram ? (
+                        <MessageSquare className="h-8 w-8 text-blue-500" />
                       ) : (
                         <ImageIcon className="h-8 w-8 text-gray-400" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{product.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{product.name}</h3>
+                          {isTelegram && (
+                            <Badge className="bg-blue-500">
+                              <MessageSquare className="h-3 w-3 mr-1" />
+                              Telegram
+                            </Badge>
+                          )}
+                        </div>
                         <Badge
                           className={
                             product.status === "available"
@@ -451,6 +640,20 @@ export default function ProductsPage() {
                       <p className="text-sm text-gray-500 line-clamp-1">
                         {product.description}
                       </p>
+                      {isTelegram && product.subscriptionType && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          {product.subscriptionType === "mensuelle" &&
+                            "Mensuel (30 jours)"}
+                          {product.subscriptionType === "trimestrielle" &&
+                            "Trimestriel (3 mois)"}
+                          {product.subscriptionType === "hebdomadaire" &&
+                            "Hebdomadaire (7 jours)"}
+                          {product.subscriptionType === "trois_jours" &&
+                            "3 jours"}
+                          {product.maxMembers &&
+                            ` • Max ${product.maxMembers} membres`}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <p className="font-medium">
                           XAF
@@ -481,14 +684,16 @@ export default function ProductsPage() {
                           >
                             <QrCode className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleEditProduct(product)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          {!isTelegram && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEditProduct(product)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -507,6 +712,7 @@ export default function ProductsPage() {
           })}
         </div>
 
+        {/* AlertDialog pour la suppression */}
         <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -533,6 +739,7 @@ export default function ProductsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Dialog d'ajout de produit */}
         <Dialog open={isAddingProduct} onOpenChange={setIsAddingProduct}>
           <DialogTrigger asChild>
             <Button className="w-full">
@@ -540,21 +747,59 @@ export default function ProductsPage() {
               Ajouter un produit
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[90vh] overflow-y-auto max-w-md">
             <DialogHeader>
-              <DialogTitle>Ajouter un nouveau produit</DialogTitle>
+              <DialogTitle>
+                {isTelegramProduct
+                  ? "Créer un groupe Telegram payant"
+                  : "Ajouter un nouveau produit"}
+              </DialogTitle>
             </DialogHeader>
+
+            {/* Switch pour choisir le type de produit */}
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center gap-3">
+                {isTelegramProduct ? (
+                  <MessageSquare className="h-5 w-5 text-blue-500" />
+                ) : (
+                  <ImageIcon className="h-5 w-5 text-gray-500" />
+                )}
+                <div>
+                  <p className="font-medium">
+                    {isTelegramProduct ? "Groupe Telegram" : "Produit normal"}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {isTelegramProduct
+                      ? "Vendez l'accès à votre groupe Telegram"
+                      : "Produit physique ou digital"}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isTelegramProduct}
+                onCheckedChange={setIsTelegramProduct}
+              />
+            </div>
+
             <form onSubmit={handleAddProduct} className="space-y-4 mt-4">
+              {/* Formulaire commun */}
               <div className="space-y-2">
-                <Label htmlFor="name">Nom du produit *</Label>
+                <Label htmlFor="name">
+                  {isTelegramProduct ? "Nom du groupe *" : "Nom du produit *"}
+                </Label>
                 <Input
                   id="name"
-                  placeholder="Entrez le nom du produit"
+                  placeholder={
+                    isTelegramProduct
+                      ? "Nom de votre groupe Telegram"
+                      : "Entrez le nom du produit"
+                  }
                   value={newProductName}
                   onChange={(e) => setNewProductName(e.target.value)}
                   required
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="price">Prix (XAF) *</Label>
                 <Input
@@ -568,120 +813,300 @@ export default function ProductsPage() {
                   required
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="quantity">Quantité en stock</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder="1"
-                  value={newProductQuantity}
-                  onChange={(e) => setNewProductQuantity(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">
+                  {isTelegramProduct
+                    ? "Description du groupe (optionnel)"
+                    : "Description *"}
+                </Label>
                 <Textarea
                   id="description"
-                  placeholder="Entrez la description du produit"
+                  placeholder={
+                    isTelegramProduct
+                      ? "Décrivez votre groupe Telegram..."
+                      : "Entrez la description du produit"
+                  }
                   value={newProductDescription}
                   onChange={(e) => setNewProductDescription(e.target.value)}
                   className="whitespace-pre-wrap min-h-[100px]"
-                  required
+                  required={!isTelegramProduct}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Catégorie *</Label>
-                <Select
-                  value={newProductCategory}
-                  onValueChange={setNewProductCategory}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez une catégorie" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="electronics">Électronique</SelectItem>
-                    <SelectItem value="fashion">Mode</SelectItem>
-                    <SelectItem value="home">Maison & Cuisine</SelectItem>
-                    <SelectItem value="beauty">
-                      Beauté & Soins personnels
-                    </SelectItem>
-                    <SelectItem value="other">Autre</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="image">Images du produit *</Label>
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <ImageIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">
-                    Cliquez pour télécharger ou glisser-déposer
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    PNG, JPG, GIF jusqu'à 5MB
-                  </p>
-                </div>
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files) {
-                      const newFiles = Array.from(files);
-                      if (newProductImageFiles.length + newFiles.length > 10) {
-                        toast({
-                          title: "Trop d'images",
-                          description:
-                            "Vous ne pouvez télécharger que 10 images maximum.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setNewProductImageFiles((prev) => [...prev, ...newFiles]);
-                    }
-                  }}
-                />
-
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {newProductImageFiles.map((file, index) => (
-                    <div key={index} className="relative w-20 h-20">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`preview-${index}`}
-                        className="w-full h-full object-cover rounded border"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNewProductImageFiles((prev) =>
-                            prev.filter((_, i) => i !== index)
-                          );
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600"
-                      >
-                        ✕
-                      </button>
+              {/* Formulaire spécifique Telegram */}
+              {isTelegramProduct && (
+                <>
+                  {/* COMMENTÉ: Section d'upload d'image pour Telegram
+                  <div className="space-y-2">
+                    <Label htmlFor="telegramImage">
+                      Image du groupe (optionnel)
+                    </Label>
+                    <div
+                      onClick={() => telegramFileInputRef.current?.click()}
+                      className="border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      {telegramGroupImagePreview ? (
+                        <div className="relative w-full h-40 rounded-md overflow-hidden">
+                          <img
+                            src={telegramGroupImagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTelegramGroupImageFile(null);
+                              setTelegramGroupImagePreview(null);
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center hover:bg-red-600"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <ImageIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">
+                            Cliquez pour télécharger une image
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            PNG, JPG jusqu'à 5MB
+                          </p>
+                        </>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={telegramFileInputRef}
+                      onChange={handleTelegramImageUpload}
+                    />
+                  </div>
+                  */}
+
+                  <div className="space-y-4 p-4 border rounded-lg bg-blue-50">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="telegramGroupId"
+                        className="flex items-center gap-2"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        ID du groupe Telegram *
+                      </Label>
+                      <div className="text-sm text-gray-600 mb-2">
+                        <p>
+                          1. Ajoutez @
+                          {process.env.NEXT_PUBLIC_BOT_USERNAME || "PayLiveBot"}{" "}
+                          à votre groupe
+                        </p>
+                        <p>2. Envoyez /getid dans le groupe</p>
+                        <p>3. Copiez l'ID reçu et collez-le ici</p>
+                      </div>
+                      <Input
+                        id="telegramGroupId"
+                        placeholder="-1001234567890"
+                        value={telegramGroupId}
+                        onChange={(e) => setTelegramGroupId(e.target.value)}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="subscriptionType"
+                        className="flex items-center gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Type d'accès *
+                      </Label>
+                      <Select
+                        value={telegramSubscriptionType}
+                        onValueChange={setTelegramSubscriptionType}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez le type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mensuelle">
+                            Mensuelle (30 jours)
+                          </SelectItem>
+                          <SelectItem value="trimestrielle">
+                            Trimestrielle (3 mois)
+                          </SelectItem>
+                          <SelectItem value="hebdomadaire">
+                            Hebdomadaire (7 jours){" "}
+                            {/* CHANGÉ: "Chaque semaine" → "Hebdomadaire" */}
+                          </SelectItem>
+                          <SelectItem value="trois_jours">
+                            3 jours (test)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="maxMembers"
+                        className="flex items-center gap-2"
+                      >
+                        <Users className="h-4 w-4" />
+                        Nombre maximum de membres
+                      </Label>
+                      <Input
+                        id="maxMembers"
+                        type="number"
+                        min="1"
+                        max="100000"
+                        placeholder="100"
+                        value={telegramMaxMembers}
+                        onChange={(e) => setTelegramMaxMembers(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="welcomeMessage"
+                        className="flex items-center gap-2"
+                      >
+                        <Globe className="h-4 w-4" />
+                        Message de bienvenue
+                      </Label>
+                      <Textarea
+                        id="welcomeMessage"
+                        placeholder="Message affiché quand un membre rejoint..."
+                        value={telegramWelcomeMessage}
+                        onChange={(e) =>
+                          setTelegramWelcomeMessage(e.target.value)
+                        }
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Formulaire spécifique produit normal */}
+              {!isTelegramProduct && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantité en stock</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      step="1"
+                      min="0"
+                      placeholder="1"
+                      value={newProductQuantity}
+                      onChange={(e) => setNewProductQuantity(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Catégorie *</Label>
+                    <Select
+                      value={newProductCategory}
+                      onValueChange={setNewProductCategory}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez une catégorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="electronics">
+                          Électronique
+                        </SelectItem>
+                        <SelectItem value="fashion">Mode</SelectItem>
+                        <SelectItem value="home">Maison & Cuisine</SelectItem>
+                        <SelectItem value="beauty">
+                          Beauté & Soins personnels
+                        </SelectItem>
+                        <SelectItem value="other">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="image">Images du produit *</Label>
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <ImageIcon className="h-10 w-10 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">
+                        Cliquez pour télécharger ou glisser-déposer
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PNG, JPG, GIF jusqu'à 5MB
+                      </p>
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={handleNormalImageUpload}
+                    />
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {newProductImagePreviews.map((preview, index) => (
+                        <div key={index} className="relative w-20 h-20">
+                          <img
+                            src={preview}
+                            alt={`preview-${index}`}
+                            className="w-full h-full object-cover rounded border"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewProductImageFiles((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                              setNewProductImagePreviews((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                            }}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button
                   disabled={loading}
                   variant="outline"
                   type="button"
-                  onClick={() => setIsAddingProduct(false)}
+                  onClick={() => {
+                    setIsAddingProduct(false);
+                    setIsTelegramProduct(false);
+                    setNewProductName("");
+                    setNewProductPrice("");
+                    setNewProductDescription("");
+                    setNewProductCategory("");
+                    setNewProductStatus("");
+                    setNewProductQuantity("");
+                    setNewProductImageFiles([]);
+                    setNewProductImagePreviews([]);
+                    setTelegramGroupId("");
+                    setTelegramWelcomeMessage("Bienvenue dans le groupe ! 👋");
+                    setTelegramMaxMembers("100");
+                    setTelegramSubscriptionType("mensuelle");
+                    // COMMENTÉ: Réinitialisation des états d'image Telegram
+                    // setTelegramGroupImageFile(null);
+                    // setTelegramGroupImagePreview(null);
+                  }}
                 >
                   Annuler
                 </Button>
@@ -689,8 +1114,12 @@ export default function ProductsPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Ajout en cours...
+                      {isTelegramProduct
+                        ? "Création en cours..."
+                        : "Ajout en cours..."}
                     </>
+                  ) : isTelegramProduct ? (
+                    "Créer le groupe"
                   ) : (
                     "Ajouter le produit"
                   )}
@@ -700,13 +1129,13 @@ export default function ProductsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* DIALOG D'ÉDITION AVEC GESTION DES IMAGES */}
+        {/* DIALOG D'ÉDITION (uniquement pour produits normaux) */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
           <DialogContent className="max-h-[90vh] overflow-y-auto max-w-md">
             <DialogHeader>
               <DialogTitle>Modifier le produit</DialogTitle>
             </DialogHeader>
-            {editingProduct && (
+            {editingProduct && editingProduct.type !== "telegram" && (
               <form onSubmit={handleSaveEdit} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">Nom du produit</Label>
@@ -950,6 +1379,7 @@ export default function ProductsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* DIALOG QR CODE */}
         <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
           <DialogContent className="max-w-xs">
             <DialogHeader>

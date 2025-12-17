@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/subscription-reminders",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/subscription-reminders/route.js": {
+      "maxDuration": 60
+    }
+  }
+}

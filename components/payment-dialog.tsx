@@ -54,7 +54,11 @@ import {
   PAWAPAY_COUNTRIES,
   getAllCountries,
 } from "@/lib/countries";
-import { getCurrencyForCountry, formatLocalDisplay } from "@/lib/allocate";
+import {
+  getCurrencyForCountry,
+  formatLocalDisplay,
+  convertXAFToCurrency,
+} from "@/lib/allocate";
 import { pollTransactionStatus } from "@/lib/pawapaypolling";
 
 interface PaymentDialogProps {
@@ -164,6 +168,35 @@ export function PaymentDialog({
     }
   }, [selectedCountry]);
 
+  // Fonction utilitaire pour obtenir le montant affiché dans la devise locale
+  const getDisplayAmount = (): string => {
+    const amountNumber = getSafeAmount();
+    if (!selectedCountry) {
+      return `${amountNumber.toLocaleString()} XAF`;
+    }
+    try {
+      return formatLocalDisplay(amountNumber, selectedCountry);
+    } catch (error) {
+      console.error("Erreur de conversion:", error);
+      return `${amountNumber.toLocaleString()} XAF`;
+    }
+  };
+
+  // Fonction pour obtenir le montant converti pour l'API
+  const getConvertedAmountForAPI = (): number => {
+    const amountNumber = getSafeAmount();
+    if (!selectedCountry) {
+      return amountNumber; // Retourne en XAF par défaut
+    }
+    try {
+      const targetCurrency = getCurrencyForCountry(selectedCountry);
+      return convertXAFToCurrency(amountNumber, targetCurrency);
+    } catch (error) {
+      console.error("Erreur de conversion pour l'API:", error);
+      return amountNumber;
+    }
+  };
+
   const handlePayment = async () => {
     // 1. Validation de base
     if (!selectedCountry || !mobileProvider || !phoneNumber) {
@@ -195,13 +228,21 @@ export function PaymentDialog({
     const countryCodeDigits = country.dialCode.replace("+", "");
     const finalPhoneNumber = countryCodeDigits + cleanPhoneNumber;
 
-    // 5. Préparer les données de la transaction
+    // 5. Convertir le montant XAF en devise locale pour l'API
+    const convertedAmount = getConvertedAmountForAPI();
+    const targetCurrency = getCurrencyForCountry(selectedCountry);
+
+    console.log(
+      `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`
+    );
+
+    // 6. Préparer les données de la transaction avec le montant converti
     const paymentData = {
-      amount: amountNumber.toString(),
+      amount: convertedAmount.toString(),
       countryCode: selectedCountry,
       mobileProviderId: mobileProvider,
       phoneNumber: finalPhoneNumber,
-      currency: getCurrencyForCountry(selectedCountry),
+      currency: targetCurrency,
     };
 
     try {
@@ -236,17 +277,16 @@ export function PaymentDialog({
 
       if (!pollResult.ok) {
         console.warn("⚠️ Transaction non confirmée:", pollResult);
-        
+
         if (onPaymentComplete) onPaymentComplete("failed");
         return alert("Le paiement n'a pas été confirmé par Pawapay");
       }
 
       // ✅ Transaction confirmée
       console.log("✅ Paiement confirmé avec succès");
-      
+
       // Retourner le depositId au parent (cart.tsx) qui se chargera de créer la transaction
       if (onPaymentComplete) onPaymentComplete(result.depositId);
-
     } catch (error) {
       console.error("❌ Erreur lors du paiement:", error);
       if (onPaymentComplete) {
@@ -304,10 +344,11 @@ export function PaymentDialog({
                 En attente de confirmation
               </h3>
               <p className="text-sm text-muted-foreground">
-                Veuillez compléter le paiement dans l'interface de votre opérateur mobile
+                Veuillez compléter le paiement dans l'interface de votre
+                opérateur mobile
               </p>
               <p className="text-lg font-bold text-blue-600">
-                {amount} XAF
+                {getDisplayAmount()}
               </p>
             </div>
 
@@ -356,7 +397,7 @@ export function PaymentDialog({
               </p>
               <div className="bg-green-50 p-3 rounded-lg">
                 <p className="text-sm text-green-700">
-                  <strong>Montant:</strong> {amount} XAF
+                  <strong>Montant:</strong> {getDisplayAmount()}
                 </p>
                 <p className="text-sm text-green-700">
                   <strong>Produit:</strong> {product}
@@ -405,7 +446,8 @@ export function PaymentDialog({
               </p>
               <div className="bg-red-50 p-3 rounded-lg">
                 <p className="text-sm text-red-700">
-                  <strong>Erreur:</strong> Le paiement a été refusé par votre opérateur
+                  <strong>Erreur:</strong> Le paiement a été refusé par votre
+                  opérateur
                 </p>
               </div>
             </div>
@@ -465,7 +507,7 @@ export function PaymentDialog({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold">{amount} XAF</p>
+                  <p className="text-2xl font-bold">{getDisplayAmount()}</p>
                   <Badge variant="secondary" className="text-xs">
                     Sécurisé
                   </Badge>
@@ -520,6 +562,9 @@ export function PaymentDialog({
                                   </div>
                                   <div className="text-xs text-gray-500">
                                     {country.dialCode}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {getCurrencyForCountry(country.code)}
                                   </div>
                                 </div>
                               </div>
@@ -580,7 +625,8 @@ export function PaymentDialog({
                           />
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Vous recevrez une notification sur votre téléphone pour confirmer le paiement
+                          Vous recevrez une notification sur votre téléphone
+                          pour confirmer le paiement
                         </p>
                       </div>
 
@@ -603,7 +649,7 @@ export function PaymentDialog({
                             Traitement en cours...
                           </div>
                         ) : (
-                          `Payer ${amount} XAF avec Mobile Money`
+                          `Payer ${getDisplayAmount()} avec Mobile Money`
                         )}
                       </Button>
                     </>
