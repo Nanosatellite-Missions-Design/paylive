@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app"; // <-- IMPORTANT: ajoutez getApps et getApp
 import { getFirestore, collection, setDoc, doc, serverTimestamp } from "firebase/firestore";
 
-// Initialisation directe de Firebase dans l'API
+// Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyB5g7s0q2eR4WXOp7OlKJNpXW0TRbFX9PM",
   authDomain: "paylive-cd9a1.firebaseapp.com",
@@ -13,7 +13,8 @@ const firebaseConfig = {
   measurementId: "G-NYG1GEHPFY",
 };
 
-const app = initializeApp(firebaseConfig);
+// CORRECTION CRITIQUE : Initialisation unique
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Fonction pour obtenir le nombre de membres d'un groupe Telegram
