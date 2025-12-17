@@ -575,35 +575,64 @@ bot.command('getid', async (ctx) => {
   }
 });
 
-// ========== DÉMARRAGE ==========
+// ========== DÉMARRAGE ========== ancien v
 
-bot.launch({
-  polling: {
-    timeout: 30,
-    limit: 100,
-    allowedUpdates: ['message', 'chat_member']
-  }
-})
-.then(() => {
-  console.log('🤖 Bot démarré avec succès!');
-  console.log('📡 Mode: Vérification des nouveaux membres + Rappels automatiques');
-})
-.catch((error) => {
-  console.error('❌ Erreur démarrage bot:', error);
-});
+// bot.launch({
+//   polling: {
+//     timeout: 30,
+//     limit: 100,
+//     allowedUpdates: ['message', 'chat_member']
+//   }
+// })
+// .then(() => {
+//   console.log('🤖 Bot démarré avec succès!');
+//   console.log('📡 Mode: Vérification des nouveaux membres + Rappels automatiques');
+// })
+// .catch((error) => {
+//   console.error('❌ Erreur démarrage bot:', error);
+// });
 
-// Arrêt propre
-process.once('SIGINT', () => {
-  console.log('👋 Arrêt du bot (SIGINT)...');
-  bot.stop('SIGINT');
-  process.exit(0);
-});
+// // Arrêt propre
+// process.once('SIGINT', () => {
+//   console.log('👋 Arrêt du bot (SIGINT)...');
+//   bot.stop('SIGINT');
+//   process.exit(0);
+// });
 
-process.once('SIGTERM', () => {
-  console.log('👋 Arrêt du bot (SIGTERM)...');
-  bot.stop('SIGTERM');
-  process.exit(0);
-});
+// process.once('SIGTERM', () => {
+//   console.log('👋 Arrêt du bot (SIGTERM)...');
+//   bot.stop('SIGTERM');
+//   process.exit(0);
+// });
+// ===nouvel v 
+ bot.launch({
+    polling: {
+      timeout: 30,
+      limit: 100,
+      allowedUpdates: ['message', 'chat_member']
+    }
+  })
+  .then(() => {
+    console.log('🤖 Bot démarré en mode polling (développement local)!');
+    console.log('📡 Mode: Vérification des nouveaux membres + Rappels automatiques');
+    console.log('⚠️ Note: En production, utilisez server.js pour le mode webhook');
+  })
+  .catch((error) => {
+    console.error('❌ Erreur démarrage bot:', error);
+  });
+
+  // Arrêt propre
+  process.once('SIGINT', () => {
+    console.log('👋 Arrêt du bot (SIGINT)...');
+    bot.stop('SIGINT');
+    process.exit(0);
+  });
+
+  process.once('SIGTERM', () => {
+    console.log('👋 Arrêt du bot (SIGTERM)...');
+    bot.stop('SIGTERM');
+    process.exit(0);
+  });
 
 // ========== EXPORT DES FONCTIONS POUR LE CRONJOB ==========
 
