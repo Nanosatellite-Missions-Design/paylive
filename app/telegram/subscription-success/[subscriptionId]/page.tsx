@@ -1,30 +1,18 @@
-//
-
 "use client";
 
-import { useEffect } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle,
-  Bot,
   ExternalLink,
   Copy,
-  Users,
-  Calendar,
   Shield,
   ArrowLeft,
-  MessageSquare,
+  Link as LinkIcon,
 } from "lucide-react";
 
 export default function SubscriptionSuccessPage() {
@@ -34,24 +22,45 @@ export default function SubscriptionSuccessPage() {
 
   const groupName = searchParams.get("groupName");
   const price = searchParams.get("price");
-  const subscriptionType = searchParams.get("subscriptionType") || "30 jours";
-  const telegramUserId = searchParams.get("telegramUserId");
+  const inviteLinkParam = searchParams.get("inviteLink");
+  const manualMode = searchParams.get("manualMode");
 
-  // Décoder le nom du groupe (si encodé)
+  // Décoder le nom du groupe et le lien
   const decodedGroupName = groupName
     ? decodeURIComponent(groupName)
     : "Groupe Telegram";
-
-  const openTelegram = () => {
-    window.open("https://t.me", "_blank");
-  };
+  const inviteLink = inviteLinkParam
+    ? decodeURIComponent(inviteLinkParam)
+    : null;
 
   const copyToClipboard = (text: string) => {
+    if (!text) {
+      toast({
+        title: "Erreur",
+        description: "Aucun lien à copier",
+        variant: "destructive",
+      });
+      return;
+    }
+
     navigator.clipboard.writeText(text);
     toast({
       title: "Copié !",
-      description: "L'information a été copiée",
+      description: "Le lien a été copié",
     });
+  };
+
+  const openInviteLink = (link: string) => {
+    if (!link) {
+      toast({
+        title: "Erreur",
+        description: "Lien non disponible",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    window.open(link, "_blank");
   };
 
   return (
@@ -72,133 +81,113 @@ export default function SubscriptionSuccessPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-xl">{decodedGroupName}</CardTitle>
-            <CardDescription>Groupe Telegram Premium</CardDescription>
+            <p className="text-sm text-gray-500">Groupe Telegram Premium</p>
           </CardHeader>
 
-          <CardContent>
-            <div className="space-y-6">
-              {/* Section 1: Récapitulatif */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-lg">
-                  Récapitulatif de votre achat
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Groupe</p>
-                    <p className="font-medium">{decodedGroupName}</p>
+          <CardContent className="space-y-6">
+            {/* Récapitulatif */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg">Récapitulatif</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Groupe</p>
+                  <p className="font-medium">{decodedGroupName}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Montant</p>
+                  <p className="text-lg font-bold text-green-600">
+                    {price} XAF
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Durée</p>
+                  <Badge variant="outline" className="bg-blue-50">
+                    30 jours
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Statut</p>
+                  <Badge className="bg-green-100 text-green-800">
+                    ✅ Actif
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Section Lien Direct */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <LinkIcon className="h-5 w-5" />
+                Accès au groupe
+              </h3>
+
+              {inviteLink ? (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <LinkIcon className="h-5 w-5 text-green-600" />
+                    <h3 className="font-semibold text-green-800">
+                      Lien direct vers le groupe
+                    </h3>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Montant</p>
-                    <p className="text-lg font-bold text-green-600">
-                      {price} XAF
+
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Cliquez pour rejoindre <strong>{decodedGroupName}</strong>{" "}
+                      :
                     </p>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={() => openInviteLink(inviteLink)}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        size="lg"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        🚀 Rejoindre le groupe
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => copyToClipboard(inviteLink)}
+                        className="flex-1"
+                        size="lg"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copier le lien
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Durée</p>
-                    <Badge variant="outline" className="bg-blue-50">
-                      {subscriptionType}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-gray-500">Statut</p>
-                    <Badge className="bg-green-100 text-green-800">
-                      ✅ Actif
-                    </Badge>
+
+                  <div className="text-xs text-gray-500">
+                    <p>✅ Valable 24 heures</p>
+                    <p>✅ Un clic suffit pour rejoindre</p>
                   </div>
                 </div>
-              </div>
-
-              <Separator />
-
-              {/* Section 2: Instructions */}
-              <div className="space-y-3">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                  <Bot className="h-5 w-5" />
-                  Accès au groupe
-                </h3>
-
+              ) : (
                 <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="bg-blue-100 p-2 rounded-full">
-                        <MessageSquare className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">
-                          Message envoyé sur Telegram
-                        </h4>
-                        <p className="text-sm text-gray-600">
-                          Vous avez reçu un message privé avec un lien
-                          d'invitation. Le lien est valable 24 heures.
-                        </p>
-                      </div>
+                  <div className="flex items-start gap-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <Shield className="h-5 w-5 text-blue-600" />
                     </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-green-100 p-2 rounded-full">
-                        <ExternalLink className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Étape suivante</h4>
-                        <p className="text-sm text-gray-600">
-                          1. Ouvrez Telegram
-                          <br />
-                          2. Cherchez @PayLiveBot
-                          <br />
-                          3. Cliquez sur le bouton "Rejoindre le groupe"
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="bg-yellow-100 p-2 rounded-full">
-                        <Shield className="h-5 w-5 text-yellow-600" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Accès sécurisé</h4>
-                        <p className="text-sm text-gray-600">
-                          Le bot vérifiera automatiquement votre abonnement.
-                          Vous serez retiré si l'abonnement expire.
-                        </p>
-                      </div>
+                    <div>
+                      <h4 className="font-medium">Accès sécurisé</h4>
+                      <p className="text-sm text-gray-600">
+                        Vous recevrez un message privé avec le lien
+                        d'invitation. Le bot vérifiera automatiquement votre
+                        abonnement.
+                      </p>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <Separator />
-
-              {/* Section 3: Actions */}
-              {/* <div className="space-y-3">
-                <h3 className="font-semibold text-lg">
-                  Que faire maintenant ?
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Button onClick={openTelegram} className="w-full" size="lg">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ouvrir Telegram
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => copyToClipboard("https://t.me/PayLiveBot")}
-                    className="w-full"
-                    size="lg"
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copier @PayLiveBot
-                  </Button>
-                </div>
-
-                <p className="text-xs text-gray-500 text-center">
-                  Si vous ne recevez pas le message dans les 2 minutes,
-                  contactez @PayLiveSupport
-                </p>
-              </div> */}
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* <div className="flex flex-col sm:flex-row justify-center gap-4">
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Button
             variant="outline"
             onClick={() => router.push("/")}
@@ -207,24 +196,16 @@ export default function SubscriptionSuccessPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour à l'accueil
           </Button>
-          <Button
-            onClick={() => window.open("https://t.me/PayLiveBot", "_blank")}
-            className="w-full sm:w-auto"
-          >
-            <Bot className="h-4 w-4 mr-2" />
-            Ouvrir le bot sur Telegram
-          </Button>
-        </div> */}
 
-        {/* Informations de support */}
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium text-gray-700 mb-2">Besoin d'aide ?</h4>
-          <ul className="text-sm text-gray-600 space-y-1">
-            <li>• Le message privé vient de @PayLiveBot</li>
-            <li>• Vérifiez vos messages spam sur Telegram</li>
-            <li>• Le lien expire dans 24 heures</li>
-            <li>• Contact: @PayLiveSupport sur Telegram</li>
-          </ul>
+          {inviteLink && (
+            <Button
+              onClick={() => openInviteLink(inviteLink)}
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Rejoindre le groupe
+            </Button>
+          )}
         </div>
       </div>
     </div>

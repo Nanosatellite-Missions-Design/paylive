@@ -431,14 +431,14 @@ export default function TelegramCheckoutPage() {
                       <Shield className="h-5 w-5 text-green-500 flex-shrink-0" />
                       <span>Contenu exclusif et protégé</span>
                     </li>
-                    <li className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
+                    {/* <li className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
                       <Bot className="h-5 w-5 text-green-500 flex-shrink-0" />
                       <span>
                         {telegramUserId
                           ? "Ajout automatique après paiement ✓"
                           : "Gestion automatique par le bot"}
                       </span>
-                    </li>
+                    </li> */}
                     <li className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded">
                       <Lock className="h-5 w-5 text-green-500 flex-shrink-0" />
                       <span>Paiement 100% sécurisé</span>
@@ -637,10 +637,14 @@ export default function TelegramCheckoutPage() {
                     </div>
                     <div>
                       <p className="font-medium">Accès</p>
-                      <p className="text-sm text-gray-600">
+                      {/* <p className="text-sm text-gray-600">
                         {telegramUserId
                           ? "Ajout automatique au groupe Telegram"
                           : "Lien d'invitation envoyé par message privé"}
+                      </p> */}
+                      <p className="text-sm text-gray-600">
+                        Le lien d'invitation sera accessible sur la page de
+                        confirmation de votre paiement.
                       </p>
                     </div>
                   </li>

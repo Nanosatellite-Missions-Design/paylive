@@ -54,6 +54,9 @@ interface TelegramPaymentDialogProps {
   subscriberTelegramId?: string;
   groupName?: string;
   creatorUid?: string;
+  subscriberTelegramUsername?: string;
+  subscriberName?: string;
+  subscriberEmail?: string;
 }
 
 export default function TelegramPaymentDialog({
@@ -69,6 +72,9 @@ export default function TelegramPaymentDialog({
   subscriberTelegramId,
   groupName,
   creatorUid,
+  subscriberTelegramUsername,
+  subscriberName,
+  subscriberEmail,
 }: TelegramPaymentDialogProps) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -279,34 +285,47 @@ export default function TelegramPaymentDialog({
 
       // 5. CRÉATION DE L'ABONNEMENT TELEGRAM
       let subscriptionResult = null;
+      let inviteLink = null;
 
       if (groupId && subscriberTelegramId && telegramGroupId) {
         try {
           console.log("🔗 Création de l'abonnement Telegram...");
+
+          // PRÉPARER TOUTES LES DONNÉES
+          const subscriptionData = {
+            groupId: groupId,
+            telegramGroupId: telegramGroupId,
+            groupName: groupName || product,
+            creatorUid: creatorUid,
+            subscriberTelegramId: subscriberTelegramId,
+            subscriberTelegramUsername: subscriberTelegramUsername || null,
+            subscriberName: subscriberName || "Utilisateur Telegram",
+            subscriberEmail: subscriberEmail || null,
+            paymentTransactionId: result.depositId,
+            subscriptionType: "one_time",
+            paymentAmount: amountNumber,
+            price: amountNumber,
+            status: "active",
+            paymentConfirmed: true,
+            fromBot: false,
+          };
+
+          console.log("📤 Données envoyées à l'API:", subscriptionData);
 
           const subscriptionResponse = await fetch(
             "/api/telegram/subscriptions",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                groupId: groupId,
-                telegramGroupId: telegramGroupId,
-                groupName: groupName || product,
-                creatorUid: creatorUid,
-                subscriberTelegramId: subscriberTelegramId,
-                paymentTransactionId: result.depositId,
-                subscriptionType: "one_time",
-                paymentAmount: amountNumber,
-                status: "active",
-                paymentConfirmed: true,
-              }),
+              body: JSON.stringify(subscriptionData),
             }
           );
 
           if (!subscriptionResponse.ok) {
             const errorData = await subscriptionResponse.json();
-            console.warn("⚠️ Erreur création abonnement:", errorData);
+            console.error("❌ Erreur création abonnement:", errorData);
+            alert("Erreur lors de la création de l'abonnement");
+            return;
           } else {
             subscriptionResult = await subscriptionResponse.json();
             console.log(
@@ -314,13 +333,13 @@ export default function TelegramPaymentDialog({
               subscriptionResult.subscriptionId
             );
 
+            // RÉCUPÉRER LE LIEN D'INVITATION
+            inviteLink = subscriptionResult.inviteLink;
+
             // Vérifier si le message a été envoyé
             if (subscriptionResult.notificationSent) {
               console.log("📨 Notification envoyée avec succès");
-              console.log(
-                "🔗 Lien d'invitation:",
-                subscriptionResult.inviteLink
-              );
+              console.log("🔗 Lien d'invitation:", inviteLink);
             } else {
               console.warn("⚠️ Notification non envoyée");
             }
@@ -330,6 +349,8 @@ export default function TelegramPaymentDialog({
             "❌ Erreur lors de la création de l'abonnement:",
             subscriptionError
           );
+          alert("Erreur lors de la création de l'abonnement");
+          return;
         }
       }
 
@@ -338,29 +359,50 @@ export default function TelegramPaymentDialog({
         onPaymentComplete("success");
       }
 
-      // 7. Fermer le dialog et rediriger APRÈS la création de l'abonnement
-      setTimeout(() => {
-        onOpenChange(false);
+      // 7. Fermer le dialog et rediriger
+      onOpenChange(false);
 
-        // Rediriger vers la page de succès EXISTANTE
-        if (subscriptionResult?.subscriptionId) {
-          const params = new URLSearchParams({
-            subscriptionId: subscriptionResult.subscriptionId,
-            groupName: encodeURIComponent(groupName || product),
-            price: amountNumber.toString(),
-            telegramUserId: subscriberTelegramId || "",
-            subscriptionType: "30 jours",
-            depositId: result.depositId,
-          });
+      // Rediriger vers la page de succès avec TOUTES les infos
+      if (subscriptionResult?.subscriptionId) {
+        const params = new URLSearchParams({
+          subscriptionId: subscriptionResult.subscriptionId,
+          groupName: encodeURIComponent(groupName || product),
+          price: amountNumber.toString(),
+          telegramUserId: subscriberTelegramId || "",
+          subscriptionType: "30 jours",
+          depositId: result.depositId,
+        });
 
-          router.push(
-            `/telegram/subscription-success/${subscriptionResult.subscriptionId}?${params}`
-          );
-        } else {
-          // Fallback
-          router.push(`/?payment=success&depositId=${result.depositId}`);
+        // AJOUTER LE LIEN D'INVITATION S'IL EST DISPONIBLE
+        if (inviteLink) {
+          params.append("inviteLink", encodeURIComponent(inviteLink));
+          console.log("🔗 Lien ajouté aux paramètres:", inviteLink);
         }
-      }, 2000);
+
+        router.push(
+          `/telegram/subscription-success/${subscriptionResult.subscriptionId}?${params}`
+        );
+      } else {
+        // Fallback - Créer l'abonnement manuellement
+        console.warn(
+          "⚠️ Aucun résultat d'abonnement, création manuelle de la page"
+        );
+
+        const manualSubscriptionId = `temp_${Date.now()}`;
+        const params = new URLSearchParams({
+          subscriptionId: manualSubscriptionId,
+          groupName: encodeURIComponent(groupName || product),
+          price: amountNumber.toString(),
+          telegramUserId: subscriberTelegramId || "",
+          subscriptionType: "30 jours",
+          depositId: result.depositId,
+          manualMode: "true",
+        });
+
+        router.push(
+          `/telegram/subscription-success/${manualSubscriptionId}?${params}`
+        );
+      }
     } catch (error: any) {
       console.error("❌ Erreur lors du paiement:", error);
       if (onPaymentComplete) {
