@@ -812,6 +812,10 @@ export default function ProductsPage() {
                   onChange={(e) => setNewProductPrice(e.target.value)}
                   required
                 />
+                <p className="text-xs text-amber-600 mt-1">
+                  ⓘ Commission PayLive : 4% par vente (vous recevrez 96% du
+                  prix)
+                </p>
               </div>
 
               <div className="space-y-2">
