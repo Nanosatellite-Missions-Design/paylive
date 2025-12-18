@@ -348,8 +348,14 @@ async function checkExpiringSubscriptions() {
       }
       
       // Calculer les jours restants (arrondi à l'entier supérieur)
-      const timeDiff = endDate - now;
-      const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      // const timeDiff = endDate - now;
+      // const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      const msPerDay = 1000 * 60 * 60 * 24;
+const diffMs = endDate - now;
+const daysLeft = diffMs > 0 ? Math.ceil(diffMs / msPerDay) : Math.floor(diffMs / msPerDay);
+
+// ET AJOUTE CETTE LIGNE :
+const isExpired = endDate < now;  // Vrai si date passée
       
       console.log(`\n📊 Abonnement ${subscriptionId}:`);
       console.log(`   📍 Groupe: ${groupName}`);
