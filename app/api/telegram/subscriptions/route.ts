@@ -12,7 +12,7 @@ import {
   getDocs,
   query,
   where,
-  DocumentData
+  Timestamp
 } from 'firebase/firestore';
 
 // Configuration Firebase IDENTIQUE à ton app
@@ -41,6 +41,65 @@ try {
   console.error('❌ Erreur Firebase API:', error);
 }
 
+// Fonction pour calculer la date d'expiration
+const calculateEndDate = (subscriptionType: string): Date => {
+  const now = new Date();
+  const endDate = new Date(now);
+  
+  // Convertir les différents types en jours
+  switch (subscriptionType) {
+    case 'trois_jours':
+      endDate.setDate(now.getDate() + 3);
+      break;
+    case 'hebdomadaire':
+      endDate.setDate(now.getDate() + 7);
+      break;
+    case 'mensuelle':
+      endDate.setDate(now.getDate() + 30);
+      break;
+    case 'trimestrielle':
+      endDate.setDate(now.getDate() + 90); // 3 mois
+      break;
+    case 'annuelle':
+      endDate.setFullYear(now.getFullYear() + 1);
+      break;
+    case 'one_time':
+      endDate.setDate(now.getDate() + 30); // 30 jours par défaut
+      break;
+    default:
+      // Si c'est un nombre de jours (ex: "30", "7")
+      const days = parseInt(subscriptionType);
+      if (!isNaN(days)) {
+        endDate.setDate(now.getDate() + days);
+      } else {
+        endDate.setDate(now.getDate() + 30); // Valeur par défaut
+      }
+  }
+  
+  console.log(`📅 Calcul date d'expiration: ${subscriptionType} → ${endDate.toISOString()}`);
+  return endDate;
+};
+
+// Fonction pour formater le type d'abonnement
+const formatSubscriptionType = (type: string): string => {
+  switch (type) {
+    case 'trois_jours':
+      return '3 jours';
+    case 'hebdomadaire':
+      return '7 jours';
+    case 'mensuelle':
+      return '30 jours';
+    case 'trimestrielle':
+      return '3 mois';
+    case 'annuelle':
+      return '1 an';
+    case 'one_time':
+      return '30 jours';
+    default:
+      return type;
+  }
+};
+
 export async function POST(request: NextRequest) {
   try {
     // Vérifier que Firebase est initialisé
@@ -55,8 +114,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📦 Données reçues pour abonnement:', JSON.stringify(body, null, 2));
 
-    // 1. Données essentielles
-    if (!body.groupId || !body.paymentTransactionId) {
+    // 1. VÉRIFIER SI UN ABONNEMENT EXISTE DÉJÀ
+    const subscriberTelegramId = body.subscriberTelegramId || null;
+    const telegramGroupId = body.telegramGroupId || null;
+    const paymentTransactionId = body.paymentTransactionId;
+    
+    // Si fromBot est true, c'est le bot qui essaie de créer un abonnement
+    // IGNORER cette requête car l'abonnement a déjà été créé par le frontend
+    if (body.fromBot) {
+      console.log('🤖 Requête du bot IGNORÉE - Abonnement déjà créé par frontend');
+      return NextResponse.json({
+        success: true,
+        message: 'Abonnement déjà géré par frontend',
+        alreadyHandled: true
+      });
+    }
+
+    // 2. Données essentielles
+    if (!body.groupId || !paymentTransactionId) {
       return NextResponse.json(
         { 
           success: false,
@@ -66,32 +141,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Récupérer les infos du groupe
+    // 3. Vérifier si un abonnement existe déjà pour cette transaction
+    const existingSubscriptionsRef = collection(db, 'telegram_subscriptions');
+    const existingQuery = query(
+      existingSubscriptionsRef,
+      where('paymentTransactionId', '==', paymentTransactionId)
+    );
+    
+    const existingSnapshot = await getDocs(existingQuery);
+    
+    if (!existingSnapshot.empty) {
+      console.log('⚠️ Abonnement existe déjà pour cette transaction, retourner celui existant');
+      const existingDoc = existingSnapshot.docs[0];
+      const existingData = existingDoc.data();
+      
+      return NextResponse.json({
+        success: true,
+        subscriptionId: existingDoc.id,
+        message: 'Abonnement existant retourné',
+        groupName: existingData.groupName,
+        price: existingData.price,
+        subscriberTelegramId: existingData.subscriberTelegramId,
+        telegramGroupId: existingData.telegramGroupId,
+        inviteLink: existingData.botInviteLink,
+        notificationSent: false,
+        addedToGroup: false,
+        alreadyExists: true
+      });
+    }
+
+    // 4. Récupérer les infos du groupe
     let groupName = body.groupName || "Groupe Telegram";
-    let telegramGroupId = body.telegramGroupId || null;
     let creatorUid = body.creatorUid || null;
     let price = parseFloat(body.paymentAmount?.toString() || body.price?.toString() || '0');
     let subscriptionType = body.subscriptionType || 'one_time';
 
-    // 3. Calculer la date d'expiration
+    // 5. Calculer la date d'expiration
     const now = new Date();
-    const endDate = new Date(now);
-    
-    if (subscriptionType === 'monthly') {
-      endDate.setMonth(now.getMonth() + 1);
-    } else if (subscriptionType === 'weekly') {
-      endDate.setDate(now.getDate() + 7);
-    } else if (subscriptionType === 'yearly') {
-      endDate.setFullYear(now.getFullYear() + 1);
-    } else {
-      endDate.setDate(now.getDate() + 30); // 30 jours par défaut
-    }
+    const endDate = calculateEndDate(subscriptionType);
 
-    // 4. S'assurer que l'ID Telegram est bien enregistré
-    const subscriberTelegramId = body.subscriberTelegramId || null;
     console.log('🔍 ID Telegram à enregistrer:', subscriberTelegramId);
+    console.log(`📅 Abonnement ${formatSubscriptionType(subscriptionType)} - Expire le: ${endDate.toISOString()}`);
 
-    // 5. Créer l'abonnement dans Firestore
+    // 6. Créer l'abonnement dans Firestore
     const subscriptionData = {
       // Données de base
       groupId: body.groupId,
@@ -108,14 +200,14 @@ export async function POST(request: NextRequest) {
       
       // Paiement
       price: price,
-      paymentTransactionId: body.paymentTransactionId,
+      paymentTransactionId: paymentTransactionId,
       subscriptionType: subscriptionType,
       paymentAmount: price,
       
       // Statut
       status: 'active',
-      startDate: now,
-      endDate: endDate,
+      startDate: Timestamp.fromDate(now),
+      endDate: Timestamp.fromDate(endDate),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       addedToGroup: false,
@@ -123,14 +215,17 @@ export async function POST(request: NextRequest) {
       paymentConfirmed: true,
       
       // Métadonnées
-      fromBot: body.fromBot || false
+      fromBot: false,
+      source: 'frontend_payment'
     };
 
     console.log('📝 Création de l\'abonnement avec:', {
       groupName: groupName,
       price: price,
       subscriberTelegramId: subscriberTelegramId,
-      telegramGroupId: telegramGroupId
+      telegramGroupId: telegramGroupId,
+      subscriptionType: subscriptionType,
+      endDate: endDate.toISOString()
     });
 
     const subscriptionRef = await addDoc(
@@ -141,7 +236,7 @@ export async function POST(request: NextRequest) {
     const subscriptionId = subscriptionRef.id;
     console.log('✅ Abonnement créé avec ID:', subscriptionId);
 
-    // 6. ENVOYER LE LIEN D'INVITATION DIRECTEMENT VIA L'API TELEGRAM
+    // 7. ENVOYER LE LIEN D'INVITATION DIRECTEMENT VIA L'API TELEGRAM
     let inviteLink = null;
     let notificationSent = false;
     
@@ -182,7 +277,8 @@ export async function POST(request: NextRequest) {
                 text: `🎉 *Félicitations !*\n\n` +
                       `Votre abonnement à *${groupName}* a été activé avec succès !\n\n` +
                       `💰 Montant: ${price} XAF\n` +
-                      `📅 Durée: ${subscriptionType}\n\n` +
+                      `📅 Durée: ${formatSubscriptionType(subscriptionType)}\n` +
+                      `📆 Expire le: ${endDate.toLocaleDateString('fr-FR')}\n\n` +
                       `Cliquez sur le bouton ci-dessous pour rejoindre le groupe (valable 24h) :`,
                 parse_mode: 'Markdown',
                 reply_markup: {
@@ -208,16 +304,20 @@ export async function POST(request: NextRequest) {
               botInviteLink: inviteLink,
               invitedAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
-              inviteLinkExpires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+              inviteLinkExpires: Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000))
             });
+          } else {
+            console.warn('⚠️ Message Telegram non envoyé:', messageData);
           }
+        } else {
+          console.warn('⚠️ Impossible de créer le lien:', inviteData);
         }
       } catch (telegramError) {
         console.warn('⚠️ Erreur envoi via API Telegram:', telegramError);
       }
     }
 
-    // 7. Retourner la réponse
+    // 8. Retourner la réponse
     return NextResponse.json({
       success: true,
       subscriptionId: subscriptionId,
@@ -226,12 +326,15 @@ export async function POST(request: NextRequest) {
       price: price,
       subscriberTelegramId: subscriberTelegramId,
       telegramGroupId: telegramGroupId,
+      subscriptionType: subscriptionType,
+      formattedSubscriptionType: formatSubscriptionType(subscriptionType),
+      endDate: endDate.toISOString(),
       inviteLink: inviteLink,
       notificationSent: notificationSent,
       addedToGroup: false,
       metadata: {
         groupId: body.groupId,
-        paymentTransactionId: body.paymentTransactionId,
+        paymentTransactionId: paymentTransactionId,
         subscriptionType: subscriptionType
       }
     });
@@ -251,8 +354,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-
-// GET pour récupérer un abonnement - VERSION CORRIGÉE
+// GET pour récupérer un abonnement
 export async function GET(request: NextRequest) {
   try {
     if (!db) {
@@ -289,10 +391,12 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Abonnement trouvé:`, {
         id: subscriptionDoc.id,
         groupName: data.groupName,
-        status: data.status
+        status: data.status,
+        subscriptionType: data.subscriptionType,
+        endDate: data.endDate?.toDate?.()?.toISOString()
       });
       
-      // Convertir les timestamps Firestore en ISO
+      // Convertir les timestamps Firestore
       const responseData = {
         id: subscriptionDoc.id,
         ...data,
@@ -311,8 +415,7 @@ export async function GET(request: NextRequest) {
       const subscriptionsRef = collection(db, 'telegram_subscriptions');
       const q = query(
         subscriptionsRef,
-        where('subscriberTelegramId', '==', telegramUserId),
-        where('status', '==', 'active')
+        where('subscriberTelegramId', '==', telegramUserId)
       );
       
       const snapshot = await getDocs(q);

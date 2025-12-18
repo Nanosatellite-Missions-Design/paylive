@@ -90,6 +90,10 @@ export default function TelegramPaymentDialog({
     country: string;
     countryCode: string;
   } | null>(null);
+  const [groupSubscriptionType, setGroupSubscriptionType] =
+    useState<string>("one_time");
+  const [groupInfo, setGroupInfo] = useState<any>(null);
+  const [isLoadingGroup, setIsLoadingGroup] = useState(false);
 
   const currentCountry = PAWAPAY_COUNTRIES.find(
     (c) => c.code === selectedCountry
@@ -139,6 +143,47 @@ export default function TelegramPaymentDialog({
     getUserLocation();
   }, []);
 
+  // Récupérer les infos du groupe (dont le subscriptionType)
+  useEffect(() => {
+    const fetchGroupInfo = async () => {
+      if (!groupId || !open) return;
+
+      try {
+        setIsLoadingGroup(true);
+        console.log(`🔍 Récupération des infos du groupe ${groupId}`);
+        const response = await fetch(`/api/telegram/groups/${groupId}`);
+        const data = await response.json();
+
+        if (data.success && data.group) {
+          console.log("✅ Infos groupe récupérées:", {
+            subscriptionType: data.group.subscriptionType,
+            groupName: data.group.name,
+            price: data.group.price,
+          });
+
+          setGroupInfo(data.group);
+
+          // Mettre à jour le subscriptionType
+          if (data.group.subscriptionType) {
+            setGroupSubscriptionType(data.group.subscriptionType);
+          }
+        } else {
+          console.warn("⚠️ Impossible de récupérer les infos du groupe");
+          setGroupSubscriptionType("one_time"); // Valeur par défaut
+        }
+      } catch (error) {
+        console.error("❌ Erreur récupération groupe:", error);
+        setGroupSubscriptionType("one_time"); // Valeur par défaut
+      } finally {
+        setIsLoadingGroup(false);
+      }
+    };
+
+    if (open && groupId) {
+      fetchGroupInfo();
+    }
+  }, [groupId, open]);
+
   // Synchroniser la devise
   useEffect(() => {
     if (selectedCountry) {
@@ -176,6 +221,24 @@ export default function TelegramPaymentDialog({
     }
   };
 
+  // Fonction pour formater le type d'abonnement
+  const formatSubscriptionType = (type: string): string => {
+    switch (type) {
+      case "trois_jours":
+        return "3 jours";
+      case "hebdomadaire":
+        return "7 jours";
+      case "mensuelle":
+        return "30 jours";
+      case "trimestrielle":
+        return "3 mois";
+      case "one_time":
+        return "30 jours";
+      default:
+        return type;
+    }
+  };
+
   const handlePayment = async () => {
     if (!selectedCountry || !mobileProvider || !phoneNumber) {
       alert("Veuillez remplir tous les champs requis");
@@ -210,6 +273,7 @@ export default function TelegramPaymentDialog({
     console.log(
       `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`
     );
+    console.log(`📅 SubscriptionType à utiliser: ${groupSubscriptionType}`);
 
     const paymentData = {
       amount: convertedAmount.toString(),
@@ -291,7 +355,7 @@ export default function TelegramPaymentDialog({
         try {
           console.log("🔗 Création de l'abonnement Telegram...");
 
-          // PRÉPARER TOUTES LES DONNÉES
+          // PRÉPARER TOUTES LES DONNÉES avec le subscriptionType du groupe
           const subscriptionData = {
             groupId: groupId,
             telegramGroupId: telegramGroupId,
@@ -302,7 +366,7 @@ export default function TelegramPaymentDialog({
             subscriberName: subscriberName || "Utilisateur Telegram",
             subscriberEmail: subscriberEmail || null,
             paymentTransactionId: result.depositId,
-            subscriptionType: "one_time",
+            subscriptionType: groupSubscriptionType, // ← UTILISE LE SUBSCRIPTIONTYPE DU GROUPE
             paymentAmount: amountNumber,
             price: amountNumber,
             status: "active",
@@ -369,7 +433,7 @@ export default function TelegramPaymentDialog({
           groupName: encodeURIComponent(groupName || product),
           price: amountNumber.toString(),
           telegramUserId: subscriberTelegramId || "",
-          subscriptionType: "30 jours",
+          subscriptionType: groupSubscriptionType, // ← UTILISE LE SUBSCRIPTIONTYPE DU GROUPE
           depositId: result.depositId,
         });
 
@@ -394,7 +458,7 @@ export default function TelegramPaymentDialog({
           groupName: encodeURIComponent(groupName || product),
           price: amountNumber.toString(),
           telegramUserId: subscriberTelegramId || "",
-          subscriptionType: "30 jours",
+          subscriptionType: groupSubscriptionType, // ← UTILISE LE SUBSCRIPTIONTYPE DU GROUPE
           depositId: result.depositId,
           manualMode: "true",
         });
@@ -588,6 +652,11 @@ export default function TelegramPaymentDialog({
               <p className="text-lg font-bold text-blue-600">
                 {getDisplayAmount()}
               </p>
+              {groupSubscriptionType && (
+                <p className="text-sm text-blue-600">
+                  Durée: {formatSubscriptionType(groupSubscriptionType)}
+                </p>
+              )}
 
               <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-700">
@@ -650,6 +719,10 @@ export default function TelegramPaymentDialog({
                 </p>
                 <p className="text-sm text-green-700">
                   <strong>Produit:</strong> {product}
+                </p>
+                <p className="text-sm text-green-700">
+                  <strong>Durée:</strong>{" "}
+                  {formatSubscriptionType(groupSubscriptionType)}
                 </p>
                 {groupId && (
                   <p className="text-sm text-green-700">
@@ -763,6 +836,11 @@ export default function TelegramPaymentDialog({
                   <p className="text-sm text-muted-foreground">
                     Abonnement Telegram Premium
                   </p>
+                  {groupSubscriptionType && (
+                    <Badge variant="outline" className="mt-1 text-xs">
+                      {formatSubscriptionType(groupSubscriptionType)}
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold">{getDisplayAmount()}</p>
@@ -884,18 +962,25 @@ export default function TelegramPaymentDialog({
               !selectedCountry ||
               !mobileProvider ||
               phoneNumber.length < 5 ||
-              !amount
+              !amount ||
+              isLoadingGroup
             }
           >
-            {isProcessing ? (
+            {isProcessing || isLoadingGroup ? (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Initialisation...
+                {isLoadingGroup ? "Chargement..." : "Initialisation..."}
               </div>
             ) : (
               `Payer ${getDisplayAmount()}`
             )}
           </Button>
+
+          {groupSubscriptionType && (
+            <div className="text-center text-sm text-gray-600">
+              <p>Durée: {formatSubscriptionType(groupSubscriptionType)}</p>
+            </div>
+          )}
 
           <p className="text-xs text-center text-gray-500">
             Paiement 100% sécurisé via PawaPay
