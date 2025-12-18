@@ -52,6 +52,8 @@ interface TelegramPaymentDialogProps {
   groupId?: string;
   telegramGroupId?: string;
   subscriberTelegramId?: string;
+  groupName?: string;
+  creatorUid?: string;
 }
 
 export default function TelegramPaymentDialog({
@@ -65,6 +67,8 @@ export default function TelegramPaymentDialog({
   groupId,
   telegramGroupId,
   subscriberTelegramId,
+  groupName,
+  creatorUid,
 }: TelegramPaymentDialogProps) {
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -273,15 +277,13 @@ export default function TelegramPaymentDialog({
       // 4. SUCCÈS - Paiement confirmé
       console.log("✅ Paiement confirmé avec succès");
 
-      // COMMENTÉ: Création de l'abonnement Telegram
-      // Cette partie est commentée car la création de l'abonnement se fait
-      // dans une autre étape pour éviter les doublons
-      /*
+      // 5. CRÉATION DE L'ABONNEMENT TELEGRAM
       let subscriptionResult = null;
 
-      if (groupId && subscriberTelegramId) {
+      if (groupId && subscriberTelegramId && telegramGroupId) {
         try {
           console.log("🔗 Création de l'abonnement Telegram...");
+
           const subscriptionResponse = await fetch(
             "/api/telegram/subscriptions",
             {
@@ -289,13 +291,15 @@ export default function TelegramPaymentDialog({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 groupId: groupId,
+                telegramGroupId: telegramGroupId,
+                groupName: groupName || product,
+                creatorUid: creatorUid,
                 subscriberTelegramId: subscriberTelegramId,
                 paymentTransactionId: result.depositId,
                 subscriptionType: "one_time",
                 paymentAmount: amountNumber,
                 status: "active",
                 paymentConfirmed: true,
-                metadata: paymentData.metadata,
               }),
             }
           );
@@ -309,6 +313,17 @@ export default function TelegramPaymentDialog({
               "✅ Abonnement Telegram créé:",
               subscriptionResult.subscriptionId
             );
+
+            // Vérifier si le message a été envoyé
+            if (subscriptionResult.notificationSent) {
+              console.log("📨 Notification envoyée avec succès");
+              console.log(
+                "🔗 Lien d'invitation:",
+                subscriptionResult.inviteLink
+              );
+            } else {
+              console.warn("⚠️ Notification non envoyée");
+            }
           }
         } catch (subscriptionError) {
           console.error(
@@ -317,29 +332,35 @@ export default function TelegramPaymentDialog({
           );
         }
       }
-      */
 
-      // 5. Notifier le succès
+      // 6. Notifier le succès
       if (onPaymentComplete) {
         onPaymentComplete("success");
       }
 
-      // 6. Fermer le dialog et rediriger après un court délai
+      // 7. Fermer le dialog et rediriger APRÈS la création de l'abonnement
       setTimeout(() => {
         onOpenChange(false);
 
-        // Rediriger vers la page de succès même sans création d'abonnement
-        // Le depositId est utilisé comme référence de paiement
-        if (groupId && subscriberTelegramId) {
-          // Utiliser une route qui gère le succès du paiement sans subscriptionId
+        // Rediriger vers la page de succès EXISTANTE
+        if (subscriptionResult?.subscriptionId) {
+          const params = new URLSearchParams({
+            subscriptionId: subscriptionResult.subscriptionId,
+            groupName: encodeURIComponent(groupName || product),
+            price: amountNumber.toString(),
+            telegramUserId: subscriberTelegramId || "",
+            subscriptionType: "30 jours",
+            depositId: result.depositId,
+          });
+
           router.push(
-            `/telegram/payment-success?depositId=${result.depositId}&groupId=${groupId}&subscriberTelegramId=${subscriberTelegramId}`
+            `/telegram/subscription-success/${subscriptionResult.subscriptionId}?${params}`
           );
         } else {
-          // Redirection par défaut
+          // Fallback
           router.push(`/?payment=success&depositId=${result.depositId}`);
         }
-      }, 1500);
+      }, 2000);
     } catch (error: any) {
       console.error("❌ Erreur lors du paiement:", error);
       if (onPaymentComplete) {
