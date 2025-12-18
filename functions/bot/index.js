@@ -685,6 +685,7 @@ const bot = new Telegraf(BOT_TOKEN);
 
 /**
  * Trouve l'ID Firestore du groupe à partir de l'ID Telegram
+ * Recherche dans users/{userId}/telegram_groups
  */
 async function getFirestoreGroupId(telegramGroupId) {
   try {
@@ -693,22 +694,41 @@ async function getFirestoreGroupId(telegramGroupId) {
       return null;
     }
 
-    const groupsRef = collection(db, 'telegram_groups');
-    const q = query(
-      groupsRef,
-      where('telegramGroupId', '==', telegramGroupId)
-    );
+    console.log(`🔍 Recherche groupe pour Telegram ID: ${telegramGroupId}`);
     
-    const snapshot = await getDocs(q);
+    // Il faut chercher dans toutes les sous-collections telegram_groups des utilisateurs
+    // 1. Récupérer tous les utilisateurs
+    const usersRef = collection(db, 'users');
+    const usersSnapshot = await getDocs(usersRef);
     
-    if (!snapshot.empty) {
-      const groupDoc = snapshot.docs[0];
-      console.log(`✅ Groupe Firestore trouvé: ${groupDoc.id} pour Telegram ID: ${telegramGroupId}`);
-      return groupDoc.id;
+    console.log(`👤 ${usersSnapshot.size} utilisateurs trouvés`);
+    
+    // 2. Parcourir chaque utilisateur et chercher dans sa sous-collection telegram_groups
+    for (const userDoc of usersSnapshot.docs) {
+      const userId = userDoc.id;
+      
+      try {
+        const groupsRef = collection(db, 'users', userId, 'telegram_groups');
+        const q = query(groupsRef, where('telegramGroupId', '==', telegramGroupId));
+        const groupsSnapshot = await getDocs(q);
+        
+        if (!groupsSnapshot.empty) {
+          const groupDoc = groupsSnapshot.docs[0];
+          console.log(`✅ Groupe Firestore trouvé: ${groupDoc.id} pour Telegram ID: ${telegramGroupId}`);
+          console.log(`   - Propriétaire: ${userId}`);
+          console.log(`   - Nom du groupe: ${groupDoc.data().name || 'Non spécifié'}`);
+          return groupDoc.id;
+        }
+      } catch (error) {
+        // Certains utilisateurs peuvent ne pas avoir la sous-collection telegram_groups
+        console.log(`⚠️ Utilisateur ${userId} n'a pas de groupes ou erreur d'accès`);
+        continue;
+      }
     }
     
-    console.warn(`⚠️ Aucun groupe Firestore trouvé pour Telegram ID: ${telegramGroupId}`);
+    console.warn(`⚠️ Aucun groupe Firestore trouvé pour Telegram ID: ${telegramGroupId} dans ${usersSnapshot.size} utilisateurs`);
     return null;
+    
   } catch (error) {
     console.error('❌ Erreur recherche groupe Firestore:', error.message);
     return null;
