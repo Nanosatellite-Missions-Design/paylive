@@ -81,32 +81,31 @@
 // });
 
 
-// server.js - Version corrigée et finale
+// server.js - Version finale et corrigée pour Railway
 const express = require('express');
 
 console.log('🚀 Chargement du bot...');
 
-// Import simple
+// Import simple du bot
 const botModule = require('./index.js');
 const bot = botModule.bot || botModule;
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware pour parser le JSON (uniquement si nécessaire pour d'autres routes)
+// Middleware pour parser le JSON
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8526096119:AAE4gLXvCR7QxC7M6KL9XZuYIax8woKzyng";
 const WEBHOOK_PATH = `/telegram/${BOT_TOKEN}`;
 
-// 1. Configurez explicitement le bot pour le mode webhook
-// (Optionnel : peut aussi être fait par commande curl)
-// bot.telegram.setWebhook(`https://paylive-backup-production.up.railway.app${WEBHOOK_PATH}`);
+// ========== PARTIE CRUCIALE ==========
+// Utilisez le middleware webhookCallback SANS paramètre ou avec le chemin.
+// Cette ligne est la clé pour traiter les requêtes de Telegram.
+app.post(WEBHOOK_PATH, bot.webhookCallback());
+// ======================================
 
-// 2. Utilisez le middleware webhookCallback (C'EST LA PARTIE CRUCIALE)
-app.post(WEBHOOK_PATH, bot.webhookCallback('webhook'));
-
-// 3. Gardez vos routes de santé
+// Routes de santé (optionnelles mais utiles)
 app.get('/', (req, res) => {
   res.send('🤖 PayLive Bot est en ligne!');
 });
@@ -115,7 +114,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// 4. Démarrez le serveur
+// Démarrage du serveur
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Serveur prêt sur le port ${PORT}`);
   console.log(`🌐 Webhook configuré sur le chemin: ${WEBHOOK_PATH}`);
