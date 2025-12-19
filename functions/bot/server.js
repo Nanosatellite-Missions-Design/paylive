@@ -81,42 +81,45 @@
 // });
 
 
-// server.js - Version finale et corrigée pour Railway
+// server.js - Revised and explicit version
 const express = require('express');
 
 console.log('🚀 Chargement du bot...');
 
-// Import simple du bot
 const botModule = require('./index.js');
 const bot = botModule.bot || botModule;
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware pour parser le JSON
+// 1. It's crucial to parse JSON for webhook body (some setups need it)
 app.use(express.json());
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8526096119:AAE4gLXvCR7QxC7M6KL9XZuYIax8woKzyng";
 const WEBHOOK_PATH = `/telegram/${BOT_TOKEN}`;
 
-// ========== PARTIE CRUCIALE ==========
-// Utilisez le middleware webhookCallback SANS paramètre ou avec le chemin.
-// Cette ligne est la clé pour traiter les requêtes de Telegram.
-app.post(WEBHOOK_PATH, bot.webhookCallback());
-// ======================================
-
-// Routes de santé (optionnelles mais utiles)
+// 2. HEALTH ROUTES: Keep these first
 app.get('/', (req, res) => {
   res.send('🤖 PayLive Bot est en ligne!');
 });
-
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Démarrage du serveur
+// 3. THE CRITICAL WEBHOOK ROUTE
+// Use app.post() to explicitly handle POST requests to the webhook path.
+// The 'webhookCallback' middleware must be called as a function.
+app.post(WEBHOOK_PATH, (req, res) => {
+  // Optional: Log the incoming request for debugging
+  console.log(`📨 Update reçu sur ${WEBHOOK_PATH}`);
+  // Pass the request to Telegraf's handler
+  return bot.webhookCallback(WEBHOOK_PATH)(req, res);
+});
+
+// 4. Start the server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Serveur prêt sur le port ${PORT}`);
-  console.log(`🌐 Webhook configuré sur le chemin: ${WEBHOOK_PATH}`);
-  console.log(`🔗 URL complète pour Telegram: https://paylive-backup-production.up.railway.app${WEBHOOK_PATH}`);
+  console.log(`✅ Serveur actif sur le port ${PORT}`);
+  console.log(`🔗 Vérifiez l'endpoint manuellement :`);
+  console.log(`   curl -X POST https://paylive-backup-production.up.railway.app${WEBHOOK_PATH}`);
+  console.log(`🌐 Webhook pour Telegram : https://paylive-backup-production.up.railway.app${WEBHOOK_PATH}`);
 });
