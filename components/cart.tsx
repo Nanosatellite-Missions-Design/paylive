@@ -36,6 +36,7 @@ import { setToCollection } from "@/functions/add-to-collection";
 import type { CatalogProduct } from "@/types/catalog";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/functions/firebase";
+import { calculateNetAfterFee } from "@/lib/fees";
 
 interface FloatingCartProps {
   productToBuy?: CatalogProduct | null;
@@ -291,20 +292,28 @@ export default function FloatingCart({
     productName?: string,
     transactionContext: "deposit" | "sale" = "sale"
   ) => {
-    const transactionId = `trans_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const transactionId = `trans_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    // nouvel ligne
+    const netAmount = calculateNetAfterFee(amount);
+
     // Toujours type "sales" pour tout argent qui entre
-    const transactionType = transactionContext === "deposit" ? "sales" : "sales";
-    
+    const transactionType =
+      transactionContext === "deposit" ? "sales" : "sales";
+
     const transactionData = {
       id: transactionId,
       type: transactionType, // Toujours "sales" pour tout argent qui entre
-      amount: amount,
+      amount: netAmount,
       currency: "XAF",
       status: "completed",
       createdAt: new Date().toISOString(),
-      product: productName || cart?.items[0]?.product?.name || 
-               (transactionContext === "deposit" ? "Dépôt mobile" : "Commande"),
+      product:
+        productName ||
+        cart?.items[0]?.product?.name ||
+        (transactionContext === "deposit" ? "Dépôt mobile" : "Commande"),
       phoneNumber: customerData.phone,
       provider: "MTN_MOMO_CMR",
       country: "CM",
@@ -313,10 +322,14 @@ export default function FloatingCart({
       // Ajouter un champ pour distinguer le contexte si besoin
       context: transactionContext,
       // Pour les dépôts, on peut préciser que c'est un dépôt
-      transactionType: transactionContext === "deposit" ? "mobile_deposit" : "product_sale"
+      transactionType:
+        transactionContext === "deposit" ? "mobile_deposit" : "product_sale",
     };
 
-    console.log(`📊 Création transaction ${transactionType} (${transactionContext}) pour ${userId}:`, transactionData);
+    console.log(
+      `📊 Création transaction ${transactionType} (${transactionContext}) pour ${userId}:`,
+      transactionData
+    );
 
     try {
       await setToSubCollection(
@@ -326,7 +339,7 @@ export default function FloatingCart({
         userId,
         "transactions"
       );
-      
+
       console.log(`✅ Transaction créée dans users/${userId}/transactions`);
       return true;
     } catch (error) {
@@ -336,33 +349,45 @@ export default function FloatingCart({
   };
 
   // Fonction pour mettre à jour le solde de l'utilisateur
-  const updateUserBalance = async (userId: string, amount: number, isDeposit: boolean = false) => {
+  const updateUserBalance = async (
+    userId: string,
+    amount: number,
+    isDeposit: boolean = false
+  ) => {
     try {
       const userRef = doc(db, "users", userId);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const currentBalance = userDoc.data().balance || 0;
-        let newBalance = currentBalance;
-        
-        if (isDeposit) {
-          newBalance = currentBalance + amount;
-        } else {
-          // Pour une vente, c'est aussi une addition (argent qui entre)
-          newBalance = currentBalance + amount;
-        }
-        
+        // let newBalance = currentBalance;
+
+        const netAmount = calculateNetAfterFee(amount);
+        const newBalance = currentBalance + netAmount;
+
+        // if (isDeposit) {
+        //   newBalance = currentBalance + netAmount;
+        // } else {
+        //   // Pour une vente, c'est aussi une addition (argent qui entre)
+        //   newBalance = currentBalance + netAmount;
+        // }
+
         // Mettre à jour le solde
         await updateDoc(userRef, {
           balance: newBalance,
           lastTransaction: new Date().toISOString(),
           // Mettre à jour lifetimeSales seulement pour les ventes
-          ...(isDeposit ? {} : {
-            lifetimeSales: (userDoc.data().lifetimeSales || 0) + amount
-          })
+          ...(isDeposit
+            ? {}
+            : {
+                lifetimeSales: (userDoc.data().lifetimeSales || 0) + netAmount,
+              }),
         });
-        
-        console.log(`💰 Solde de ${userId} mis à jour: ${currentBalance} → ${newBalance}`);
+
+        console.log(
+          `💰 Solde de ${userId} mis à jour: ${currentBalance} → ${newBalance}`
+        );
+        return newBalance;
       }
     } catch (error) {
       console.error("❌ Erreur mise à jour solde:", error);
@@ -445,7 +470,7 @@ export default function FloatingCart({
       await setToCollection("orders", orderData.id, orderData);
 
       const customerUserId = userInfo?.uid;
-      
+
       // 2. Si l'utilisateur est connecté, sauvegarder dans ses commandes
       if (customerUserId) {
         await setToSubCollection(
@@ -455,8 +480,10 @@ export default function FloatingCart({
           customerUserId,
           "orders"
         );
-        
-        console.log(`📝 Commande enregistrée pour l'acheteur: ${customerUserId}`);
+
+        console.log(
+          `📝 Commande enregistrée pour l'acheteur: ${customerUserId}`
+        );
       }
 
       // 3. Sauvegarder dans les commandes du vendeur
@@ -470,7 +497,9 @@ export default function FloatingCart({
 
       // 4. CRITIQUE : Créer UNE SEULE transaction pour le vendeur
       // Transaction de type "sales" car l'argent entre dans son compte
-      console.log(`🔄 Création transaction de vente pour le vendeur: ${sellerId}`);
+      console.log(
+        `🔄 Création transaction de vente pour le vendeur: ${sellerId}`
+      );
       await createTransaction(
         sellerId,
         "sales",
@@ -492,6 +521,16 @@ export default function FloatingCart({
       }
 
       console.log("✅ Commande et transaction créées avec succès");
+
+      // Forcer un refresh complet après 1.5 secondes
+      setTimeout(() => {
+        if (typeof window !== "undefined") {
+          console.log(
+            "🔄 Rechargement de la page pour mise à jour du solde..."
+          );
+          window.location.reload();
+        }
+      }, 1500);
 
       // 7. Rafraîchir les commandes de l'utilisateur s'il est connecté
       if (customerUserId && refreshUserOrders) {

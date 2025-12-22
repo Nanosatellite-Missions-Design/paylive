@@ -73,7 +73,7 @@ interface WithdrawDialogProps {
 }
 
 const PAWAPAY_MAX_WITHDRAWAL = 2000000; // 2,000,000 XAF
-const PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE = 0.01; // 1%
+const PAWAPAY_WITHDRAWAL_FEE_PERCENTAGE = 0.02; // 1%
 
 // Fonction de polling pour les retraits
 const pollWithdrawalStatus = async (
@@ -948,7 +948,7 @@ export default function WithdrawDialog({
                     <span>{getLocalAmountDisplay(selectedCountry)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-500">
-                    <span>{t("WithdrawDialog.1.processingFee")} (1%)</span>
+                    <span>{t("WithdrawDialog.1.processingFee")}</span>
                     <span>
                       -
                       {formatCurrencyWithSymbol(
@@ -1129,7 +1129,7 @@ export default function WithdrawDialog({
                 </div>
 
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Frais de service (1%)</span>
+                  <span className="text-gray-600">Frais de service </span>
                   <span className="text-gray-600">
                     -
                     {formatCurrencyWithSymbol(
