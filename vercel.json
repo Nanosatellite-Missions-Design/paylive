@@ -12,6 +12,5 @@
   },
   "buildCommand": "npm install --force && npm run build",
   "installCommand": "npm install --force",
-  "framework": "nextjs",
-  "nodeVersion": "20.x"
+  "framework": "nextjs"
 }
