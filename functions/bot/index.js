@@ -1076,7 +1076,9 @@ bot.start(async (ctx) => {
       `Je gère les accès aux groupes Telegram payants.\n\n` +
       `📌 Commandes disponibles:\n` +
       `/status - Voir mes abonnements\n` +
-      `❓ Besoin d'aide ? Contactez @PayLiveSupport`,
+      `/steps - Voir les etap a suivre pour rejoindre un group \n` +
+
+      // `❓ Besoin d'aide ? Contactez @PayLiveSupport`,
       { parse_mode: 'Markdown' }
     );
   }
@@ -1256,11 +1258,11 @@ bot.command('status', async (ctx) => {
         } else {
           message += `   • ⚠️ Expiré aujourd'hui\n`;
         }
-        message += `   • Accès: ${data.addedToGroup ? '✅ Dans le groupe' : '🔗 Lien disponible'}\n`;
+        // message += `   • Accès: ${data.addedToGroup ? '✅ Dans le groupe' : '🔗 Lien disponible'}\n`;
         
-        if (data.botInviteLink && !data.addedToGroup) {
-          message += `   • Lien: [Rejoindre](${data.botInviteLink})\n`;
-        }
+        // if (data.botInviteLink && !data.addedToGroup) {
+        //   message += `   • Lien: [Rejoindre](${data.botInviteLink})\n`;
+        // }
       }
       
       message += `\n`;
@@ -1298,9 +1300,74 @@ bot.command('help', async (ctx) => {
     `• Pour rejoindre un groupe: Achetez sur https://paylivecm.shop\n` +
     `• Vous recevrez un lien d'invitation par message privé\n` +
     `• Vérifiez vos abonnements avec /status\n` +
-    `📧 Support: @PayLiveSupport`,
+    // `📧 Support: @PayLiveSupport`,
     { parse_mode: 'Markdown' }
   );
+});
+bot.command('steps', async (ctx) => {
+  try {
+    const botUsername = ctx.botInfo.username || 'paylivve_bot';
+    
+    const message = `📋 *ÉTAPES POUR REJOINDRE UN GROUPE*\n\n` +
+      `1️⃣ *Recherchez le bot*\n` +
+      `   → Allez dans la barre de recherche Telegram\n` +
+      `   → Cherchez: @${botUsername}\n` +
+      `   → Cliquez sur "Démarrer"\n\n` +
+      
+      `2️⃣ *Démarrez la conversation*\n` +
+      `   → Envoyez la commande /start au bot\n` +
+      // `   → Le bot vous accueillera et vous guidera\n\n` +
+      
+      `3️⃣ *Retournez dans la conversation avec l\\'administrateur*\n` +
+      `   → L\\'administrateur partagera ce message avec le lien d\\'invitation\n` +
+      `   → Cliquez sur le lien "Rejoindre le groupe"\n` +
+      `   → Suivez les instructions du bot pour finaliser\n\n` 
+      
+      // `🎯 *Conseil:* Toujours utiliser le même compte Telegram que celui avec lequel vous vous êtes abonné.\n\n` +
+      
+      // `❓ *Besoin d\\'aide?* Contactez l\\'administrateur du groupe.`;
+
+    await ctx.reply(message, { 
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true 
+    });
+    
+    // Si la commande est utilisée dans un groupe, taguer l'admin
+    if (ctx.chat.type !== 'private') {
+      try {
+        await ctx.reply(
+          `ℹ️ *Info administrateur:* Partagez ce message avec vos abonnés pour les guider.`,
+          { parse_mode: 'Markdown' }
+        );
+      } catch (error) {
+        // Ignorer les erreurs de permission
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur commande steps:', error);
+    
+    // Version alternative sans Markdown en cas d'erreur
+    try {
+      const botUsername = ctx.botInfo.username || 'paylive_bot';
+      await ctx.reply(
+        `📋 ÉTAPES POUR REJOINDRE UN GROUPE\n\n` +
+        `1️⃣ Recherchez le bot\n` +
+        `   → Allez dans la barre de recherche Telegram\n` +
+        `   → Cherchez: @${botUsername}\n` +
+        `   → Cliquez sur "Démarrer"\n\n` +
+        `2️⃣ Démarrez la conversation\n` +
+        `   → Envoyez la commande /start au bot\n` +
+        `   → Le bot vous accueillera et vous guidera\n\n` +
+    `3️⃣ Retournez dans la conversation avec l\\'administrateur*\n` +
+      `   → L\\'administrateur partagera ce message avec le lien d\\'invitation\n` +
+      `   → Cliquez sur le lien "Rejoindre le groupe"\n` +
+      `   → Suivez les instructions du bot pour finaliser\n\n`  
+      );
+    } catch (fallbackError) {
+      await ctx.reply('❌ Impossible d\'afficher les étapes. Contactez @PayLiveSupport');
+    }
+  }
 });
 
 bot.command('getid', async (ctx) => {

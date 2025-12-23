@@ -502,10 +502,10 @@ export default function TelegramCheckoutPage() {
                     <span className="text-gray-600">Abonnement</span>
                     <span className="font-semibold">{group.price} XAF</span>
                   </div>
-                  <div className="flex justify-between items-center py-2">
+                  {/* <div className="flex justify-between items-center py-2">
                     <span className="text-gray-600">Frais de service</span>
                     <span className="font-semibold">0 XAF</span>
-                  </div>
+                  </div> */}
                   <Separator />
                   <div className="flex justify-between items-center py-2">
                     <span className="text-lg font-bold">Total</span>
