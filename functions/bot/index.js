@@ -1076,7 +1076,7 @@ bot.start(async (ctx) => {
       `Je gère les accès aux groupes Telegram payants.\n\n` +
       `📌 Commandes disponibles:\n` +
       `/status - Voir mes abonnements\n` +
-      `/steps - Voir les etap a suivre pour rejoindre un group \n` +
+      `/steps - Voir les étapes à suivre pour rejoindre un groupe \n`, 
 
       // `❓ Besoin d'aide ? Contactez @PayLiveSupport`,
       { parse_mode: 'Markdown' }
@@ -1297,10 +1297,8 @@ bot.command('remind', async (ctx) => {
 bot.command('help', async (ctx) => {
   await ctx.reply(
     `🆘 *Aide PayLive Bot*\n\n` +
-    `• Pour rejoindre un groupe: Achetez sur https://paylivecm.shop\n` +
-    `• Vous recevrez un lien d'invitation par message privé\n` +
-    `• Vérifiez vos abonnements avec /status\n` +
-    // `📧 Support: @PayLiveSupport`,
+    `• Pour rejoindre un groupe Telegram, entrez la commande /steps et suivez les instructions\n` +
+    `• Vérifiez vos abonnements avec /status`,
     { parse_mode: 'Markdown' }
   );
 });
