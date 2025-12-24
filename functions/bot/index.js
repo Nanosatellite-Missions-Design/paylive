@@ -1306,36 +1306,26 @@ bot.command('steps', async (ctx) => {
   try {
     const botUsername = ctx.botInfo.username || 'paylivve_bot';
     
-    const message = `📋 *ÉTAPES POUR REJOINDRE UN GROUPE*\n\n` +
-      `1️⃣ *Recherchez le bot*\n` +
+    // Version SIMPLE sans Markdown pour éviter les erreurs de parsing
+    await ctx.reply(
+      `📋 ÉTAPES POUR REJOINDRE UN GROUPE\n\n` +
+      `1️⃣ Recherchez le bot\n` +
       `   → Allez dans la barre de recherche Telegram\n` +
       `   → Cherchez: @${botUsername}\n` +
       `   → Cliquez sur "Démarrer"\n\n` +
-      
-      `2️⃣ *Démarrez la conversation*\n` +
-      `   → Envoyez la commande /start au bot\n` +
-      // `   → Le bot vous accueillera et vous guidera\n\n` +
-      
-      `3️⃣ *Retournez dans la conversation avec l\\'administrateur*\n` +
-      `   → L\\'administrateur partagera ce message avec le lien d\\'invitation\n` +
+      `2️⃣ Démarrez la conversation\n` +
+      `   → Envoyez la commande /start au bot\n\n` +
+      `3️⃣ Retournez dans la conversation avec l'administrateur\n` +
+      `   → L'administrateur partagera ce message avec le lien d'invitation\n` +
       `   → Cliquez sur le lien "Rejoindre le groupe"\n` +
-      `   → Suivez les instructions du bot pour finaliser\n\n` 
-      
-      // `🎯 *Conseil:* Toujours utiliser le même compte Telegram que celui avec lequel vous vous êtes abonné.\n\n` +
-      
-      // `❓ *Besoin d\\'aide?* Contactez l\\'administrateur du groupe.`;
-
-    await ctx.reply(message, { 
-      parse_mode: 'Markdown',
-      disable_web_page_preview: true 
-    });
+      `   → Suivez les instructions du bot pour finaliser`
+    );
     
     // Si la commande est utilisée dans un groupe, taguer l'admin
     if (ctx.chat.type !== 'private') {
       try {
         await ctx.reply(
-          `ℹ️ *Info administrateur:* Partagez ce message avec vos abonnés pour les guider.`,
-          { parse_mode: 'Markdown' }
+          `ℹ️ Info administrateur: Partagez ce message avec vos abonnés pour les guider.`
         );
       } catch (error) {
         // Ignorer les erreurs de permission
@@ -1344,27 +1334,7 @@ bot.command('steps', async (ctx) => {
     
   } catch (error) {
     console.error('❌ Erreur commande steps:', error);
-    
-    // Version alternative sans Markdown en cas d'erreur
-    try {
-      const botUsername = ctx.botInfo.username || 'paylive_bot';
-      await ctx.reply(
-        `📋 ÉTAPES POUR REJOINDRE UN GROUPE\n\n` +
-        `1️⃣ Recherchez le bot\n` +
-        `   → Allez dans la barre de recherche Telegram\n` +
-        `   → Cherchez: @${botUsername}\n` +
-        `   → Cliquez sur "Démarrer"\n\n` +
-        `2️⃣ Démarrez la conversation\n` +
-        `   → Envoyez la commande /start au bot\n` +
-        `   → Le bot vous accueillera et vous guidera\n\n` +
-    `3️⃣ Retournez dans la conversation avec l\\'administrateur*\n` +
-      `   → L\\'administrateur partagera ce message avec le lien d\\'invitation\n` +
-      `   → Cliquez sur le lien "Rejoindre le groupe"\n` +
-      `   → Suivez les instructions du bot pour finaliser\n\n`  
-      );
-    } catch (fallbackError) {
-      await ctx.reply('❌ Impossible d\'afficher les étapes. Contactez @PayLiveSupport');
-    }
+    await ctx.reply('❌ Impossible d\'afficher les étapes. Contactez @PayLiveSupport');
   }
 });
 
