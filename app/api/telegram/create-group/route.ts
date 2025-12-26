@@ -113,30 +113,54 @@ export async function POST(req: NextRequest) {
     const productDoc = doc(productsRef);
     const productDocId = productDoc.id;
     
-    const productData = {
-      id: productDocId,
-      name: name.trim(),
-      description: (description || `Rejoignez notre groupe ${name}`).trim(),
-      price: parseFloat(price),
-      category: 'telegram_group',
-      subscriptionType: subscriptionType || 'mensuelle',
-      telegramGroupId: telegramGroupDocId,
-      telegramChatId: telegramGroupId.trim(),
-      welcomeMessage: welcomeMessage || 'Bienvenue dans le groupe ! 👋',
-      maxMembers: maxMembers ? parseInt(maxMembers) : 100,
-      currentMembers: currentMembersCount,
-      creatorUid: creatorUid.trim(),
-      creatorName: (creatorName || "Anonyme").trim(),
-      status: 'available',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      type: 'telegram',
-      images: [image || "/telegram-group.png"],
-      image: image || "/telegram-group.png",
-      inStock: 9999,
-      botIsAdmin: true
-    };
+    // const productData = {
+    //   id: productDocId,
+    //   name: name.trim(),
+    //   description: (description || `Rejoignez notre groupe ${name}`).trim(),
+    //   price: parseFloat(price),
+    //   category: 'telegram_group',
+    //   subscriptionType: subscriptionType || 'mensuelle',
+    //   telegramGroupId: telegramGroupDocId,
+    //   telegramChatId: telegramGroupId.trim(),
+    //   welcomeMessage: welcomeMessage || 'Bienvenue dans le groupe ! 👋',
+    //   maxMembers: maxMembers ? parseInt(maxMembers) : 100,
+    //   currentMembers: currentMembersCount,
+    //   creatorUid: creatorUid.trim(),
+    //   creatorName: (creatorName || "Anonyme").trim(),
+    //   status: 'available',
+    //   createdAt: serverTimestamp(),
+    //   updatedAt: serverTimestamp(),
+    //   type: 'telegram',
+    //   images: [image || "/telegram-group.png"],
+    //   image: image || "/telegram-group.png",
+    //   inStock: 9999,
+    //   botIsAdmin: true
+    // };
 
+    // Dans la section de création du produit (lignes 102-128)
+const productData = {
+  id: productDocId,
+  name: name.trim(),
+  description: (description || `Rejoignez notre groupe ${name}`).trim(),
+  price: parseFloat(price),
+  category: 'telegram_group',
+  subscriptionType: subscriptionType || 'mensuelle',
+  telegramGroupDocId: telegramGroupDocId, // ← Stockez l'ID du document telegram_groups
+  telegramGroupId: telegramGroupId.trim(), // ← Stockez l'ID réel du groupe Telegram
+  welcomeMessage: welcomeMessage || 'Bienvenue dans le groupe ! 👋',
+  maxMembers: maxMembers ? parseInt(maxMembers) : 100,
+  currentMembers: currentMembersCount,
+  creatorUid: creatorUid.trim(),
+  creatorName: (creatorName || "Anonyme").trim(),
+  status: 'available',
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  type: 'telegram', // ← Important : type "telegram"
+  images: [image || "/telegram-group.png"],
+  image: image || "/telegram-group.png",
+  inStock: 9999,
+  botIsAdmin: true
+};
     console.log('Création du document dans products...');
     await setDoc(productDoc, productData);
     console.log(`Document produit créé: ${productDocId}`);

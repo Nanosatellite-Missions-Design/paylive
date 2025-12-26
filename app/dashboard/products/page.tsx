@@ -375,12 +375,20 @@ export default function ProductsPage() {
           );
         }
 
+        // L'API a déjà créé le document dans products et telegram_groups
+        // Nous n'avons pas besoin de recréer un produit ici
+        console.log("✅ Groupe créé avec succès:", {
+          groupId: result.groupId, // ID du document dans telegram_groups
+          productId: result.productId, // ID du document dans products
+          telegramGroupDocId: result.groupId, // Même que groupId
+        });
+
         toast({
           title: "Groupe créé !",
           description: "Votre groupe Telegram payant a été créé avec succès.",
         });
       } else {
-        // Créer un produit normal
+        // Créer un produit normal (code existant inchangé)
         const uploadPromises = newProductImageFiles.map((file) =>
           uploadImageToFirebase(file, `products/${user.uid}`)
         );
@@ -400,7 +408,7 @@ export default function ProductsPage() {
           status: "available",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          type: "normal",
+          type: "normal", // Type pour les produits normaux
         };
 
         await addToSubCollection(newProduct, "users", user.uid, "products");
@@ -548,6 +556,79 @@ export default function ProductsPage() {
     }
   };
 
+  // const handleSaveEditTelegram = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (
+  //     !user ||
+  //     !user.uid ||
+  //     !editingProduct ||
+  //     editingProduct.type !== "telegram"
+  //   ) {
+  //     toast({
+  //       title: "Erreur",
+  //       description: "Données utilisateur ou produit invalides.",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
+
+  //   setLoading(true);
+
+  //   try {
+  //     let imageUrl = editingExistingImages[0] || "/placeholder.svg";
+  //     const uploadPath = `telegram-groups/${user.uid}/${editingProduct.id}`;
+
+  //     // Vérifier si un nouveau fichier a été sélectionné via l'input
+  //     if (editTelegramFileInputRef.current?.files?.length) {
+  //       const file = editTelegramFileInputRef.current.files[0];
+  //       if (file) {
+  //         imageUrl = await uploadImageToFirebase(file, uploadPath);
+  //       }
+  //     }
+
+  //     const updatedProduct = {
+  //       ...editingProduct,
+  //       name: editingProduct.name,
+  //       price: editingProduct.price,
+  //       description: editingProduct.description,
+  //       subscriptionType: editingTelegramSubscriptionType,
+  //       welcomeMessage: editingTelegramWelcomeMessage,
+  //       maxMembers: parseInt(editingTelegramMaxMembers) || 100,
+  //       images: [imageUrl],
+  //       image: imageUrl,
+  //       updatedAt: new Date().toISOString(),
+  //     };
+
+  //     await updateSubcollectionDocument(
+  //       "users",
+  //       user.uid,
+  //       "products",
+  //       editingProduct.id,
+  //       updatedProduct
+  //     );
+
+  //     toast({
+  //       title: "Groupe mis à jour",
+  //       description: "Votre groupe Telegram a été mis à jour avec succès.",
+  //     });
+
+  //     setIsEditing(false);
+  //     setEditingProduct(null);
+  //     setEditingExistingImages([]);
+  //     setEditingTelegramImagePreview(null);
+  //   } catch (error: any) {
+  //     console.error("Erreur lors de la mise à jour du groupe Telegram:", error);
+  //     toast({
+  //       title: "Erreur",
+  //       description:
+  //         error.message || "Échec de la mise à jour du groupe Telegram.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSaveEditTelegram = async (e: React.FormEvent) => {
     e.preventDefault();
     if (
@@ -578,8 +659,8 @@ export default function ProductsPage() {
         }
       }
 
-      const updatedProduct = {
-        ...editingProduct,
+      // 1. Préparer les données mises à jour pour le produit
+      const updatedProductData = {
         name: editingProduct.name,
         price: editingProduct.price,
         description: editingProduct.description,
@@ -589,19 +670,71 @@ export default function ProductsPage() {
         images: [imageUrl],
         image: imageUrl,
         updatedAt: new Date().toISOString(),
+        // Conserver l'ID du groupe Telegram
+        telegramGroupId: editingProduct.telegramGroupId,
+        // Conserver l'ID du document telegram_groups si existant
+        telegramGroupDocId: editingProduct.telegramGroupDocId,
+        // Garder le type
+        type: "telegram",
       };
 
+      // 2. Mettre à jour dans la sous-collection "products"
       await updateSubcollectionDocument(
         "users",
         user.uid,
         "products",
         editingProduct.id,
-        updatedProduct
+        updatedProductData
       );
+
+      // 3. Si nous avons l'ID du document telegram_groups, mettre à jour également
+      if (editingProduct.telegramGroupDocId) {
+        // Préparer les données pour telegram_groups
+        const telegramGroupData = {
+          name: editingProduct.name,
+          price: editingProduct.price,
+          description: editingProduct.description,
+          subscriptionType: editingTelegramSubscriptionType,
+          welcomeMessage: editingTelegramWelcomeMessage,
+          maxMembers: parseInt(editingTelegramMaxMembers) || 100,
+          image: imageUrl,
+          updatedAt: new Date().toISOString(),
+          // Garder les identifiants importants
+          telegramGroupId: editingProduct.telegramGroupId,
+          creatorUid: user.uid,
+          creatorName: userInfo?.name || "Anonyme",
+          // Garder le statut existant ou utiliser un statut par défaut
+          status: editingProduct.status || "active",
+        };
+
+        await updateSubcollectionDocument(
+          "users",
+          user.uid,
+          "telegram_groups",
+          editingProduct.telegramGroupDocId,
+          telegramGroupData
+        );
+
+        console.log("✅ Groupe Telegram mis à jour dans les deux collections");
+      } else {
+        // Si telegramGroupDocId n'existe pas, on avertit l'utilisateur
+        console.warn(
+          "⚠️ telegramGroupDocId non trouvé - seule la collection products a été mise à jour"
+        );
+
+        toast({
+          title: "Mise à jour partielle",
+          description:
+            "Le produit a été mis à jour, mais la page de paiement peut afficher l'ancien prix. Ajoutez manuellement telegramGroupDocId au produit.",
+          variant: "default",
+        });
+      }
 
       toast({
         title: "Groupe mis à jour",
-        description: "Votre groupe Telegram a été mis à jour avec succès.",
+        description: editingProduct.telegramGroupDocId
+          ? "Votre groupe Telegram a été mis à jour avec succès."
+          : "Le produit a été mis à jour. Note: la page de paiement peut ne pas refléter les changements.",
       });
 
       setIsEditing(false);
