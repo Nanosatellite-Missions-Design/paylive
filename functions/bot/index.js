@@ -842,16 +842,37 @@ async function sendExpirationNotification(telegramUserId, subscriptionData) {
   }
 }
 
+
+// ========== FONCTION POUR RETIRER UN UTILISATEUR (KICK) ==========
+
 /**
- * Retire un utilisateur d'un groupe Telegram
+ * Retire un utilisateur d'un groupe Telegram (kick au lieu de ban permanent)
  */
 async function removeUserFromGroup(telegramGroupId, telegramUserId) {
   try {
-    await bot.telegram.banChatMember(telegramGroupId, telegramUserId);
-    console.log(`🚫 Utilisateur ${telegramUserId} retiré du groupe ${telegramGroupId}`);
+    // Kick l'utilisateur (ban pour 30 secondes seulement)
+    const untilDate = Math.floor(Date.now() / 1000) + 30;
+    await bot.telegram.banChatMember(telegramGroupId, telegramUserId, untilDate);
+    
+    // Optionnel : Unban immédiatement pour permettre la réinscription
+    setTimeout(async () => {
+      try {
+        await bot.telegram.unbanChatMember(telegramGroupId, telegramUserId, { only_if_banned: true });
+        console.log(`✅ Utilisateur ${telegramUserId} débanni après kick`);
+      } catch (unbanError) {
+        // Ignorer les erreurs d'unban
+      }
+    }, 35000); // 35 secondes pour être sûr
+    
+    console.log(`🚫 Utilisateur ${telegramUserId} kické du groupe ${telegramGroupId} (ban 30s)`);
     return true;
   } catch (error) {
-    console.error(`❌ Erreur retrait utilisateur ${telegramUserId}:`, error.message);
+    // Si l'utilisateur n'est pas dans le groupe
+    if (error.response?.description?.includes('USER_NOT_PARTICIPANT')) {
+      console.log(`⚠️ Utilisateur ${telegramUserId} n'est pas dans le groupe`);
+      return true;
+    }
+    console.error(`❌ Erreur kick utilisateur ${telegramUserId}:`, error.message);
     return false;
   }
 }
@@ -973,43 +994,60 @@ async function verifyMemberAccess(ctx, chatId, member) {
     
     const snapshot = await getDocs(q);
     
-    let validSubscription = null;
+    let hasValidSubscription = false;
     
-    // Filtrer manuellement pour le statut 'active' et non expiré
-    snapshot.forEach(doc => {
-      const data = doc.data();
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const subscriptionId = docSnap.id;
+      
+      // Vérifier si l'abonnement est actif et non expiré
       if (data.status === 'active') {
         const endDate = data.endDate?.toDate?.() || new Date(data.endDate);
-        if (endDate > new Date()) {
-          validSubscription = { id: doc.id, ...data };
+        const now = new Date();
+        
+        if (endDate > now) {
+          // Abonnement valide
+          hasValidSubscription = true;
+          
+          // Mettre à jour la dernière connexion
+          await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+            addedToGroup: true,
+            addedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            lastAccessAt: serverTimestamp()
+          });
+          
+          console.log(`✅ ${username} a un abonnement actif valide`);
+          break;
         } else {
-          // Abonnement expiré, le marquer comme tel
-          updateDoc(doc.ref, {
+          // Abonnement expiré, le marquer
+          console.log(`❌ ${username} a un abonnement expiré`);
+          await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
             status: 'expired',
             expiredAt: serverTimestamp()
           });
         }
+      } else if (data.status === 'expired') {
+        console.log(`❌ ${username} a un abonnement déjà expiré`);
       }
-    });
+    }
     
-    if (!validSubscription) {
-      console.log(`❌ ${username} n'a pas d'abonnement actif`);
+    if (!hasValidSubscription) {
+      console.log(`❌ ${username} n'a pas d'abonnement actif - kick en cours`);
       
       try {
-        // Retirer l'utilisateur
-        await ctx.telegram.banChatMember(chatId, telegramUserId);
+        // Kick l'utilisateur
+        await removeUserFromGroup(chatId, telegramUserId);
         
-        console.log(`🚫 ${username} retiré du groupe`);
+        console.log(`🚫 ${username} kické du groupe`);
         
         // Obtenir l'ID Firestore du groupe pour le lien
         const firestoreGroupId = await getFirestoreGroupId(chatId);
         
         let paymentLink;
         if (firestoreGroupId) {
-          // Utiliser l'ID Firestore
           paymentLink = `https://paylivecm.shop/telegram/${firestoreGroupId}?telegramUserId=${telegramUserId}`;
         } else {
-          // Fallback: utiliser l'ancien format
           paymentLink = `https://paylivecm.shop/telegram?telegramGroupId=${chatId}&telegramUserId=${telegramUserId}`;
         }
         
@@ -1030,24 +1068,14 @@ async function verifyMemberAccess(ctx, chatId, member) {
             }
           );
           
-          console.log(`📨 Message d'achat envoyé à ${username} avec lien: ${paymentLink}`);
+          console.log(`📨 Message d'achat envoyé à ${username}`);
         } catch (msgError) {
           console.error('⚠️ Impossible d\'envoyer message:', msgError.message);
         }
       } catch (kickError) {
-        console.error('❌ Erreur retrait:', kickError.message);
+        console.error('❌ Erreur kick:', kickError.message);
       }
     } else {
-      console.log(`✅ ${username} a un abonnement actif`);
-      
-      // Mettre à jour l'abonnement
-      await updateDoc(doc(db, 'telegram_subscriptions', validSubscription.id), {
-        addedToGroup: true,
-        addedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastAccessAt: serverTimestamp()
-      });
-      
       // Message de bienvenue dans le groupe
       try {
         await ctx.reply(`👋 Bienvenue ${member.first_name || ''} ! Profite bien du groupe !`);
@@ -1081,6 +1109,33 @@ bot.start(async (ctx) => {
       // `❓ Besoin d'aide ? Contactez @PayLiveSupport`,
       { parse_mode: 'Markdown' }
     );
+  }
+});
+
+bot.command('forcecheck', async (ctx) => {
+  try {
+    // Vérifier si c'est un admin (remplacez par votre logique d'admin)
+    const adminIds = ['1085274663']; // Ajoutez les IDs Telegram des admins
+    if (!adminIds.includes(ctx.from.id.toString())) {
+      return ctx.reply('❌ Commande réservée aux administrateurs.');
+    }
+    
+    await ctx.reply('🔄 Démarrage de la vérification manuelle...');
+    
+    // Importer et exécuter le cronjob
+    const { checkExpiringSubscriptions } = require('./chemin/vers/functions/cron.js');
+    const result = await checkExpiringSubscriptions();
+    
+    await ctx.reply(
+      `✅ Vérification terminée :\n` +
+      `• Rappels 2 jours : ${result.remindersSent}\n` +
+      `• Rappels aujourd'hui : ${result.todayRemindersSent}\n` +
+      `• Abonnements expirés : ${result.expiredHandled}\n` +
+      `• Total vérifié : ${result.totalChecked}`
+    );
+  } catch (error) {
+    console.error('❌ Erreur forcecheck:', error);
+    ctx.reply('❌ Erreur lors de la vérification.');
   }
 });
 
@@ -1242,31 +1297,46 @@ bot.command('status', async (ctx) => {
 
     let message = `📊 *Vos abonnements*\n\n`;
     
-    snapshot.forEach((doc, index) => {
-      const data = doc.data();
-      const isActive = data.status === 'active';
-      const endDate = data.endDate?.toDate?.() || new Date(data.endDate);
-      const daysLeft = Math.ceil((endDate - new Date()) / (1000 * 60 * 60 * 24));
+    // Convertir le snapshot en array pour utiliser un index propre
+    const docsArray = snapshot.docs;
+    
+    for (let i = 0; i < docsArray.length; i++) {
+      const docSnap = docsArray[i];
+      const data = docSnap.data();
+      const subscriptionId = docSnap.id;
       
-      message += `*${index + 1}. ${data.groupName || 'Groupe'}*\n`;
-      message += `   • Statut: ${isActive ? '✅ Actif' : '❌ ' + (data.status || 'Inactif')}\n`;
+      const isActive = data.status === 'active';
+      const isExpired = data.status === 'expired';
+      
+      let endDate;
+      if (data.endDate?.toDate) {
+        endDate = data.endDate.toDate();
+      } else if (data.endDate) {
+        endDate = new Date(data.endDate);
+      } else {
+        endDate = new Date();
+      }
+      
+      const now = new Date();
+      const timeDiff = endDate.getTime() - now.getTime();
+      const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      
+      message += `*${i + 1}. ${data.groupName || 'Groupe inconnu'}*\n`;
+      message += `   • Statut: ${isActive ? '✅ Actif' : (isExpired ? '❌ Expiré' : '❌ ' + (data.status || 'Inactif'))}\n`;
       message += `   • Prix: ${data.price || '?'} XAF\n`;
       
       if (isActive) {
         if (daysLeft > 0) {
           message += `   • Expire dans: ${daysLeft} jour(s)\n`;
+        } else if (daysLeft === 0) {
+          message += `   • ⚠️ Expire aujourd'hui\n`;
         } else {
-          message += `   • ⚠️ Expiré aujourd'hui\n`;
+          message += `   • ❌ Expiré il y a ${Math.abs(daysLeft)} jour(s)\n`;
         }
-        // message += `   • Accès: ${data.addedToGroup ? '✅ Dans le groupe' : '🔗 Lien disponible'}\n`;
-        
-        // if (data.botInviteLink && !data.addedToGroup) {
-        //   message += `   • Lien: [Rejoindre](${data.botInviteLink})\n`;
-        // }
       }
       
       message += `\n`;
-    });
+    }
 
     await ctx.reply(message, { 
       parse_mode: 'Markdown',
