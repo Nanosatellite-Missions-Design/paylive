@@ -40,6 +40,11 @@ export default function DesktopNavigation() {
       href: "/dashboard/products",
       icon: ShoppingBasket,
     },
+    // {
+    //   name: "Telegram",
+    //   href: "/dashboard/telegram-subscriptions",
+    //   icon: Receipt,
+    // },
     {
       name: t("profile"),
       href: "/dashboard/profile",
