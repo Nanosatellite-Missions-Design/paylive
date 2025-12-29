@@ -14,6 +14,7 @@ import {
   BarChart3,
   Package,
   Store,
+  Shield, // Ajouté pour l'icône admin
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslations } from "@/lib/useTranslations";
@@ -23,7 +24,8 @@ export default function ProfilePage() {
 
   const t = useTranslations("Dashboard.Profile");
 
-  const isCreator = userInfo?.role === "user" || false;
+  // Supprimer la condition isCreator pour afficher tout à tous
+  // const isCreator = userInfo?.role === "user" || false;
 
   const calculateStats = () => {
     const currentBalance = userInfo?.balance || 0;
@@ -121,158 +123,112 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* ✅ AFFICHAGE FINANCIER AVEC BALANCE RÉEL */}
-      {isCreator && (
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">
-            {t("financialOverview")}
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {/* ✅ CARTE SOLDE ACTUEL - DIRECT DEPUIS USERINFO */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">
-                    {t("currentBalance")}
-                  </h3>
-                  <DollarSign className="h-4 w-4 text-green-500" />
-                </div>
-                <p
-                  className={`text-2xl font-bold ${
-                    stats.currentBalance >= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  XAF {stats.currentBalance.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.currentBalance >= 0 ? "Solde disponible" : "Découvert"}
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* ✅ CARTE GAINS DU MOIS */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">{t("thisMonth")}</h3>
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
-                </div>
-                <p className="text-2xl font-bold">
-                  XAF {stats.monthlyEarnings.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Gains ce mois</p>
-              </CardContent>
-            </Card>
-
-            {/* ✅ CARTE RÉSUMÉ COMPLET */}
-            <Card className="col-span-2">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm text-gray-500">
-                    {t("totalEarnings")}
-                  </h3>
-                  <BarChart3 className="h-4 w-4 text-purple-500" />
-                </div>
-                <p className="text-2xl font-bold">
-                  XAF {stats.totalEarnings.toLocaleString()}
-                </p>
-                <div className="flex justify-between items-center mt-2 text-sm">
-                  <span className="text-gray-500">
-                    {isCreator ? "Ventes totales" : "Achats totaux"}:{" "}
-                    {stats.totalSales}
-                  </span>
-                  <Link
-                    href="/dashboard/profile/transactions"
-                    className="text-blue-600 flex items-center hover:text-blue-700"
-                  >
-                    {t("details")} <ChevronRight className="h-3 w-3 ml-1" />
-                  </Link>
-                </div>
-                {/* <div className="mt-2 text-xs text-gray-400">
-                  {userTransactions?.length || 0} transactions enregistrées
-                </div> */}
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
-
-      {/* ✅ ACTIVITÉ POUR NON-CRÉATEURS */}
-      {!isCreator && (
-        <section className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">Résumé de l'activité</h2>
+      {/* ✅ AFFICHAGE FINANCIER POUR TOUS LES UTILISATEURS */}
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold mb-3">
+          {t("financialOverview")}
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {/* ✅ CARTE SOLDE ACTUEL */}
           <Card>
             <CardContent className="p-4">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h3 className="text-sm text-gray-500 mb-1">Total Achats</h3>
-                  <p className="text-xl font-bold">{stats.totalSales}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm text-gray-500 mb-1">Solde Actuel</h3>
-                  <p
-                    className={`text-xl font-bold ${
-                      stats.currentBalance >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    XAF {stats.currentBalance.toLocaleString()}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm text-gray-500">
+                  {t("currentBalance")}
+                </h3>
+                <DollarSign className="h-4 w-4 text-green-500" />
               </div>
-              <div className="mt-3">
-                <Link href="/dashboard/profile/transactions">
-                  <Button variant="outline" size="sm" className="w-full">
-                    <History className="h-4 w-4 mr-2" />
-                    Historique des transactions
-                  </Button>
+              <p
+                className={`text-2xl font-bold ${
+                  stats.currentBalance >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                XAF {stats.currentBalance.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {stats.currentBalance >= 0 ? "Solde disponible" : "Découvert"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* ✅ CARTE GAINS DU MOIS */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm text-gray-500">{t("thisMonth")}</h3>
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </div>
+              <p className="text-2xl font-bold">
+                XAF {stats.monthlyEarnings.toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Gains ce mois</p>
+            </CardContent>
+          </Card>
+
+          {/* ✅ CARTE RÉSUMÉ COMPLET */}
+          <Card className="col-span-2">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm text-gray-500">
+                  {t("totalEarnings")}
+                </h3>
+                <BarChart3 className="h-4 w-4 text-purple-500" />
+              </div>
+              <p className="text-2xl font-bold">
+                XAF {stats.totalEarnings.toLocaleString()}
+              </p>
+              <div className="flex justify-between items-center mt-2 text-sm">
+                <span className="text-gray-500">
+                  Ventes totales: {stats.totalSales}
+                </span>
+                <Link
+                  href="/dashboard/profile/transactions"
+                  className="text-blue-600 flex items-center hover:text-blue-700"
+                >
+                  {t("details")} <ChevronRight className="h-3 w-3 ml-1" />
                 </Link>
               </div>
             </CardContent>
           </Card>
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* ✅ ACTIONS RAPIDES */}
+      {/* ✅ ACTIONS RAPIDES POUR TOUS */}
       <section className="mb-6">
         <h2 className="text-lg font-semibold mb-3">{t("quickActions")}</h2>
         <div className="grid grid-cols-2 gap-3">
-          {isCreator && (
-            <>
-              <Link href="/dashboard/products">
-                <Button
-                  variant="outline"
-                  className="w-full h-auto py-6 flex flex-col"
-                >
-                  <Package className="h-6 w-6 mb-2" />
-                  <span>{t("myProducts")}</span>
-                </Button>
-              </Link>
+          {/* Boutons visibles pour tous les utilisateurs */}
+          <Link href="/dashboard/products">
+            <Button
+              variant="outline"
+              className="w-full h-auto py-6 flex flex-col"
+            >
+              <Package className="h-6 w-6 mb-2" />
+              <span>{t("myProducts")}</span>
+            </Button>
+          </Link>
 
-              <Link href="/dashboard/profile/catalogs">
-                <Button
-                  variant="outline"
-                  className="w-full h-auto py-6 flex flex-col bg-transparent"
-                >
-                  <Store className="h-6 w-6 mb-2" />
-                  <span>{t("myCatalogs")}</span>
-                </Button>
-              </Link>
+          <Link href="/dashboard/profile/catalogs">
+            <Button
+              variant="outline"
+              className="w-full h-auto py-6 flex flex-col bg-transparent"
+            >
+              <Store className="h-6 w-6 mb-2" />
+              <span>{t("myCatalogs")}</span>
+            </Button>
+          </Link>
 
-              <Link href="/dashboard/lives">
-                <Button
-                  variant="outline"
-                  className="w-full h-auto py-6 flex flex-col"
-                >
-                  <Video className="h-6 w-6 mb-2" />
-                  <span>{t("liveSales")}</span>
-                </Button>
-              </Link>
-            </>
-          )}
+          <Link href="/dashboard/lives">
+            <Button
+              variant="outline"
+              className="w-full h-auto py-6 flex flex-col"
+            >
+              <Video className="h-6 w-6 mb-2" />
+              <span>{t("liveSales")}</span>
+            </Button>
+          </Link>
 
           <Link href="/dashboard/profile/payment-methods">
             <Button
@@ -283,6 +239,19 @@ export default function ProfilePage() {
               <span>{t("paymentMethods")}</span>
             </Button>
           </Link>
+
+          {/* ✅ BOUTON ADMIN DASHBOARD (visible uniquement pour les admins) */}
+          {userInfo?.role === "admin" && (
+            <Link href="/dashboard/admin" className="col-span-2">
+              <Button
+                variant="default"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Admin Dashboard
+              </Button>
+            </Link>
+          )}
 
           <Link href="/dashboard/profile/transactions" className="col-span-2">
             <Button variant="outline" className="w-full">
