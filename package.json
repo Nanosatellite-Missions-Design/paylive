@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+"dev": "next dev",
+  "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "bot": "cd functions/bot && node index.js",
@@ -81,6 +81,7 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "cross-env": "^10.1.0",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"

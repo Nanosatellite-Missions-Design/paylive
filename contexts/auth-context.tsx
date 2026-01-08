@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     console.log({ email, password });
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push("//dashboard/lives");
+      router.push("/dashboard/lives");
     } finally {
       setLoading(false);
     }
@@ -147,14 +147,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // 2. Send email verification
       await sendEmailVerification(user);
-      // console.log("Verification email sent");
 
       // 3. Update user profile
       await updateProfile(user, { displayName: formData.name });
-      // console.log("Profile updated");
-      // console.log(user.uid);
-      // 4. Create Firestore document
 
+      // 4. Create Firestore document
       try {
         await setToCollection("users", user.uid, {
           uid: user.uid,
@@ -163,8 +160,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           phone: formData.phone,
         });
         router.push("/dashboard/lives");
-
-        // console.log("Firestore document created");
       } catch (firestoreError) {
         console.error("Firestore error:", firestoreError);
         throw new Error("Failed to create user profile");
@@ -188,39 +183,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       await signOut(auth);
-      router.push("/login"); // Redirect to login page after logout
+      router.push("/login");
       clearAllData();
     } finally {
       setLoading(false);
     }
   };
 
-  // Create user document helper
-  // const createUserDocument = async (uid: string, email: string, role: string) => {
-  //   try {
-  //     await fetch('/api/create-user', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ uid, email, role })
-  //     });
-  //   } catch (error) {
-  //     console.error("Error creating user document:", error);
-  //   }
-  // };
-
   // Clear all application data
   const clearAllData = () => {
     setUserInfo(null);
     setLives([]);
     setUserProducts([]);
+    setUserCatalogs([]);
+    setUserOrders([]);
+    setUserTransactions([]);
     setUsers([]);
+    setReferrals([]);
+    setReferralsEarnings(0);
+    setTransactions([]);
   };
 
   const refreshUserOrders = async () => {
     if (!user?.uid) return;
 
     try {
-      // Utilisez votre fonction existante pour récupérer les commandes
       const unsubscribe = listenToSubCollection(
         "users",
         user.uid,
@@ -229,8 +216,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserOrders(orders);
         }
       );
-
-      // Retournez la fonction unsubscribe si nécessaire
       return unsubscribe;
     } catch (error) {
       console.error("Error refreshing orders:", error);
@@ -244,8 +229,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const unsubscribeUser = getADocument(user.uid, "users", (data) => {
+      console.log("User info loaded:", data);
       setUserInfo(data);
-      setLoading(false); // only set loading to false *after* userInfo is set
+      setLoading(false);
     });
 
     return () => {
@@ -253,11 +239,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user]);
 
-  // // Role-based data loading
+  // Role-based data loading
   useEffect(() => {
     if (!userInfo?.role || !user) return;
 
-    // Initialize with no-op functions and proper typing
+    console.log(`Loading data for role: ${userInfo.role}, user: ${user.uid}`);
+
+    // Initialize with no-op functions
     let unsubscribeLives: () => void = () => {};
     let unsubscribeUserProducts: () => void = () => {};
     let unsubscribeUserTransactions: () => void = () => {};
@@ -266,42 +254,116 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     switch (userInfo.role) {
       case "admin":
-        break;
-      case "super":
-        break;
-      case "user":
-        unsubscribeLives = getACollection("lives", setLives) ?? (() => {});
+        // Pour admin, charger toutes les données de la collection principale
+        unsubscribeLives =
+          getACollection("lives", (livesData) => {
+            console.log("Lives loaded:", livesData.length);
+            setLives(livesData);
+          }) ?? (() => {});
+
+        // Pour admin, charger aussi ses propres données personnelles
         unsubscribeUserProducts =
-          listenToSubCollection(
-            "users",
-            user.uid,
-            "products",
-            setUserProducts
-          ) ?? (() => {});
+          listenToSubCollection("users", user.uid, "products", (products) => {
+            console.log("User products loaded:", products.length);
+            setUserProducts(products);
+          }) ?? (() => {});
+
         unsubscribeUserTransactions =
           listenToSubCollection(
             "users",
             user.uid,
             "transactions",
-            setUserTransactions
+            (transactions) => {
+              console.log("User transactions loaded:", transactions.length);
+              setUserTransactions(transactions);
+            }
           ) ?? (() => {});
-        unsubscribeUserCatalogs = getRealTimeQuery(
-          "catalogs", // Firestore collection name
-          "creatorId", // Field to check
-          user.uid, // Value to match (must be inside an array in Firestore)
-          setUserCatalogs
+
+        // Les catalogues de l'admin
+        const unsubscribeAdminCatalogs = getRealTimeQuery(
+          "catalogs",
+          "creatorId",
+          user.uid,
+          (catalogs: Catalog[]) => {
+            console.log("Admin catalogs loaded:", catalogs.length);
+            setUserCatalogs(catalogs);
+          }
         );
-        unsubscribeUserCatalogs = getRealTimeQuery(
-          "orders", // Firestore collection name
-          "sellerId", // Field to check
-          user.uid, // Value to match (must be inside an array in Firestore)
-          setUserOrders
+        unsubscribeUserCatalogs = unsubscribeAdminCatalogs || (() => {});
+
+        // Les commandes de l'admin
+        const unsubscribeAdminOrders = getRealTimeQuery(
+          "orders",
+          "sellerId",
+          user.uid,
+          (orders: Order[]) => {
+            console.log("Admin orders loaded:", orders.length);
+            setUserOrders(orders);
+          }
         );
+        unsubscribeUserOrders = unsubscribeAdminOrders || (() => {});
+        break;
+
+      case "super":
+        // Même logique que admin ou différente selon vos besoins
+        break;
+
+      case "user":
+        console.log("Loading user data...");
+
+        unsubscribeLives =
+          getACollection("lives", (livesData) => {
+            console.log("User lives loaded:", livesData.length);
+            setLives(livesData);
+          }) ?? (() => {});
+
+        // PRODUITS : sous-collection users/{uid}/products
+        unsubscribeUserProducts =
+          listenToSubCollection("users", user.uid, "products", (products) => {
+            console.log("User products loaded:", products.length);
+            setUserProducts(products);
+          }) ?? (() => {});
+
+        // TRANSACTIONS : sous-collection users/{uid}/transactions
+        unsubscribeUserTransactions =
+          listenToSubCollection(
+            "users",
+            user.uid,
+            "transactions",
+            (transactions) => {
+              console.log("User transactions loaded:", transactions.length);
+              setUserTransactions(transactions);
+            }
+          ) ?? (() => {});
+
+        // CATALOGUES : collection catalogs avec creatorId
+        const unsubscribeUserCatalogsQuery = getRealTimeQuery(
+          "catalogs",
+          "creatorId",
+          user.uid,
+          (catalogs: Catalog[]) => {
+            console.log("User catalogs loaded:", catalogs.length);
+            setUserCatalogs(catalogs);
+          }
+        );
+        unsubscribeUserCatalogs = unsubscribeUserCatalogsQuery || (() => {});
+
+        // COMMANDES : collection orders avec sellerId
+        const unsubscribeUserOrdersQuery = getRealTimeQuery(
+          "orders",
+          "sellerId",
+          user.uid,
+          (orders: Order[]) => {
+            console.log("User orders loaded:", orders.length);
+            setUserOrders(orders);
+          }
+        );
+        unsubscribeUserOrders = unsubscribeUserOrdersQuery || (() => {});
         break;
     }
 
     return () => {
-      // Safe to call even if undefined due to nullish coalescing
+      console.log("Cleaning up listeners...");
       unsubscribeLives();
       unsubscribeUserProducts();
       unsubscribeUserTransactions();
@@ -313,8 +375,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Auth state listener
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      console.log("Auth state changed:", currentUser?.uid);
       setUser(currentUser);
-      setLoading(false);
+      if (!currentUser) {
+        setLoading(false);
+      }
     });
     return () => unsubscribeAuth();
   }, []);
