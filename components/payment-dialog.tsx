@@ -30,6 +30,7 @@ import {
   CheckCircle,
   XCircle,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useTranslations } from "@/lib/useTranslations";
@@ -83,20 +84,20 @@ export function PaymentDialog({
   const { userInfo } = useAuth();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     userInfo?.paymentMethods.find((method: any) => method.isDefault)?.number ||
-      userInfo?.paymentMethods[0]?.number
+      userInfo?.paymentMethods[0]?.number,
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 
   // États pour le formulaire Mobile Money
   const [paymentMethod, setPaymentMethod] = useState<"pawapay" | "paypal">(
-    "pawapay"
+    "pawapay",
   );
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [mobileProvider, setMobileProvider] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [currency, setCurrency] = useState("XAF");
@@ -105,8 +106,16 @@ export function PaymentDialog({
     countryCode: string;
   } | null>(null);
 
+  // nouvel etas pour les vouhcers
+  const [voucherCode, setVoucherCode] = useState<string>("");
+  const [isValidatingVoucher, setIsValidatingVoucher] =
+    useState<boolean>(false);
+  const [voucherApplied, setVoucherApplied] = useState<boolean>(false);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [voucherError, setVoucherError] = useState<string>("");
+
   const currentCountry = PAWAPAY_COUNTRIES.find(
-    (c) => c.code === selectedCountry
+    (c) => c.code === selectedCountry,
   );
   const availableProviders = currentCountry?.providers || [];
 
@@ -127,7 +136,7 @@ export function PaymentDialog({
 
           // Définir comme pays par défaut si c'est un pays PawaPay
           const isPawaPayCountry = PAWAPAY_COUNTRIES.some(
-            (country) => country.code === data.country_code
+            (country) => country.code === data.country_code,
           );
           if (isPawaPayCountry) {
             setSelectedCountry(data.country_code);
@@ -144,14 +153,85 @@ export function PaymentDialog({
   }, []);
 
   // Fonction sécurisée pour parser le montant
+  // const getSafeAmount = (): number => {
+  //   if (!amount) return 0;
+  //   try {
+  //     const cleanAmount = amount.replace(/[^\d.]/g, "");
+  //     return parseFloat(cleanAmount) || 0;
+  //   } catch (error) {
+  //     console.error("Error parsing amount:", error);
+  //     return 0;
+  //   }
+  // };
+
+  // nouvel version de get saftyamunt pour vouchers
   const getSafeAmount = (): number => {
     if (!amount) return 0;
     try {
       const cleanAmount = amount.replace(/[^\d.]/g, "");
-      return parseFloat(cleanAmount) || 0;
+      const amountNumber = parseFloat(cleanAmount) || 0;
+
+      // Appliquer la réduction si voucher actif
+      if (voucherApplied && discountAmount > 0) {
+        return Math.max(0, amountNumber - discountAmount);
+      }
+
+      return amountNumber;
     } catch (error) {
       console.error("Error parsing amount:", error);
       return 0;
+    }
+  };
+
+  const [finalAmount, setFinalAmount] = useState<number>(getSafeAmount());
+
+  // Fonction pour valider le voucher
+  const validateVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError("Veuillez entrer un code");
+      return;
+    }
+
+    const amountNumber = parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
+
+    setIsValidatingVoucher(true);
+    setVoucherError("");
+
+    try {
+      const response = await fetch("/api/vouchers/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: voucherCode.trim(),
+          amount: amountNumber,
+          userId: userInfo?.uid,
+          productType: "normal",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.valid) {
+        setDiscountAmount(result.discountAmount);
+        setFinalAmount(result.finalAmount);
+        setVoucherApplied(true);
+
+        // Mettre à jour l'affichage du montant
+        const newAmount = result.finalAmount.toString();
+
+        // Si vous avez un état amount dans le parent, le mettre à jour
+        // Sinon, garder le montant original et appliquer la réduction lors du paiement
+      } else {
+        setVoucherError(result.error || "Code invalide");
+        setVoucherApplied(false);
+        setDiscountAmount(0);
+        setFinalAmount(amountNumber);
+      }
+    } catch (error) {
+      console.error("Erreur validation voucher:", error);
+      setVoucherError("Erreur de validation");
+    } finally {
+      setIsValidatingVoucher(false);
     }
   };
 
@@ -204,7 +284,9 @@ export function PaymentDialog({
       return;
     }
 
-    const amountNumber = getSafeAmount();
+    // const amountNumber = getSafeAmount();
+    const amountNumber = voucherApplied ? finalAmount : getSafeAmount();
+
     if (amountNumber === 0) {
       alert("Montant invalide");
       return;
@@ -233,7 +315,7 @@ export function PaymentDialog({
     const targetCurrency = getCurrencyForCountry(selectedCountry);
 
     console.log(
-      `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`
+      `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`,
     );
 
     // 6. Préparer les données de la transaction avec le montant converti
@@ -243,6 +325,11 @@ export function PaymentDialog({
       mobileProviderId: mobileProvider,
       phoneNumber: finalPhoneNumber,
       currency: targetCurrency,
+      // AJOUTER LES INFOS VOUCHER
+      voucherApplied: voucherApplied,
+      voucherCode: voucherApplied ? voucherCode : null,
+      discountAmount: voucherApplied ? discountAmount : 0,
+      originalAmount: parseFloat(amount.replace(/[^\d.]/g, "")) || 0, // Montant original
     };
 
     try {
@@ -312,7 +399,7 @@ export function PaymentDialog({
       return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3)}`;
     return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(
       3,
-      6
+      6,
     )} ${cleanPhone.slice(6, 9)}`;
   };
 
@@ -515,9 +602,80 @@ export function PaymentDialog({
               </div>
             </CardContent>
           </Card>
+          {/* // Ajouter dans le JSX (après le résumé du paiement) */}
+          <div className="space-y-4">
+            {/* Section Voucher */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-sm">Code promotionnel</h4>
+                {voucherApplied && (
+                  <Badge className="text-xs">Réduction appliquée</Badge>
+                )}
+              </div>
 
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Entrez votre code promo"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value)}
+                  disabled={voucherApplied || isValidatingVoucher}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant={voucherApplied ? "outline" : "default"}
+                  onClick={
+                    voucherApplied
+                      ? () => {
+                          setVoucherApplied(false);
+                          setDiscountAmount(0);
+                          setVoucherCode("");
+                          setVoucherError("");
+                        }
+                      : validateVoucher
+                  }
+                  disabled={isValidatingVoucher || !voucherCode.trim()}
+                >
+                  {isValidatingVoucher ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : voucherApplied ? (
+                    "Annuler"
+                  ) : (
+                    "Appliquer"
+                  )}
+                </Button>
+              </div>
+
+              {voucherError && (
+                <p className="text-sm text-red-600">{voucherError}</p>
+              )}
+
+              {voucherApplied && discountAmount > 0 && (
+                <div className="space-y-2 p-3 bg-green-50 rounded">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Réduction:</span>
+                    <span className="font-semibold text-green-700">
+                      -
+                      {formatLocalDisplay(
+                        discountAmount,
+                        selectedCountry || "CMR",
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Total après réduction:</span>
+                    <span className="text-green-700">
+                      {formatLocalDisplay(
+                        finalAmount,
+                        selectedCountry || "CMR",
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <Separator />
-
           {/* Payment Methods */}
           <div className="space-y-4">
             <div className="flex items-center ml-10 ">
@@ -698,7 +856,6 @@ export function PaymentDialog({
               ))}
             </RadioGroup>
           </div>
-
           {/* Security Notice */}
           <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
             <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />

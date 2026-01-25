@@ -50,7 +50,9 @@ export default function AdminDashboardPage() {
     // }
     fetchStats();
   }, [userInfo]);
-
+  const handlevoucherclick = () => {
+    router.push("/dashboard/admin/vouchers");
+  };
   const fetchStats = async () => {
     try {
       setLoading(true);
@@ -88,6 +90,9 @@ export default function AdminDashboardPage() {
           </Button>
           <Button variant="outline" onClick={logout}>
             Déconnexion
+          </Button>
+          <Button variant="outline" onClick={handlevoucherclick}>
+            Vouhcers
           </Button>
         </div>
       </div>

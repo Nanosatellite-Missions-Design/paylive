@@ -79,10 +79,10 @@ export default function TelegramPaymentDialog({
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [mobileProvider, setMobileProvider] = useState<string | undefined>(
-    undefined
+    undefined,
   );
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [currency, setCurrency] = useState("XAF");
@@ -95,20 +95,94 @@ export default function TelegramPaymentDialog({
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [isLoadingGroup, setIsLoadingGroup] = useState(false);
 
+  // Ajouter les mêmes états que pour PaymentDialog
+  const [voucherCode, setVoucherCode] = useState<string>("");
+  const [isValidatingVoucher, setIsValidatingVoucher] =
+    useState<boolean>(false);
+  const [voucherApplied, setVoucherApplied] = useState<boolean>(false);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [voucherError, setVoucherError] = useState<string>("");
+
   const currentCountry = PAWAPAY_COUNTRIES.find(
-    (c) => c.code === selectedCountry
+    (c) => c.code === selectedCountry,
   );
   const availableProviders = currentCountry?.providers || [];
 
   // Fonction sécurisée pour parser le montant
+  // const getSafeAmount = (): number => {
+  //   if (!amount) return 0;
+  //   try {
+  //     const cleanAmount = amount.replace(/[^\d.]/g, "");
+  //     return parseFloat(cleanAmount) || 0;
+  //   } catch (error) {
+  //     console.error("Error parsing amount:", error);
+  //     return 0;
+  //   }
+  // };
+
+  // nouvel version de la fucntion pour inclure les vocher
   const getSafeAmount = (): number => {
     if (!amount) return 0;
     try {
       const cleanAmount = amount.replace(/[^\d.]/g, "");
-      return parseFloat(cleanAmount) || 0;
+      const amountNumber = parseFloat(cleanAmount) || 0;
+
+      // Appliquer la réduction si voucher actif
+      if (voucherApplied && discountAmount > 0) {
+        return Math.max(0, amountNumber - discountAmount);
+      }
+
+      return amountNumber;
     } catch (error) {
       console.error("Error parsing amount:", error);
       return 0;
+    }
+  };
+
+  const [finalAmount, setFinalAmount] = useState<number>(getSafeAmount());
+
+  // Fonction de validation du voucher spécifique Telegram
+  const validateVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError("Veuillez entrer un code");
+      return;
+    }
+
+    const amountNumber = parseFloat(amount.replace(/[^\d.]/g, "")) || 0;
+
+    setIsValidatingVoucher(true);
+    setVoucherError("");
+
+    try {
+      const response = await fetch("/api/vouchers/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: voucherCode.trim(),
+          amount: amountNumber,
+          userId: creatorUid, // ou subscriberTelegramId selon votre logique
+          telegramGroupId: telegramGroupId,
+          productType: "telegram_subscription",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.valid) {
+        setDiscountAmount(result.discountAmount);
+        setFinalAmount(result.finalAmount);
+        setVoucherApplied(true);
+      } else {
+        setVoucherError(result.error || "Code invalide");
+        setVoucherApplied(false);
+        setDiscountAmount(0);
+        setFinalAmount(amountNumber);
+      }
+    } catch (error) {
+      console.error("Erreur validation voucher:", error);
+      setVoucherError("Erreur de validation");
+    } finally {
+      setIsValidatingVoucher(false);
     }
   };
 
@@ -126,7 +200,7 @@ export default function TelegramPaymentDialog({
           });
 
           const isPawaPayCountry = PAWAPAY_COUNTRIES.some(
-            (country) => country.code === data.country_code
+            (country) => country.code === data.country_code,
           );
           if (isPawaPayCountry) {
             setSelectedCountry(data.country_code);
@@ -245,7 +319,9 @@ export default function TelegramPaymentDialog({
       return;
     }
 
-    const amountNumber = getSafeAmount();
+    // const amountNumber = getSafeAmount();
+    const amountNumber = voucherApplied ? finalAmount : getSafeAmount();
+
     if (amountNumber === 0) {
       alert("Montant invalide");
       return;
@@ -271,7 +347,7 @@ export default function TelegramPaymentDialog({
     const targetCurrency = getCurrencyForCountry(selectedCountry);
 
     console.log(
-      `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`
+      `Conversion pour l'API: ${amountNumber} XAF → ${convertedAmount} ${targetCurrency}`,
     );
     console.log(`📅 SubscriptionType à utiliser: ${groupSubscriptionType}`);
 
@@ -288,6 +364,11 @@ export default function TelegramPaymentDialog({
         telegramGroupId: telegramGroupId,
         subscriberTelegramId: subscriberTelegramId,
         productName: product,
+        // AJOUTER LES INFOS VOUCHER
+        voucherApplied: voucherApplied,
+        voucherCode: voucherApplied ? voucherCode : null,
+        discountAmount: voucherApplied ? discountAmount : 0,
+        originalAmount: getSafeAmount(), // Montant original sans réduction
       },
     };
 
@@ -338,7 +419,7 @@ export default function TelegramPaymentDialog({
         } else {
           if (onPaymentComplete) onPaymentComplete("failed");
           alert(
-            "Le paiement n'a pas été confirmé. Veuillez vérifier votre compte."
+            "Le paiement n'a pas été confirmé. Veuillez vérifier votre compte.",
           );
         }
         return;
@@ -382,7 +463,7 @@ export default function TelegramPaymentDialog({
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(subscriptionData),
-            }
+            },
           );
 
           if (!subscriptionResponse.ok) {
@@ -394,7 +475,7 @@ export default function TelegramPaymentDialog({
             subscriptionResult = await subscriptionResponse.json();
             console.log(
               "✅ Abonnement Telegram créé:",
-              subscriptionResult.subscriptionId
+              subscriptionResult.subscriptionId,
             );
 
             // RÉCUPÉRER LE LIEN D'INVITATION
@@ -411,7 +492,7 @@ export default function TelegramPaymentDialog({
         } catch (subscriptionError) {
           console.error(
             "❌ Erreur lors de la création de l'abonnement:",
-            subscriptionError
+            subscriptionError,
           );
           alert("Erreur lors de la création de l'abonnement");
           return;
@@ -444,12 +525,12 @@ export default function TelegramPaymentDialog({
         }
 
         router.push(
-          `/telegram/subscription-success/${subscriptionResult.subscriptionId}?${params}`
+          `/telegram/subscription-success/${subscriptionResult.subscriptionId}?${params}`,
         );
       } else {
         // Fallback - Créer l'abonnement manuellement
         console.warn(
-          "⚠️ Aucun résultat d'abonnement, création manuelle de la page"
+          "⚠️ Aucun résultat d'abonnement, création manuelle de la page",
         );
 
         const manualSubscriptionId = `temp_${Date.now()}`;
@@ -464,7 +545,7 @@ export default function TelegramPaymentDialog({
         });
 
         router.push(
-          `/telegram/subscription-success/${manualSubscriptionId}?${params}`
+          `/telegram/subscription-success/${manualSubscriptionId}?${params}`,
         );
       }
     } catch (error: any) {
@@ -495,14 +576,14 @@ export default function TelegramPaymentDialog({
         console.log(`🔄 Polling #${attempts + 1} pour depositId=${depositId}`);
 
         const response = await fetch(
-          `/api/pawapay/deposits?depositId=${depositId}`
+          `/api/pawapay/deposits?depositId=${depositId}`,
         );
 
         if (!response.ok) {
           console.warn(
             `⚠️ HTTP ${response.status}, nouvelle tentative dans ${
               delay / 1000
-            }s`
+            }s`,
           );
           await new Promise((resolve) => setTimeout(resolve, delay));
           attempts++;
@@ -616,7 +697,7 @@ export default function TelegramPaymentDialog({
       return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(3)}`;
     return `${cleanPhone.slice(0, 3)} ${cleanPhone.slice(
       3,
-      6
+      6,
     )} ${cleanPhone.slice(6, 9)}`;
   };
 
@@ -847,6 +928,75 @@ export default function TelegramPaymentDialog({
                   <Badge variant="secondary" className="text-xs">
                     Paiement unique
                   </Badge>
+                </div>
+              </div>
+              {/* voucher */}
+              <div className="space-y-4">
+                {/* Section Voucher - Identique à PaymentDialog */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-sm">Code promotionnel</h4>
+                    {voucherApplied && (
+                      <Badge  className="text-xs">
+                        Réduction appliquée
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Entrez votre code promo"
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value)}
+                      disabled={voucherApplied || isValidatingVoucher}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant={voucherApplied ? "outline" : "default"}
+                      onClick={
+                        voucherApplied
+                          ? () => {
+                              setVoucherApplied(false);
+                              setDiscountAmount(0);
+                              setVoucherCode("");
+                              setVoucherError("");
+                            }
+                          : validateVoucher
+                      }
+                      disabled={isValidatingVoucher || !voucherCode.trim()}
+                      size="sm"
+                    >
+                      {isValidatingVoucher ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : voucherApplied ? (
+                        "Annuler"
+                      ) : (
+                        "Appliquer"
+                      )}
+                    </Button>
+                  </div>
+
+                  {voucherError && (
+                    <p className="text-sm text-red-600">{voucherError}</p>
+                  )}
+
+                  {voucherApplied && discountAmount > 0 && (
+                    <div className="space-y-2 p-3 bg-green-50 rounded">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Réduction:</span>
+                        <span className="font-semibold text-green-700">
+                          -{discountAmount.toLocaleString()} XAF
+                        </span>
+                      </div>
+                      <div className="flex justify-between font-medium">
+                        <span>Total après réduction:</span>
+                        <span className="text-green-700">
+                          {finalAmount.toLocaleString()} XAF
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
