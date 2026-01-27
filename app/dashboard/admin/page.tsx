@@ -88,11 +88,11 @@ export default function AdminDashboardPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Rafraîchir
           </Button>
-          <Button variant="outline" onClick={logout}>
+          {/* <Button variant="outline" onClick={logout}>
             Déconnexion
-          </Button>
+          </Button> */}
           <Button variant="outline" onClick={handlevoucherclick}>
-            Vouhcers
+            Vouchers
           </Button>
         </div>
       </div>

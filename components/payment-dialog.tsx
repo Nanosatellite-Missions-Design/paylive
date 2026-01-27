@@ -61,6 +61,7 @@ import {
   convertXAFToCurrency,
 } from "@/lib/allocate";
 import { pollTransactionStatus } from "@/lib/pawapaypolling";
+import { toast } from "./ui/use-toast";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -277,6 +278,75 @@ export function PaymentDialog({
     }
   };
 
+  // 🎯 NOUVELLE FONCTION : Gérer les vouchers 100%
+  const handle100PercentVoucher = async () => {
+    if (!voucherApplied || !voucherCode) {
+      alert("Aucun voucher appliqué");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      console.log("🎫 Traitement voucher 100% gratuit...");
+
+      // Préparer les données
+      const paymentData = {
+        product: product,
+        originalAmount: parseFloat(amount.replace(/[^\d.]/g, "")) || 0,
+        discountAmount: discountAmount,
+        finalAmount: 0,
+        voucherCode: voucherCode,
+        userId: userInfo?.uid,
+        metadata: {
+          type: "normal_payment",
+          product: product,
+          voucher100Percent: true,
+        },
+      };
+
+      // Appeler l'API pour traiter le voucher 100%
+      const response = await fetch("/api/vouchers/process-100-percent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voucherCode: voucherCode,
+          paymentData: paymentData,
+          userId: userInfo?.uid,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error("❌ Erreur traitement voucher 100%:", result);
+        alert(`Erreur: ${result.error || "Erreur inconnue"}`);
+        return;
+      }
+
+      console.log("✅ Transaction 100% gratuite créée:", result.transactionId);
+
+      // Mettre à jour l'état de paiement
+      if (onPaymentComplete) {
+        onPaymentComplete("success");
+      }
+
+      // Fermer le dialog
+      onOpenChange(false);
+
+      // Rediriger vers la page de succès
+      // toast.success("🎉 Offre gratuite activée avec succès !");
+
+      // Vous pouvez rediriger vers une page de confirmation
+      // router.push(`/payment/success?transactionId=${result.transactionId}`);
+    } catch (error: any) {
+      console.error("❌ Erreur lors du traitement gratuit:", error);
+      alert("Erreur lors de l'activation de l'offre gratuite");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handlePayment = async () => {
     // 1. Validation de base
     if (!selectedCountry || !mobileProvider || !phoneNumber) {
@@ -286,6 +356,15 @@ export function PaymentDialog({
 
     // const amountNumber = getSafeAmount();
     const amountNumber = voucherApplied ? finalAmount : getSafeAmount();
+
+    // 🎯 NOUVEAU : Vérifier si c'est un voucher 100%
+    const is100PercentVoucher =
+      voucherApplied && discountAmount > 0 && finalAmount === 0;
+
+    if (is100PercentVoucher) {
+      // TRAITEMENT SPÉCIAL POUR 100% GRATUIT
+      return await handle100PercentVoucher();
+    }
 
     if (amountNumber === 0) {
       alert("Montant invalide");
@@ -675,6 +754,37 @@ export function PaymentDialog({
               )}
             </div>
           </div>
+
+          {/* 100% voucher message */}
+          {/* {voucherApplied && finalAmount === 0 && (
+            <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-green-100 p-2 rounded-full">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-green-800">
+                    🎁 OFFRE 100% GRATUITE !
+                  </h4>
+                  <p className="text-sm text-green-700">
+                    Ce code vous offre le produit gratuitement. Aucun paiement
+                    requis.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 p-3 bg-white rounded border">
+                <p className="text-sm font-medium">
+                  Pour activer cette offre gratuite :
+                </p>
+                <ol className="text-sm text-gray-600 mt-1 space-y-1 ml-4 list-decimal">
+                  <li>Cliquez sur "Activer l'offre gratuite"</li>
+                  <li>La transaction sera enregistrée automatiquement</li>
+                  <li>Vous recevrez immédiatement l'accès au produit</li>
+                </ol>
+              </div>
+            </div>
+          )} */}
+
           <Separator />
           {/* Payment Methods */}
           <div className="space-y-4">
@@ -789,7 +899,7 @@ export function PaymentDialog({
                       </div>
 
                       {/* 4. Payment Button */}
-                      <Button
+                      {/* <Button
                         size="lg"
                         className="w-full"
                         onClick={handlePayment}
@@ -806,6 +916,36 @@ export function PaymentDialog({
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                             Traitement en cours...
                           </div>
+                        ) : (
+                          `Payer ${getDisplayAmount()} avec Mobile Money`
+                        )}
+                      </Button> */}
+                      {/* new version */}
+                      <Button
+                        size="lg"
+                        className={`w-full ${finalAmount === 0 ? "bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700" : "bg-green-600 hover:bg-green-700"}`}
+                        onClick={
+                          finalAmount === 0
+                            ? handle100PercentVoucher
+                            : handlePayment
+                        }
+                        disabled={
+                          isProcessing ||
+                          !selectedCountry ||
+                          !mobileProvider ||
+                          phoneNumber.length < 5 ||
+                          (!amount && !voucherApplied)
+                        }
+                      >
+                        {isProcessing ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {finalAmount === 0
+                              ? "Activation..."
+                              : "Traitement..."}
+                          </div>
+                        ) : finalAmount === 0 ? (
+                          `🎁 Activer l'offre gratuite`
                         ) : (
                           `Payer ${getDisplayAmount()} avec Mobile Money`
                         )}

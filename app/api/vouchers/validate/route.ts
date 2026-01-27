@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       valid: true,
       discountAmount: result.discountAmount,
       finalAmount: result.finalAmount,
+      is100Percent: result.discountAmount === result.finalAmount,
       voucher: {
         code: result.voucher?.code,
         discountType: result.voucher?.discountType,

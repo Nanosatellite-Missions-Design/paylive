@@ -287,9 +287,10 @@ export default function VouchersAdminPage() {
               <CardTitle className="flex items-center justify-between">
                 <span>Créer un code promo</span>
                 <Button
-                  variant="ghost"
+                  variant="default"
                   size="sm"
                   onClick={() => setShowCreateForm(!showCreateForm)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white shadow-sm"
                 >
                   {showCreateForm ? "Masquer" : "Afficher"}
                 </Button>

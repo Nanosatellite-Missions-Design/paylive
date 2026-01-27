@@ -313,6 +313,218 @@ export default function TelegramPaymentDialog({
     }
   };
 
+  // Ajouter un useEffect pour récupérer le creatorUid si manquant
+  useEffect(() => {
+    const fetchCreatorUid = async () => {
+      if (groupId && !creatorUid) {
+        try {
+          console.log("🔍 Récupération du creatorUid pour le groupe:", groupId);
+
+          const response = await fetch(
+            `/api/telegram/get-creator-uid?groupId=${groupId}`,
+          );
+          const data = await response.json();
+
+          if (data.success && data.creatorUid) {
+            console.log("✅ CreatorUid récupéré:", data.creatorUid);
+            // Vous ne pouvez pas modifier creatorUid directement car c'est un prop
+            // Mais vous pouvez stocker dans un état local
+            setCreatorUidFromApi(data.creatorUid);
+          }
+        } catch (error) {
+          console.error("❌ Erreur récupération creatorUid:", error);
+        }
+      }
+    };
+
+    if (open) {
+      fetchCreatorUid();
+    }
+  }, [groupId, open, creatorUid]);
+
+  // Ajouter cet état
+  const [creatorUidFromApi, setCreatorUidFromApi] = useState<
+    string | undefined
+  >(undefined);
+
+  // Modifier handle100PercentVoucher pour utiliser creatorUidFromApi si creatorUid est manquant
+  const handle100PercentVoucher = async () => {
+    if (!voucherApplied || !voucherCode) {
+      alert("Aucun voucher appliqué");
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      console.log("🎫 Traitement voucher 100% gratuit pour Telegram...");
+
+      // SOLUTION SIMPLE : Utiliser l'API Telegram Subscriptions normale
+      // avec un montant de 0 et un voucher
+
+      const subscriptionData = {
+        groupId: groupId,
+        telegramGroupId: telegramGroupId,
+        groupName: groupName || product,
+        subscriberTelegramId: subscriberTelegramId,
+        subscriberTelegramUsername: subscriberTelegramUsername,
+        subscriberName: subscriberName || "Utilisateur Telegram",
+        subscriberEmail: subscriberEmail,
+        subscriptionType: groupSubscriptionType,
+        // 🔥 LES CHAMPS CLÉS :
+        paymentTransactionId: `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        paymentAmount: 0, // Montant 0 pour gratuit
+        voucherApplied: true,
+        voucherCode: voucherCode,
+        discountAmount: parseFloat(amount.replace(/[^\d.]/g, "")) || 0,
+        originalAmount: parseFloat(amount.replace(/[^\d.]/g, "")) || 0,
+        // Pas besoin de creatorUid, l'API le trouvera elle-même
+        fromBot: false,
+      };
+
+      console.log("📤 Appel API Telegram Subscriptions:", subscriptionData);
+
+      const response = await fetch("/api/telegram/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscriptionData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        console.error("❌ Erreur API:", result);
+        throw new Error(result.error || "Erreur création abonnement");
+      }
+
+      console.log("✅ Succès:", result);
+
+      // Mettre à jour l'état de paiement
+      if (onPaymentComplete) {
+        onPaymentComplete("success");
+      }
+
+      // Fermer le dialog et rediriger
+      onOpenChange(false);
+
+      // Rediriger
+      if (result.subscriptionId) {
+        const params = new URLSearchParams({
+          subscriptionId: result.subscriptionId,
+          groupName: encodeURIComponent(groupName || product),
+          price: "0",
+          telegramUserId: subscriberTelegramId || "",
+          subscriptionType: groupSubscriptionType,
+          depositId: result.paymentTransactionId || result.transactionId,
+          freeOffer: "true",
+        });
+
+        if (result.inviteLink) {
+          params.append("inviteLink", encodeURIComponent(result.inviteLink));
+        }
+
+        router.push(
+          `/telegram/subscription-success/${result.subscriptionId}?${params}`,
+        );
+      } else {
+        alert("🎉 Offre gratuite activée ! Vérifiez vos messages Telegram.");
+        router.push("/dashboard");
+      }
+    } catch (error: any) {
+      console.error("❌ Erreur finale:", error);
+      alert("Erreur: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Nouvelle fonction séparée pour traiter la souscription gratuite
+  const processFreeSubscription = async (finalCreatorUid: string) => {
+    // Préparer les données Telegram
+    const telegramData = {
+      groupId: groupId,
+      telegramGroupId: telegramGroupId,
+      groupName: groupName || product,
+      creatorUid: finalCreatorUid, // 🔥 UTILISER L'UID RÉCUPÉRÉ
+      subscriberTelegramId: subscriberTelegramId,
+      subscriberTelegramUsername: subscriberTelegramUsername,
+      subscriberName: subscriberName || "Utilisateur Telegram",
+      subscriberEmail: subscriberEmail,
+      subscriptionType: groupSubscriptionType,
+      originalAmount: parseFloat(amount.replace(/[^\d.]/g, "")) || 0,
+      discountAmount: discountAmount,
+      finalAmount: 0,
+    };
+
+    const paymentData = {
+      product: product,
+      originalAmount: telegramData.originalAmount,
+      discountAmount: discountAmount,
+      finalAmount: 0,
+      voucherCode: voucherCode,
+    };
+
+    // Appeler l'API pour traiter le voucher 100%
+    const response = await fetch("/api/vouchers/process-100-percent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voucherCode: voucherCode,
+        paymentData: paymentData,
+        telegramData: telegramData,
+        userId: finalCreatorUid,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      console.error("❌ Erreur traitement voucher 100%:", result);
+      throw new Error(result.error || "Erreur inconnue");
+    }
+
+    console.log("✅ Abonnement Telegram 100% gratuit créé:", {
+      subscriptionId: result.subscriptionId,
+      transactionId: result.transactionId,
+      inviteLink: result.inviteLink ? "Oui" : "Non",
+    });
+
+    // Mettre à jour l'état de paiement
+    if (onPaymentComplete) {
+      onPaymentComplete("success");
+    }
+
+    // Fermer le dialog et rediriger
+    onOpenChange(false);
+
+    // Rediriger vers la page de succès
+    if (result.subscriptionId) {
+      const params = new URLSearchParams({
+        subscriptionId: result.subscriptionId,
+        groupName: encodeURIComponent(groupName || product),
+        price: "0",
+        telegramUserId: subscriberTelegramId || "",
+        subscriptionType: groupSubscriptionType,
+        depositId: result.transactionId,
+        freeOffer: "true",
+      });
+
+      if (result.inviteLink) {
+        params.append("inviteLink", encodeURIComponent(result.inviteLink));
+        console.log("🔗 Lien d'invitation disponible:", result.inviteLink);
+      }
+
+      router.push(
+        `/telegram/subscription-success/${result.subscriptionId}?${params}`,
+      );
+    } else {
+      alert(
+        "🎉 Offre gratuite activée ! Vous recevrez bientôt un message sur Telegram.",
+      );
+      router.push("/dashboard");
+    }
+  };
+
   const handlePayment = async () => {
     if (!selectedCountry || !mobileProvider || !phoneNumber) {
       alert("Veuillez remplir tous les champs requis");
@@ -321,6 +533,15 @@ export default function TelegramPaymentDialog({
 
     // const amountNumber = getSafeAmount();
     const amountNumber = voucherApplied ? finalAmount : getSafeAmount();
+
+    // 🎯 NOUVEAU : Vérifier si c'est un voucher 100%
+    const is100PercentVoucher =
+      voucherApplied && discountAmount > 0 && finalAmount === 0;
+
+    if (is100PercentVoucher) {
+      // TRAITEMENT SPÉCIAL POUR 100% GRATUIT
+      return await handle100PercentVoucher();
+    }
 
     if (amountNumber === 0) {
       alert("Montant invalide");
@@ -937,9 +1158,7 @@ export default function TelegramPaymentDialog({
                   <div className="flex items-center justify-between">
                     <h4 className="font-medium text-sm">Code promotionnel</h4>
                     {voucherApplied && (
-                      <Badge  className="text-xs">
-                        Réduction appliquée
-                      </Badge>
+                      <Badge className="text-xs">Réduction appliquée</Badge>
                     )}
                   </div>
 
@@ -999,6 +1218,40 @@ export default function TelegramPaymentDialog({
                   )}
                 </div>
               </div>
+              {/* {voucherApplied && finalAmount === 0 && (
+                <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-purple-100 p-2 rounded-full">
+                      <CheckCircle className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-purple-800">
+                        🎁 ABONNEMENT TELEGRAM GRATUIT !
+                      </h4>
+                      <p className="text-sm text-purple-700">
+                        Ce code vous offre l'abonnement gratuitement. Aucun
+                        paiement requis.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 bg-white rounded border">
+                    <ul className="text-sm text-gray-600 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Accès immédiat au groupe Telegram</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Lien d'invitation envoyé directement</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span>Aucune transaction Mobile Money</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )} */}
             </CardContent>
           </Card>
 
