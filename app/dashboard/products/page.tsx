@@ -1241,9 +1241,9 @@ export default function ProductsPage() {
                         <SelectItem value="hebdomadaire">
                           Hebdomadaire (7 jours)
                         </SelectItem>
-                        <SelectItem value="trois_jours">
+                        {/* <SelectItem value="trois_jours">
                           3 jours (test)
-                        </SelectItem>
+                        </SelectItem> */}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1276,12 +1276,10 @@ export default function ProductsPage() {
                             <SelectValue placeholder="Sélectionnez la durée" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="3_days">3 jours</SelectItem>
+                            {/* <SelectItem value="3_days">3 jours</SelectItem> */}
                             <SelectItem value="7_days">7 jours</SelectItem>
-                            <SelectItem value="14_days">
-                              14 jours (2 semaines)
-                            </SelectItem>
-                            <SelectItem value="30_days">30 jours</SelectItem>
+                            <SelectItem value="14_days">14 jours</SelectItem>
+                            {/* <SelectItem value="30_days">30 jours</SelectItem> */}
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-gray-500">
@@ -1551,9 +1549,9 @@ export default function ProductsPage() {
                         <SelectItem value="hebdomadaire">
                           Hebdomadaire (7 jours)
                         </SelectItem>
-                        <SelectItem value="trois_jours">
+                        {/* <SelectItem value="trois_jours">
                           3 jours (test)
-                        </SelectItem>
+                        </SelectItem> */}
                       </SelectContent>
                     </Select>
                   </div>
@@ -1582,10 +1580,10 @@ export default function ProductsPage() {
                             <SelectValue placeholder="Sélectionnez la durée" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="3_days">3 jours</SelectItem>
+                            {/* <SelectItem value="3_days">3 jours</SelectItem> */}
                             <SelectItem value="7_days">7 jours</SelectItem>
                             <SelectItem value="14_days">14 jours</SelectItem>
-                            <SelectItem value="30_days">30 jours</SelectItem>
+                            {/* <SelectItem value="30_days">30 jours</SelectItem> */}
                           </SelectContent>
                         </Select>
                       </div>
