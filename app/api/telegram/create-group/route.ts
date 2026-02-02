@@ -101,7 +101,13 @@ export async function POST(req: NextRequest) {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       publicSlug: `telegram-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      subscriptionCount: 0
+      subscriptionCount: 0,
+      // AJOUTER CES 2 LIGNES SEULEMENT :
+  hasTrialPeriod: body.hasTrialPeriod || false,
+  trialDuration: body.trialDuration || null,
+  // Optionnel : ajouter trialStartDate et trialEndDate si tu veux une période d'essai globale
+  // trialStartDate: body.hasTrialPeriod ? serverTimestamp() : null,
+  // trialEndDate: body.hasTrialPeriod ? Timestamp.fromDate(new Date(Date.now() + (14 * 24 * 60 * 60 * 1000))) : null,
     };
 
     console.log('Création du document dans telegram_groups...');
@@ -159,7 +165,10 @@ const productData = {
   images: [image || "/telegram-group.png"],
   image: image || "/telegram-group.png",
   inStock: 9999,
-  botIsAdmin: true
+  botIsAdmin: true,
+    // AJOUTER CES 2 LIGNES SEULEMENT :
+  hasTrialPeriod: body.hasTrialPeriod || false,
+  trialDuration: body.trialDuration || null,
 };
     console.log('Création du document dans products...');
     await setDoc(productDoc, productData);

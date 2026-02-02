@@ -67,7 +67,7 @@ export default function ProductsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingExistingImages, setEditingExistingImages] = useState<string[]>(
-    []
+    [],
   );
   const [editingNewImageFiles, setEditingNewImageFiles] = useState<File[]>([]);
   const [editingNewImagePreviews, setEditingNewImagePreviews] = useState<
@@ -79,6 +79,8 @@ export default function ProductsPage() {
   // États d'édition pour Telegram
   const [editingTelegramWelcomeMessage, setEditingTelegramWelcomeMessage] =
     useState("");
+  const [editingHasTrialPeriod, setEditingHasTrialPeriod] = useState(false);
+  const [editingTrialDuration, setEditingTrialDuration] = useState("14_days");
   const [editingTelegramMaxMembers, setEditingTelegramMaxMembers] =
     useState("");
   const [editingTelegramSubscriptionType, setEditingTelegramSubscriptionType] =
@@ -101,7 +103,7 @@ export default function ProductsPage() {
   // Champs pour Telegram
   const [telegramGroupId, setTelegramGroupId] = useState("");
   const [telegramWelcomeMessage, setTelegramWelcomeMessage] = useState(
-    "Bienvenue dans le groupe ! 👋"
+    "Bienvenue dans le groupe ! 👋",
   );
   const [telegramMaxMembers, setTelegramMaxMembers] = useState("100");
   const [telegramSubscriptionType, setTelegramSubscriptionType] =
@@ -111,6 +113,8 @@ export default function ProductsPage() {
   const [telegramGroupImagePreview, setTelegramGroupImagePreview] = useState<
     string | null
   >(null);
+  const [hasTrialPeriod, setHasTrialPeriod] = useState(false);
+  const [trialDuration, setTrialDuration] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const telegramFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -241,7 +245,7 @@ export default function ProductsPage() {
   // Fonction d'upload d'image robuste
   const uploadImageToFirebase = async (
     file: File,
-    path: string
+    path: string,
   ): Promise<string> => {
     try {
       // Vérifications de base
@@ -272,7 +276,7 @@ export default function ProductsPage() {
     } catch (error: any) {
       console.error("Erreur lors de l'upload de l'image:", error);
       throw new Error(
-        `Échec de l'upload: ${error.message || "Erreur inconnue"}`
+        `Échec de l'upload: ${error.message || "Erreur inconnue"}`,
       );
     }
   };
@@ -334,7 +338,7 @@ export default function ProductsPage() {
           try {
             telegramImageUrl = await uploadImageToFirebase(
               telegramGroupImageFile,
-              `telegram-groups/${user.uid}`
+              `telegram-groups/${user.uid}`,
             );
           } catch (uploadError: any) {
             console.error("Erreur upload image Telegram:", uploadError);
@@ -364,6 +368,8 @@ export default function ProductsPage() {
             creatorUid: user.uid,
             creatorName: userInfo.name || "Anonyme",
             image: telegramImageUrl,
+            hasTrialPeriod: hasTrialPeriod,
+            trialDuration: hasTrialPeriod ? trialDuration : null,
           }),
         });
 
@@ -371,7 +377,7 @@ export default function ProductsPage() {
 
         if (!response.ok) {
           throw new Error(
-            result.error || "Erreur lors de la création du groupe"
+            result.error || "Erreur lors de la création du groupe",
           );
         }
 
@@ -390,7 +396,7 @@ export default function ProductsPage() {
       } else {
         // Créer un produit normal (code existant inchangé)
         const uploadPromises = newProductImageFiles.map((file) =>
-          uploadImageToFirebase(file, `products/${user.uid}`)
+          uploadImageToFirebase(file, `products/${user.uid}`),
         );
 
         const imageUrls = await Promise.all(uploadPromises);
@@ -435,6 +441,8 @@ export default function ProductsPage() {
       setTelegramSubscriptionType("mensuelle");
       setTelegramGroupImageFile(null);
       setTelegramGroupImagePreview(null);
+      setHasTrialPeriod(false);
+      setTrialDuration("");
     } catch (error: any) {
       console.error("Erreur:", error);
       toast({
@@ -457,12 +465,15 @@ export default function ProductsPage() {
 
     if (product.type === "telegram") {
       setEditingTelegramWelcomeMessage(
-        product.welcomeMessage || "Bienvenue dans le groupe ! 👋"
+        product.welcomeMessage || "Bienvenue dans le groupe ! 👋",
       );
       setEditingTelegramMaxMembers(product.maxMembers?.toString() || "100");
       setEditingTelegramSubscriptionType(
-        product.subscriptionType || "mensuelle"
+        product.subscriptionType || "mensuelle",
       );
+      // AJOUTER : Charger les données d'essai
+      setEditingHasTrialPeriod(product.hasTrialPeriod || false);
+      setEditingTrialDuration(product.trialDuration || "14_days");
     }
 
     setIsEditing(true);
@@ -493,13 +504,13 @@ export default function ProductsPage() {
       // Vérifier le chemin avant l'upload
       if (!uploadPath || uploadPath.includes("undefined")) {
         throw new Error(
-          "Chemin d'upload invalide. Vérifiez que l'utilisateur et le produit sont corrects."
+          "Chemin d'upload invalide. Vérifiez que l'utilisateur et le produit sont corrects.",
         );
       }
 
       if (editingNewImageFiles.length > 0) {
         const uploadPromises = editingNewImageFiles.map((file) =>
-          uploadImageToFirebase(file, uploadPath)
+          uploadImageToFirebase(file, uploadPath),
         );
 
         const newUrls = await Promise.all(uploadPromises);
@@ -531,7 +542,7 @@ export default function ProductsPage() {
         user.uid,
         "products",
         editingProduct.id,
-        updatedProduct
+        updatedProduct,
       );
 
       toast({
@@ -555,79 +566,6 @@ export default function ProductsPage() {
       setLoading(false);
     }
   };
-
-  // const handleSaveEditTelegram = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   if (
-  //     !user ||
-  //     !user.uid ||
-  //     !editingProduct ||
-  //     editingProduct.type !== "telegram"
-  //   ) {
-  //     toast({
-  //       title: "Erreur",
-  //       description: "Données utilisateur ou produit invalides.",
-  //       variant: "destructive",
-  //     });
-  //     return;
-  //   }
-
-  //   setLoading(true);
-
-  //   try {
-  //     let imageUrl = editingExistingImages[0] || "/placeholder.svg";
-  //     const uploadPath = `telegram-groups/${user.uid}/${editingProduct.id}`;
-
-  //     // Vérifier si un nouveau fichier a été sélectionné via l'input
-  //     if (editTelegramFileInputRef.current?.files?.length) {
-  //       const file = editTelegramFileInputRef.current.files[0];
-  //       if (file) {
-  //         imageUrl = await uploadImageToFirebase(file, uploadPath);
-  //       }
-  //     }
-
-  //     const updatedProduct = {
-  //       ...editingProduct,
-  //       name: editingProduct.name,
-  //       price: editingProduct.price,
-  //       description: editingProduct.description,
-  //       subscriptionType: editingTelegramSubscriptionType,
-  //       welcomeMessage: editingTelegramWelcomeMessage,
-  //       maxMembers: parseInt(editingTelegramMaxMembers) || 100,
-  //       images: [imageUrl],
-  //       image: imageUrl,
-  //       updatedAt: new Date().toISOString(),
-  //     };
-
-  //     await updateSubcollectionDocument(
-  //       "users",
-  //       user.uid,
-  //       "products",
-  //       editingProduct.id,
-  //       updatedProduct
-  //     );
-
-  //     toast({
-  //       title: "Groupe mis à jour",
-  //       description: "Votre groupe Telegram a été mis à jour avec succès.",
-  //     });
-
-  //     setIsEditing(false);
-  //     setEditingProduct(null);
-  //     setEditingExistingImages([]);
-  //     setEditingTelegramImagePreview(null);
-  //   } catch (error: any) {
-  //     console.error("Erreur lors de la mise à jour du groupe Telegram:", error);
-  //     toast({
-  //       title: "Erreur",
-  //       description:
-  //         error.message || "Échec de la mise à jour du groupe Telegram.",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleSaveEditTelegram = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,6 +614,9 @@ export default function ProductsPage() {
         telegramGroupDocId: editingProduct.telegramGroupDocId,
         // Garder le type
         type: "telegram",
+        // AJOUTER : Données d'essai
+        hasTrialPeriod: editingHasTrialPeriod,
+        trialDuration: editingHasTrialPeriod ? editingTrialDuration : null,
       };
 
       // 2. Mettre à jour dans la sous-collection "products"
@@ -684,7 +625,7 @@ export default function ProductsPage() {
         user.uid,
         "products",
         editingProduct.id,
-        updatedProductData
+        updatedProductData,
       );
 
       // 3. Si nous avons l'ID du document telegram_groups, mettre à jour également
@@ -712,14 +653,14 @@ export default function ProductsPage() {
           user.uid,
           "telegram_groups",
           editingProduct.telegramGroupDocId,
-          telegramGroupData
+          telegramGroupData,
         );
 
         console.log("✅ Groupe Telegram mis à jour dans les deux collections");
       } else {
         // Si telegramGroupDocId n'existe pas, on avertit l'utilisateur
         console.warn(
-          "⚠️ telegramGroupDocId non trouvé - seule la collection products a été mise à jour"
+          "⚠️ telegramGroupDocId non trouvé - seule la collection products a été mise à jour",
         );
 
         toast({
@@ -772,7 +713,7 @@ export default function ProductsPage() {
           "users",
           user.uid,
           "telegram_groups",
-          selectedProduct.telegramGroupId
+          selectedProduct.telegramGroupId,
         );
       }
 
@@ -780,7 +721,7 @@ export default function ProductsPage() {
         "users",
         user.uid,
         "products",
-        selectedProduct.id
+        selectedProduct.id,
       );
 
       toast({
@@ -830,7 +771,7 @@ export default function ProductsPage() {
 
   // Gestion de l'image pour les groupes Telegram
   const handleTelegramImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -842,7 +783,7 @@ export default function ProductsPage() {
 
   // Gestion de l'image pour les groupes Telegram (édition)
   const handleEditTelegramImageUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = e.target.files;
     if (files && files.length > 0) {
@@ -1227,10 +1168,10 @@ export default function ProductsPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setNewProductImageFiles((prev) =>
-                                prev.filter((_, i) => i !== index)
+                                prev.filter((_, i) => i !== index),
                               );
                               setNewProductImagePreviews((prev) =>
-                                prev.filter((_, i) => i !== index)
+                                prev.filter((_, i) => i !== index),
                               );
                             }}
                             className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600"
@@ -1303,6 +1244,50 @@ export default function ProductsPage() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  {/* NOUVEAU : Option période d'essai */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Période d'essai gratuite
+                    </Label>
+
+                    <div className="flex items-center gap-2 mb-2">
+                      <Switch
+                        checked={hasTrialPeriod}
+                        onCheckedChange={setHasTrialPeriod}
+                      />
+                      <span className="text-sm">
+                        Activer une période d'essai gratuite
+                      </span>
+                    </div>
+
+                    {hasTrialPeriod && (
+                      <div className="space-y-2 p-3 bg-white rounded border">
+                        <Label>Durée de l'essai gratuit</Label>
+                        <Select
+                          value={trialDuration}
+                          onValueChange={setTrialDuration}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez la durée" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="3_days">3 jours</SelectItem>
+                            <SelectItem value="7_days">7 jours</SelectItem>
+                            <SelectItem value="14_days">
+                              14 jours (2 semaines)
+                            </SelectItem>
+                            <SelectItem value="30_days">30 jours</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">
+                          Les nouveaux membres auront un accès gratuit pendant
+                          cette période
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -1572,6 +1557,40 @@ export default function ProductsPage() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label>Période d'essai gratuite</Label>
+
+                    <div className="flex items-center gap-2 mb-2">
+                      <Switch
+                        checked={editingHasTrialPeriod}
+                        onCheckedChange={setEditingHasTrialPeriod}
+                      />
+                      <span className="text-sm">
+                        Activer une période d'essai gratuite
+                      </span>
+                    </div>
+
+                    {editingHasTrialPeriod && (
+                      <div className="space-y-2 p-3 bg-white rounded border">
+                        <Label>Durée de l'essai gratuit</Label>
+                        <Select
+                          value={editingTrialDuration}
+                          onValueChange={setEditingTrialDuration}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez la durée" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="3_days">3 jours</SelectItem>
+                            <SelectItem value="7_days">7 jours</SelectItem>
+                            <SelectItem value="14_days">14 jours</SelectItem>
+                            <SelectItem value="30_days">30 jours</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <Label
                       htmlFor="edit-maxMembers"
                       className="flex items-center gap-2"
@@ -1808,7 +1827,7 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => {
                             setEditingExistingImages((prev) =>
-                              prev.filter((_, i) => i !== index)
+                              prev.filter((_, i) => i !== index),
                             );
                           }}
                           className="absolute top-0 right-0 bg-white text-red-500 rounded-full p-1 text-xs hover:bg-red-50"
@@ -1832,10 +1851,10 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => {
                             setEditingNewImagePreviews((prev) =>
-                              prev.filter((_, i) => i !== index)
+                              prev.filter((_, i) => i !== index),
                             );
                             setEditingNewImageFiles((prev) =>
-                              prev.filter((_, i) => i !== index)
+                              prev.filter((_, i) => i !== index),
                             );
                           }}
                           className="absolute top-0 right-0 bg-white text-red-500 rounded-full p-1 text-xs hover:bg-red-50"

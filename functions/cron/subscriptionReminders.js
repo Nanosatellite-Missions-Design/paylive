@@ -185,12 +185,24 @@ async function checkExpiringSubscriptions() {
         console.log(`   📭 Aucune action requise pour cet abonnement`);
       }
     }
+
+       // ========== PARTIE 2 : ESSAIS GRATUITS ==========
+    console.log('\n🎁 PARTIE 2 : Essais gratuits');
+    
+    const trialResults = await checkExpiredTrials(); // Appel de la nouvelle fonction
+    const trialReminders = await checkTrialsExpiringSoon(); // Rappels 2 jours avant
     
     console.log(`\n📈 RÉSUMÉ FINAL:`);
     console.log(`✅ Rappels 2 jours envoyés: ${remindersSent}`);
     console.log(`⚠️  Rappels jour J envoyés: ${todayRemindersSent}`);
     console.log(`❌ Abonnements expirés traités: ${expiredHandled}`);
     console.log(`👁️  Abonnements vérifiés: ${snapshot.size}`);
+
+        console.log(`\n🎁 ESSAIS GRATUITS:`);
+    console.log(`   ❌ Essais expirés traités: ${trialResults.expiredTrials || 0}`);
+    console.log(`   📨 Notifications essais envoyées: ${trialResults.notificationsSent || 0}`);
+    console.log(`   🔔 Rappels essais envoyés: ${trialReminders}`);
+    console.log(`   👁️  Essais vérifiés: ${trialResults.totalTrials || 0}`);
     console.log(`🎯 Vérification terminée à ${new Date().toLocaleTimeString('fr-FR')}`);
     
     return {
@@ -198,7 +210,12 @@ async function checkExpiringSubscriptions() {
       remindersSent,
       todayRemindersSent,
       expiredHandled,
-      totalChecked: snapshot.size
+      totalChecked: snapshot.size,
+           // Résultats essais gratuits
+      expiredTrials: trialResults.expiredTrials || 0,
+      trialNotificationsSent: trialResults.notificationsSent || 0,
+      trialRemindersSent: trialReminders,
+      totalTrialsChecked: trialResults.totalTrials || 0
     };
     
   } catch (error) {
@@ -440,6 +457,256 @@ async function debugCheckReminders() {
   }
 }
 
+/**
+ * Vérifie et gère les essais gratuits expirés
+ */
+async function checkExpiredTrials() {
+  try {
+    console.log('\n🎁 Début de la vérification des essais gratuits...');
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    // 1. Chercher tous les essais actifs
+    const subscriptionsRef = collection(db, 'telegram_subscriptions');
+    const q = query(subscriptionsRef, where('status', '==', 'trial'));
+    
+    const snapshot = await getDocs(q);
+    console.log(`📊 ${snapshot.size} essai(s) gratuit(s) actif(s) trouvé(s)`);
+    
+    let expiredTrials = 0;
+    let notificationsSent = 0;
+    const now = new Date();
+    
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const subscriptionId = docSnap.id;
+      
+      // Convertir la date de fin d'essai
+      let trialEndDate;
+      if (data.trialEndDate && data.trialEndDate.toDate) {
+        trialEndDate = data.trialEndDate.toDate();
+      } else if (data.trialEndDate) {
+        trialEndDate = new Date(data.trialEndDate);
+      } else {
+        console.warn(`⚠️ Pas de date de fin d'essai pour ${subscriptionId}`);
+        continue;
+      }
+      
+      const telegramUserId = data.subscriberTelegramId;
+      const groupName = data.groupName || 'Groupe inconnu';
+      
+      if (!telegramUserId) {
+        console.warn(`⚠️ Pas d'ID Telegram pour l'essai ${subscriptionId}`);
+        continue;
+      }
+      
+      // Vérifier si l'essai est expiré
+      if (trialEndDate < now) {
+        expiredTrials++;
+        console.log(`\n⏰ Essai expiré: ${subscriptionId}`);
+        console.log(`   📍 Groupe: ${groupName}`);
+        console.log(`   👤 Utilisateur: ${telegramUserId}`);
+        console.log(`   📅 Essai expiré le: ${trialEndDate.toLocaleString('fr-FR')}`);
+        
+        try {
+          // 1. Mettre à jour le statut dans Firestore
+          await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+            status: 'trial_expired',
+            expiredAt: Timestamp.fromDate(now),
+            updatedAt: Timestamp.fromDate(now),
+            lastReminderSent: Timestamp.fromDate(now)
+          });
+          
+          console.log(`   📝 Statut mis à jour: trial → trial_expired`);
+          
+          // 2. Envoyer notification à l'utilisateur
+          const notificationSent = await sendTrialExpiredNotification(telegramUserId, data);
+          if (notificationSent) {
+            notificationsSent++;
+            console.log(`   📨 Notification envoyée`);
+          }
+          
+          // 3. Retirer l'utilisateur du groupe (optionnel - se fera automatiquement au prochain join)
+          // Le bot le kickera quand il essaiera de rejoindre à nouveau
+          
+        } catch (error) {
+          console.error(`   ❌ Erreur traitement essai expiré:`, error.message);
+        }
+      } else {
+        // Calculer jours restants pour info
+        const daysLeft = Math.ceil((trialEndDate - now) / (1000 * 60 * 60 * 24));
+        console.log(`   ✅ Essai ${subscriptionId}: ${daysLeft} jour(s) restant(s)`);
+      }
+    }
+    
+    console.log(`\n🎁 RÉSUMÉ ESSAIS GRATUITS:`);
+    console.log(`✅ Essais expirés traités: ${expiredTrials}`);
+    console.log(`📨 Notifications envoyées: ${notificationsSent}`);
+    console.log(`👁️  Essais vérifiés: ${snapshot.size}`);
+    
+    return {
+      expiredTrials,
+      notificationsSent,
+      totalTrials: snapshot.size
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur vérification essais:', error);
+    throw error;
+  }
+}
+
+/**
+ * Envoie une notification d'expiration d'essai
+ */
+async function sendTrialExpiredNotification(telegramUserId, subscription) {
+  try {
+    const groupName = subscription.groupName || 'le groupe';
+    
+    const message = `🎁 *Votre essai gratuit a expiré*\n\n` +
+      `Votre accès gratuit à *${groupName}* est terminé.\n\n` +
+      `Pour continuer à profiter du groupe, abonnez-vous maintenant :`;
+    
+    // Construire le lien de paiement
+    let paymentLink;
+    
+    // Essayer avec l'ID Firestore d'abord
+    if (subscription.groupId) {
+      paymentLink = `https://paylivecm.shop/telegram/${subscription.groupId}?telegramUserId=${telegramUserId}`;
+    } else {
+      // Fallback avec l'ID Telegram
+      paymentLink = `https://paylivecm.shop/telegram?telegramGroupId=${subscription.telegramGroupId}&telegramUserId=${telegramUserId}`;
+    }
+    
+    console.log(`   🔗 Lien généré: ${paymentLink}`);
+    
+    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: telegramUserId,
+        text: message,
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "💰 S'abonner", url: paymentLink }
+          ]]
+        }
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.ok) {
+      if (data.error_code === 403) {
+        console.warn(`   ⚠️ Utilisateur ${telegramUserId} a bloqué le bot`);
+        return false;
+      } else {
+        throw new Error(`Telegram API error: ${data.description}`);
+      }
+    } else {
+      console.log(`   📨 Message envoyé (ID: ${data.result.message_id})`);
+      return true;
+    }
+    
+  } catch (error) {
+    console.error(`   ❌ Erreur envoi notification essai:`, error.message);
+    return false;
+  }
+}
+
+/**
+ * Vérifie les essais qui expirent bientôt (2 jours avant)
+ */
+async function checkTrialsExpiringSoon() {
+  try {
+    console.log('\n⏳ Vérification des essais qui expirent bientôt...');
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    
+    const subscriptionsRef = collection(db, 'telegram_subscriptions');
+    const q = query(subscriptionsRef, where('status', '==', 'trial'));
+    
+    const snapshot = await getDocs(q);
+    
+    let remindersSent = 0;
+    const now = new Date();
+    
+    for (const docSnap of snapshot.docs) {
+      const data = docSnap.data();
+      const subscriptionId = docSnap.id;
+      
+      let trialEndDate;
+      if (data.trialEndDate && data.trialEndDate.toDate) {
+        trialEndDate = data.trialEndDate.toDate();
+      } else if (data.trialEndDate) {
+        trialEndDate = new Date(data.trialEndDate);
+      } else {
+        continue;
+      }
+      
+      // Vérifier si l'essai expire dans 2 jours
+      const timeUntilExpiration = trialEndDate.getTime() - now.getTime();
+      const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+      
+      if (timeUntilExpiration > 0 && timeUntilExpiration <= twoDaysMs && !data.trialReminderSent) {
+        try {
+          console.log(`   🔔 Essai expire bientôt: ${subscriptionId}`);
+          
+          // Envoyer rappel
+          const message = `⏰ *Votre essai gratuit expire bientôt*\n\n` +
+            `Votre accès gratuit à *${data.groupName || 'le groupe'}* expire dans 2 jours.\n\n` +
+            `Pour continuer à accéder au groupe, abonnez-vous avant l'expiration :`;
+          
+          let paymentLink;
+          if (data.groupId) {
+            paymentLink = `https://paylivecm.shop/telegram/${data.groupId}?telegramUserId=${data.subscriberTelegramId}`;
+          } else {
+            paymentLink = `https://paylivecm.shop/telegram?telegramGroupId=${data.telegramGroupId}&telegramUserId=${data.subscriberTelegramId}`;
+          }
+          
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: data.subscriberTelegramId,
+              text: message,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[
+                  { text: "💰 S'abonner maintenant", url: paymentLink }
+                ]]
+              }
+            })
+          });
+          
+          // Marquer le rappel comme envoyé
+          await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+            trialReminderSent: true,
+            trialReminderSentAt: Timestamp.fromDate(now),
+            updatedAt: Timestamp.fromDate(now)
+          });
+          
+          remindersSent++;
+          console.log(`   ✅ Rappel envoyé pour l'essai ${subscriptionId}`);
+          
+        } catch (error) {
+          console.error(`   ❌ Erreur rappel essai:`, error.message);
+        }
+      }
+    }
+    
+    console.log(`   📨 Rappels envoyés: ${remindersSent}`);
+    return remindersSent;
+    
+  } catch (error) {
+    console.error('❌ Erreur vérification essais bientôt expirés:', error);
+    return 0;
+  }
+}
+
 // Exécution directe pour les tests
 if (require.main === module) {
   console.log('🚀 Exécution directe du cronjob...');
@@ -475,5 +742,8 @@ module.exports = {
   sendTelegramReminder,
   sendExpirationNotification,
   kickUserFromGroup,
-  debugCheckReminders
+  debugCheckReminders,
+   checkExpiredTrials,
+  sendTrialExpiredNotification,
+  checkTrialsExpiringSoon
 };

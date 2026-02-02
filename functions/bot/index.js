@@ -973,6 +973,122 @@ bot.on('new_chat_members', async (ctx) => {
   }
 });
 
+// async function verifyMemberAccess(ctx, chatId, member) {
+//   const telegramUserId = member.id.toString();
+//   const username = member.username || member.first_name || `ID:${telegramUserId}`;
+  
+//   console.log(`🔍 Vérification ${username} (${telegramUserId}) dans ${chatId}`);
+
+//   if (!db) {
+//     console.log('⚠️ Firebase non disponible, impossible de vérifier');
+//     return;
+//   }
+
+//   try {
+//     const subscriptionsRef = collection(db, 'telegram_subscriptions');
+//     const q = query(
+//       subscriptionsRef,
+//       where('telegramGroupId', '==', chatId),
+//       where('subscriberTelegramId', '==', telegramUserId)
+//     );
+    
+//     const snapshot = await getDocs(q);
+    
+//     let hasValidSubscription = false;
+    
+//     for (const docSnap of snapshot.docs) {
+//       const data = docSnap.data();
+//       const subscriptionId = docSnap.id;
+      
+//       // Vérifier si l'abonnement est actif et non expiré
+//       if (data.status === 'active') {
+//         const endDate = data.endDate?.toDate?.() || new Date(data.endDate);
+//         const now = new Date();
+        
+//         if (endDate > now) {
+//           // Abonnement valide
+//           hasValidSubscription = true;
+          
+//           // Mettre à jour la dernière connexion
+//           await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+//             addedToGroup: true,
+//             addedAt: serverTimestamp(),
+//             updatedAt: serverTimestamp(),
+//             lastAccessAt: serverTimestamp()
+//           });
+          
+//           console.log(`✅ ${username} a un abonnement actif valide`);
+//           break;
+//         } else {
+//           // Abonnement expiré, le marquer
+//           console.log(`❌ ${username} a un abonnement expiré`);
+//           await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+//             status: 'expired',
+//             expiredAt: serverTimestamp()
+//           });
+//         }
+//       } else if (data.status === 'expired') {
+//         console.log(`❌ ${username} a un abonnement déjà expiré`);
+//       }
+//     }
+    
+//     if (!hasValidSubscription) {
+//       console.log(`❌ ${username} n'a pas d'abonnement actif - kick en cours`);
+      
+//       try {
+//         // Kick l'utilisateur
+//         await removeUserFromGroup(chatId, telegramUserId);
+        
+//         console.log(`🚫 ${username} kické du groupe`);
+        
+//         // Obtenir l'ID Firestore du groupe pour le lien
+//         const firestoreGroupId = await getFirestoreGroupId(chatId);
+        
+//         let paymentLink;
+//         if (firestoreGroupId) {
+//           paymentLink = `https://paylivecm.shop/telegram/${firestoreGroupId}?telegramUserId=${telegramUserId}`;
+//         } else {
+//           paymentLink = `https://paylivecm.shop/telegram?telegramGroupId=${chatId}&telegramUserId=${telegramUserId}`;
+//         }
+        
+//         try {
+//           await bot.telegram.sendMessage(
+//             telegramUserId,
+//             `❌ *Accès refusé*\n\n` +
+//             `Vous avez été retiré du groupe car vous n'avez pas d'abonnement actif.\n\n` +
+//             `💰 Pour rejoindre ce groupe, achetez un abonnement ici :\n` +
+//             `${paymentLink}`,
+//             {
+//               parse_mode: 'Markdown',
+//               reply_markup: {
+//                 inline_keyboard: [[
+//                   { text: "💰 Acheter un abonnement", url: paymentLink }
+//                 ]]
+//               }
+//             }
+//           );
+          
+//           console.log(`📨 Message d'achat envoyé à ${username}`);
+//         } catch (msgError) {
+//           console.error('⚠️ Impossible d\'envoyer message:', msgError.message);
+//         }
+//       } catch (kickError) {
+//         console.error('❌ Erreur kick:', kickError.message);
+//       }
+//     } else {
+//       // Message de bienvenue dans le groupe
+//       try {
+//         await ctx.reply(`👋 Bienvenue ${member.first_name || ''} ! Profite bien du groupe !`);
+//       } catch (welcomeError) {
+//         // Ignorer l'erreur de message
+//       }
+//     }
+//   } catch (error) {
+//     console.error('❌ Erreur vérification:', error.message);
+//   }
+// }
+
+// nouvel version ppour laise lesutilisater avec trial performer
 async function verifyMemberAccess(ctx, chatId, member) {
   const telegramUserId = member.id.toString();
   const username = member.username || member.first_name || `ID:${telegramUserId}`;
@@ -985,6 +1101,46 @@ async function verifyMemberAccess(ctx, chatId, member) {
   }
 
   try {
+    // === ÉTAPE 1 : Vérifier si le groupe a une période d'essai ===
+    let groupHasTrial = false;
+    let trialDays = 0;
+    
+    try {
+      // Chercher l'info du groupe dans telegram_groups
+      const firestoreGroupId = await getFirestoreGroupId(chatId);
+      if (firestoreGroupId) {
+        // Chercher dans tous les utilisateurs (comme ta fonction getFirestoreGroupId)
+        const usersRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersRef);
+        
+        for (const userDoc of usersSnapshot.docs) {
+          const userId = userDoc.id;
+          const groupsRef = collection(db, 'users', userId, 'telegram_groups');
+          const q = query(groupsRef, where('telegramGroupId', '==', chatId));
+          const groupsSnapshot = await getDocs(q);
+          
+          if (!groupsSnapshot.empty) {
+            const groupData = groupsSnapshot.docs[0].data();
+            if (groupData.hasTrialPeriod) {
+              groupHasTrial = true;
+              // Extraire le nombre de jours
+              if (groupData.trialDuration) {
+                const daysMatch = groupData.trialDuration.match(/(\d+)_days/);
+                trialDays = daysMatch ? parseInt(daysMatch[1]) : 14;
+              } else {
+                trialDays = 14; // Valeur par défaut
+              }
+              console.log(`🎁 Groupe avec essai: ${trialDays} jours`);
+            }
+            break;
+          }
+        }
+      }
+    } catch (trialError) {
+      console.log('⚠️ Erreur vérification essai:', trialError.message);
+    }
+
+    // === ÉTAPE 2 : Vérifier les abonnements (CODE EXISTANT - NE PAS CHANGER) ===
     const subscriptionsRef = collection(db, 'telegram_subscriptions');
     const q = query(
       subscriptionsRef,
@@ -995,6 +1151,7 @@ async function verifyMemberAccess(ctx, chatId, member) {
     const snapshot = await getDocs(q);
     
     let hasValidSubscription = false;
+    let isTrialUser = false;
     
     for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
@@ -1030,9 +1187,75 @@ async function verifyMemberAccess(ctx, chatId, member) {
       } else if (data.status === 'expired') {
         console.log(`❌ ${username} a un abonnement déjà expiré`);
       }
+      
+      // === AJOUT : Vérifier si c'est un essai ===
+      if (data.status === 'trial') {
+        const trialEndDate = data.trialEndDate?.toDate?.() || new Date(data.trialEndDate);
+        const now = new Date();
+        
+        if (trialEndDate > now) {
+          isTrialUser = true;
+          console.log(`🎁 ${username} a un essai actif jusqu'au ${trialEndDate.toLocaleDateString()}`);
+          break;
+        } else {
+          // Essai expiré
+          await updateDoc(doc(db, 'telegram_subscriptions', subscriptionId), {
+            status: 'trial_expired',
+            expiredAt: serverTimestamp()
+          });
+        }
+      }
     }
     
-    if (!hasValidSubscription) {
+    // === ÉTAPE 3 : Nouveau membre - Créer un essai si le groupe en a un ===
+    if (!hasValidSubscription && !isTrialUser && groupHasTrial && snapshot.empty) {
+      console.log(`🎁 ${username} est éligible pour un essai de ${trialDays} jours`);
+      
+      try {
+        // Calculer la date de fin d'essai
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+        
+        // Créer un document d'essai
+        const trialSubscription = {
+          subscriberTelegramId: telegramUserId,
+          telegramGroupId: chatId,
+          groupName: ctx.chat.title || 'Groupe Telegram',
+          status: 'trial',
+          trialStartDate: serverTimestamp(),
+          trialEndDate: Timestamp.fromDate(trialEndDate),
+          trialDuration: `${trialDays}_days`,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        await addDoc(collection(db, 'telegram_subscriptions'), trialSubscription);
+        
+        console.log(`✅ Essai créé pour ${username} jusqu'au ${trialEndDate.toLocaleDateString()}`);
+        
+        // Message de bienvenue spécial
+        try {
+          await ctx.reply(
+            `👋 Bienvenue ${member.first_name || ''} !\n\n` +
+            `🎁 *Période d'essai gratuite activée !*\n` +
+            `Profitez de l'accès gratuit pendant ${trialDays} jours.\n` +
+            `Expire le: ${trialEndDate.toLocaleDateString('fr-FR')}`
+          );
+        } catch (welcomeError) {
+          console.log('⚠️ Impossible d\'envoyer message de bienvenue');
+        }
+        
+        // On ne kick pas l'utilisateur, il a son essai
+        return;
+        
+      } catch (trialError) {
+        console.error('❌ Erreur création essai:', trialError.message);
+        // Continue avec la logique normale (kick)
+      }
+    }
+    
+    // === ÉTAPE 4 : Logique existante (NE PAS CHANGER) ===
+    if (!hasValidSubscription && !isTrialUser) {
       console.log(`❌ ${username} n'a pas d'abonnement actif - kick en cours`);
       
       try {
@@ -1076,9 +1299,13 @@ async function verifyMemberAccess(ctx, chatId, member) {
         console.error('❌ Erreur kick:', kickError.message);
       }
     } else {
-      // Message de bienvenue dans le groupe
+      // Message de bienvenue normal
       try {
-        await ctx.reply(`👋 Bienvenue ${member.first_name || ''} ! Profite bien du groupe !`);
+        let welcomeMsg = `👋 Bienvenue ${member.first_name || ''} ! Profite bien du groupe !`;
+        if (isTrialUser) {
+          welcomeMsg += `\n🎁 Vous profitez de la période d'essai gratuite !`;
+        }
+        await ctx.reply(welcomeMsg);
       } catch (welcomeError) {
         // Ignorer l'erreur de message
       }
@@ -1297,7 +1524,7 @@ bot.command('status', async (ctx) => {
 
     let message = `📊 *Vos abonnements*\n\n`;
     
-    // Convertir le snapshot en array pour utiliser un index propre
+    // Convertir le snapshot en array
     const docsArray = snapshot.docs;
     
     for (let i = 0; i < docsArray.length; i++) {
@@ -1305,6 +1532,37 @@ bot.command('status', async (ctx) => {
       const data = docSnap.data();
       const subscriptionId = docSnap.id;
       
+      // === AJOUT : VÉRIFIER SI C'EST UN ESSAI GRATUIT ===
+      if (data.status === 'trial') {
+        // C'est un essai gratuit
+        let trialEndDate;
+        if (data.trialEndDate?.toDate) {
+          trialEndDate = data.trialEndDate.toDate();
+        } else if (data.trialEndDate) {
+          trialEndDate = new Date(data.trialEndDate);
+        } else {
+          trialEndDate = new Date();
+        }
+        
+        const now = new Date();
+        const timeDiff = trialEndDate.getTime() - now.getTime();
+        const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        
+        message += `*${i + 1}. ${data.groupName || 'Groupe inconnu'}*\n`;
+        message += `   • Statut: 🎁 *Essai gratuit*\n`;
+        message += `   • ⏳ Jours restants: ${daysLeft > 0 ? daysLeft : 0} jour(s)\n`;
+        message += `   • 📅 Expire le: ${trialEndDate.toLocaleDateString('fr-FR')}\n`;
+        
+        // Si l'essai est expiré
+        if (daysLeft <= 0) {
+          message += `   • ⚠️ *Essai expiré*\n`;
+        }
+        
+        message += `\n`;
+        continue; // Passe au suivant
+      }
+      
+      // === CODE EXISTANT POUR LES ABONNEMENTS NORMAUX ===
       const isActive = data.status === 'active';
       const isExpired = data.status === 'expired';
       
@@ -1327,7 +1585,7 @@ bot.command('status', async (ctx) => {
       
       if (isActive) {
         if (daysLeft > 0) {
-          message += `   • Expire dans: ${daysLeft} jour(s)\n`;
+          message += `   • ⏳ Expire dans: ${daysLeft} jour(s)\n`;
         } else if (daysLeft === 0) {
           message += `   • ⚠️ Expire aujourd'hui\n`;
         } else {
