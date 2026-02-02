@@ -646,6 +646,8 @@ export default function ProductsPage() {
           creatorName: userInfo?.name || "Anonyme",
           // Garder le statut existant ou utiliser un statut par défaut
           status: editingProduct.status || "active",
+          hasTrialPeriod: editingHasTrialPeriod,
+          trialDuration: editingHasTrialPeriod ? editingTrialDuration : null,
         };
 
         await updateSubcollectionDocument(

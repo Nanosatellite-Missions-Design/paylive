@@ -54,10 +54,12 @@ export async function POST(req: NextRequest) {
       maxMembers,
       creatorUid,
       creatorName,
-      image
+      image,
+       hasTrialPeriod = false, // AJOUTER
+      trialDuration = null,    // AJOUTER
     } = body;
 
-    console.log('Données reçues pour création:', { name, telegramGroupId, creatorUid });
+    console.log('Données reçues pour création:', { name, telegramGroupId, creatorUid,hasTrialPeriod });
 
     // Validation
     if (!name || !price || !telegramGroupId || !creatorUid) {
@@ -103,7 +105,7 @@ export async function POST(req: NextRequest) {
       publicSlug: `telegram-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       subscriptionCount: 0,
       // AJOUTER CES 2 LIGNES SEULEMENT :
-  hasTrialPeriod: body.hasTrialPeriod || false,
+  hasTrialPeriod: Boolean(hasTrialPeriod) || false,
   trialDuration: body.trialDuration || null,
   // Optionnel : ajouter trialStartDate et trialEndDate si tu veux une période d'essai globale
   // trialStartDate: body.hasTrialPeriod ? serverTimestamp() : null,
@@ -167,7 +169,7 @@ const productData = {
   inStock: 9999,
   botIsAdmin: true,
     // AJOUTER CES 2 LIGNES SEULEMENT :
-  hasTrialPeriod: body.hasTrialPeriod || false,
+  hasTrialPeriod: Boolean(hasTrialPeriod) || false,
   trialDuration: body.trialDuration || null,
 };
     console.log('Création du document dans products...');
